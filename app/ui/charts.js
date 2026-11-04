@@ -1,0 +1,1636 @@
+/**
+ * app/ui/charts.js — small, dependency-free SVG charts.
+ *
+ * Rules: every chart carries a text alternative (role="img" + aria-label), and
+ * a chart never draws a point it does not have. Missing or suppressed data is
+ * rendered as a gap, not interpolated, so the picture cannot imply more
+ * knowledge than exists.
+ */
+
+import { h } from './dom.js';
+
+const CHART_W = 640;
+const CHART_H = 200;
+const PAD = { top: 16, right: 16, bottom: 28, left: 32 };
+
+/** Circular score gauge, 0–100. */
+export function ringGauge({ value, size = 132, grade = '', caption = '' }) {
+  const radius = size / 2 - 10;
+  const circumference = 2 * Math.PI * radius;
+  const safeValue = typeof value === 'number' ? Math.max(0, Math.min(100, value)) : 0;
+  const offset = circumference * (1 - safeValue / 100);
+  const color = safeValue >= 75 ? 'var(--good)' : safeValue >= 55 ? 'var(--warn)' : 'var(--bad)';
+  const label = value === null || value === undefined ? 'Not yet measurable' : `${safeValue} out of 100${grade ? `, grade ${grade}` : ''}`;
+
+  return h(
+    'div',
+    { class: 'gauge', role: 'img', 'aria-label': `Team health ${label}` },
+    h(
+      'svg',
+      { viewBox: `0 0 ${size} ${size}`, width: size, height: size, 'aria-hidden': 'true' },
+      h('circle', { cx: size / 2, cy: size / 2, r: radius, fill: 'none', stroke: 'var(--line)', 'stroke-width': 10 }),
+      value === null || value === undefined
+        ? null
+        : h('circle', {
+            cx: size / 2,
+            cy: size / 2,
+            r: radius,
+            fill: 'none',
+            stroke: color,
+            'stroke-width': 10,
+            'stroke-linecap': 'round',
+            'stroke-dasharray': `${circumference}`,
+            'stroke-dashoffset': `${offset}`,
+            transform: `rotate(-90 ${size / 2} ${size / 2})`,
+            style: { transition: 'stroke-dashoffset 400ms ease' },
+          }),
+    ),
+    h(
+      'div',
+      { class: 'gauge-center' },
+      h('strong', { class: 'gauge-value' }, value === null || value === undefined ? '—' : Math.round(safeValue)),
+      grade ? h('span', { class: 'gauge-grade' }, grade) : null,
+      caption ? h('span', { class: 'gauge-caption' }, caption) : null,
+    ),
+  );
+}
+
+/** Horizontal 0–100 bar used for dimensions and goal progress. */
+export function progressBar(value, { tone = null, label = '', thin = false } = {}) {
+  const safe = typeof value === 'number' ? Math.max(0, Math.min(100, value)) : null;
+  const resolved = tone || (safe === null ? 'neutral' : safe >= 75 ? 'good' : safe >= 55 ? 'warn' : 'bad');
+  return h(
+    'div',
+    {
+      class: `bar bar-${resolved}${thin ? ' bar-thin' : ''}`,
+      role: 'progressbar',
+      'aria-valuemin': 0,
+      'aria-valuemax': 100,
+      'aria-valuenow': safe === null ? 0 : Math.round(safe),
+      'aria-label': label || 'Progress',
+    },
+    h('span', { class: 'bar-fill', style: { width: `${safe === null ? 0 : safe}%` } }),
+  );
+}
+
+/**
+ * Pulse trend: up to three series over weeks, 1–5 scale.
+ * @param {Array<{weekStart:string, overall:number|null, safety:number|null, blocked:boolean, n:number}>} series
+ */
+export function pulseChart(series, { height = CHART_H } = {}) {
+  if (!series || !series.length) {
+    return h('p', { class: 'muted' }, 'No pulse history yet.');
+  }
+  const width = CHART_W;
+  const innerW = width - PAD.left - PAD.right;
+  const innerH = height - PAD.top - PAD.bottom;
+  const yFor = (v) => PAD.top + innerH - ((v - 1) / 4) * innerH;
+  const xFor = (i) => PAD.left + (series.length === 1 ? innerW / 2 : (i / (series.length - 1)) * innerW);
+
+  const grid = [1, 2, 3, 4, 5].map((tick) =>
+    h(
+      'g',
+      null,
+      h('line', { x1: PAD.left, x2: width - PAD.right, y1: yFor(tick), y2: yFor(tick), stroke: 'var(--line)', 'stroke-width': tick === 3 ? 1.2 : 0.6, 'stroke-dasharray': tick === 3 ? '' : '3 4' }),
+      h('text', { x: PAD.left - 8, y: yFor(tick) + 4, 'text-anchor': 'end', class: 'chart-tick' }, String(tick)),
+    ),
+  );
+
+  const lineFor = (key, color, { dash = '', shape = 'circle' } = {}) => {
+    const segments = [];
+    let current = [];
+    series.forEach((row, i) => {
+      const v = row[key];
+      if (typeof v === 'number') {
+        current.push({ x: xFor(i), y: yFor(v), v });
+      } else if (current.length) {
+        segments.push(current);
+        current = [];
+      }
+    });
+    if (current.length) segments.push(current);
+
+    const marker = (p) => (shape === 'square'
+      ? h('rect', { x: p.x - 2.6, y: p.y - 2.6, width: 5.2, height: 5.2, fill: color })
+      : h('circle', { cx: p.x, cy: p.y, r: 2.8, fill: color }));
+
+    return h(
+      'g',
+      null,
+      ...segments.map((seg) =>
+        seg.length === 1
+          ? marker(seg[0])
+          : h('polyline', {
+              points: seg.map((p) => `${p.x},${p.y}`).join(' '),
+              fill: 'none',
+              stroke: color,
+              'stroke-width': 2,
+              'stroke-dasharray': dash,
+              'stroke-linejoin': 'round',
+              'stroke-linecap': 'round',
+            }),
+      ),
+      ...segments.flatMap((seg) => seg.map((p) => marker(p))),
+    );
+  };
+
+  const labels = series.map((row, i) =>
+    h(
+      'text',
+      { x: xFor(i), y: height - 8, 'text-anchor': 'middle', class: 'chart-tick' },
+      row.weekStart ? row.weekStart.slice(8, 10) : '',
+    ),
+  );
+
+  const blocked = series.filter((r) => r.blocked);
+  const lastWithData = [...series].reverse().find((r) => typeof r.overall === 'number');
+  const lastCountText = lastWithData
+    ? (typeof lastWithData.usableResponses === 'number' && lastWithData.usableResponses !== lastWithData.n
+      ? `${lastWithData.usableResponses} complete responses (${lastWithData.n} total)`
+      : `${lastWithData.n} responses`)
+    : '';
+  const summary = [
+    `Pulse trend over ${series.length} weeks.`,
+    lastWithData ? `Latest readable week ${lastWithData.weekStart}: overall ${lastWithData.overall}/5 from ${lastCountText}.` : 'No week had enough responses to report.',
+    blocked.length ? `${blocked.length} week(s) suppressed for anonymity.` : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  return h(
+    'figure',
+    { class: 'chart' },
+    h(
+      'svg',
+      { viewBox: `0 0 ${width} ${height}`, class: 'chart-svg', role: 'img', 'aria-label': summary },
+      ...grid,
+      lineFor('safety', 'var(--accent-2)', { dash: '5 3', shape: 'square' }),
+      lineFor('overall', 'var(--accent)', { dash: '', shape: 'circle' }),
+      ...labels,
+    ),
+    h(
+      'figcaption',
+      { class: 'chart-legend' },
+      h('span', { class: 'legend-item' }, h('span', { class: 'legend-dot', style: { background: 'var(--accent)' } }), 'Overall (solid)'),
+      h('span', { class: 'legend-item' }, h('span', { class: 'legend-swatch legend-swatch-dashed', style: { borderColor: 'var(--accent-2)' } }), 'Safety (dashed)'),
+      blocked.length ? h('span', { class: 'legend-note' }, `${blocked.length} week(s) hidden below the anonymity floor`) : null,
+    ),
+    h('p', { class: 'sr-only' }, summary),
+  );
+}
+
+/** Column chart for a small set of labelled values (0–100). */
+export function columnChart(rows, { height = 160 } = {}) {
+  const width = CHART_W;
+  const innerH = height - 44;
+  const barW = Math.min(64, (width - 40) / Math.max(rows.length, 1) - 16);
+  const gap = (width - 40 - barW * rows.length) / Math.max(rows.length - 1, 1);
+  const max = Math.max(100, ...rows.map((r) => r.value || 0));
+  const summary = rows.map((r) => `${r.label}: ${r.value === null ? 'no data' : `${Math.round(r.value)}%`}`).join('. ');
+
+  return h(
+    'figure',
+    { class: 'chart' },
+    h(
+      'svg',
+      { viewBox: `0 0 ${width} ${height}`, class: 'chart-svg', role: 'img', 'aria-label': summary },
+      h('line', { x1: 20, x2: width - 20, y1: innerH, y2: innerH, stroke: 'var(--line)' }),
+      ...rows.map((row, i) => {
+        const x = 20 + i * (barW + gap);
+        const value = row.value === null ? 0 : Math.max(0, Math.min(100, row.value));
+        const barH = (value / max) * (innerH - 12);
+        const tone = row.value === null ? 'var(--line-strong)' : value >= 75 ? 'var(--good)' : value >= 55 ? 'var(--warn)' : 'var(--bad)';
+        return h(
+          'g',
+          null,
+          h('rect', { x, y: innerH - barH, width: barW, height: Math.max(barH, row.value === null ? 2 : 3), rx: 5, fill: tone }),
+          h('text', { x: x + barW / 2, y: innerH - barH - 6, 'text-anchor': 'middle', class: 'chart-value' }, row.value === null ? '—' : String(Math.round(value))),
+          h('text', { x: x + barW / 2, y: height - 14, 'text-anchor': 'middle', class: 'chart-tick' }, row.label),
+        );
+      }),
+    ),
+    h('p', { class: 'sr-only' }, summary),
+  );
+}
+
+/** Tiny inline trend line, no axes. */
+export function sparkline(values, { width = 120, height = 32, color = 'var(--accent)' } = {}) {
+  const nums = values.filter((v) => typeof v === 'number');
+  if (nums.length < 2) return h('span', { class: 'muted tiny' }, '—');
+  const max = Math.max(...nums);
+  const min = Math.min(...nums);
+  const span = max - min || 1;
+  const points = values
+    .map((v, i) =>
+      typeof v === 'number'
+        ? `${(i / (values.length - 1)) * (width - 4) + 2},${height - 3 - ((v - min) / span) * (height - 6)}`
+        : null,
+    )
+    .filter(Boolean)
+    .join(' ');
+  return h(
+    'svg',
+    { viewBox: `0 0 ${width} ${height}`, width, height, class: 'spark', 'aria-hidden': 'true' },
+    h('polyline', { points, fill: 'none', stroke: color, 'stroke-width': 1.8, 'stroke-linejoin': 'round' }),
+  );
+}
+
+export const SERIES_STYLES = {
+  overall: { color: '#0f6b5c', dash: '', shape: 'circle', strokeWidth: 2.6, patternLabel: 'solid circle' },
+  cadence: { color: '#4a6fa5', dash: '', shape: 'square', strokeWidth: 2, patternLabel: 'solid square' },
+  feedback: { color: '#8a5609', dash: '6 3', shape: 'diamond', strokeWidth: 2, patternLabel: 'dashed diamond' },
+  clarity: { color: '#2d5a7b', dash: '2 3', shape: 'triangle', strokeWidth: 2, patternLabel: 'dotted triangle' },
+  growth: { color: '#6b4c8c', dash: '7 3 2 3', shape: 'circle', strokeWidth: 2, patternLabel: 'dash-dot circle' },
+  wellbeing: { color: '#a02f29', dash: '4 4', shape: 'square', strokeWidth: 2, patternLabel: 'short-dash square' },
+  delegation: { color: '#0f6b5c', dash: '', shape: 'circle', strokeWidth: 2.2, patternLabel: 'solid circle' },
+};
+
+function renderSeriesMarker(pt, style) {
+  const hollow = pt.fidelity === 'approximate';
+  const fill = hollow ? 'var(--panel)' : style.color;
+  const strokeProps = { stroke: style.color, 'stroke-width': hollow ? 2 : 1.2 };
+  if (style.shape === 'square') {
+    return h('rect', { x: pt.x - 3, y: pt.y - 3, width: 6, height: 6, fill, ...strokeProps });
+  }
+  if (style.shape === 'diamond') {
+    return h('polygon', {
+      points: `${pt.x},${pt.y - 3.8} ${pt.x + 3.8},${pt.y} ${pt.x},${pt.y + 3.8} ${pt.x - 3.8},${pt.y}`,
+      fill,
+      ...strokeProps,
+    });
+  }
+  if (style.shape === 'triangle') {
+    return h('polygon', {
+      points: `${pt.x},${pt.y - 4} ${pt.x + 3.8},${pt.y + 3} ${pt.x - 3.8},${pt.y + 3}`,
+      fill,
+      ...strokeProps,
+    });
+  }
+  return h('circle', { cx: pt.x, cy: pt.y, r: 3.2, fill, ...strokeProps });
+}
+
+/**
+ * Multi-series 0–100 trend chart with non-color stroke/shape encoding,
+ * hollow markers for approximate reconstructions, gap preservation for
+ * suppressed/unmeasured periods, and an accessible HTML data table.
+ */
+export function trendChart(periods, seriesList, { height = 220, title = 'Health trends', unit = '/100' } = {}) {
+  if (!periods || !periods.length || !seriesList || !seriesList.length) {
+    return h('p', { class: 'muted' }, 'No historical checkpoints available yet.');
+  }
+  const width = CHART_W;
+  const pad = { top: 16, right: 20, bottom: 30, left: 38 };
+  const innerW = width - pad.left - pad.right;
+  const innerH = height - pad.top - pad.bottom;
+  const yFor = (v) => pad.top + innerH - (Math.max(0, Math.min(100, v)) / 100) * innerH;
+  const xFor = (i) => pad.left + (periods.length === 1 ? innerW / 2 : (i / (periods.length - 1)) * innerW);
+
+  const grid = [0, 25, 50, 75, 100].map((tick) =>
+    h(
+      'g',
+      null,
+      h('line', {
+        x1: pad.left,
+        x2: width - pad.right,
+        y1: yFor(tick),
+        y2: yFor(tick),
+        stroke: 'var(--line)',
+        'stroke-width': tick === 50 || tick === 75 ? 1 : 0.6,
+        'stroke-dasharray': tick === 75 ? '' : '3 4',
+      }),
+      h('text', { x: pad.left - 8, y: yFor(tick) + 4, 'text-anchor': 'end', class: 'chart-tick' }, String(tick)),
+    ),
+  );
+
+  let hasApproximate = false;
+  let suppressedCount = 0;
+
+  const renderedSeries = seriesList.map((serie) => {
+    const style = SERIES_STYLES[serie.key] || SERIES_STYLES.overall;
+    const segments = [];
+    let current = [];
+    serie.values.forEach((cell, idx) => {
+      if (cell && cell.status === 'suppressed') suppressedCount += 1;
+      if (cell && typeof cell.value === 'number') {
+        if (cell.fidelity === 'approximate') hasApproximate = true;
+        current.push({
+          x: xFor(idx),
+          y: yFor(cell.value),
+          v: cell.value,
+          fidelity: cell.fidelity || 'exact',
+        });
+      } else if (current.length) {
+        segments.push(current);
+        current = [];
+      }
+    });
+    if (current.length) segments.push(current);
+
+    return h(
+      'g',
+      { 'data-series': serie.key },
+      ...segments.map((seg) => (
+        seg.length === 1
+          ? null
+          : h('polyline', {
+              points: seg.map((p) => `${p.x},${p.y}`).join(' '),
+              fill: 'none',
+              stroke: style.color,
+              'stroke-width': style.strokeWidth,
+              'stroke-dasharray': style.dash,
+              'stroke-linejoin': 'round',
+              'stroke-linecap': 'round',
+            })
+      )),
+      ...segments.flatMap((seg) => seg.map((p) => renderSeriesMarker(p, style))),
+    );
+  });
+
+  const xLabels = periods.map((p, idx) =>
+    h(
+      'text',
+      { x: xFor(idx), y: height - 8, 'text-anchor': 'middle', class: 'chart-tick' },
+      p.label,
+    ),
+  );
+
+  const summaryParts = [`${title} across ${periods.length} checkpoints (${periods[0].label} to ${periods[periods.length - 1].label}).`];
+  for (const serie of seriesList) {
+    const measured = serie.values.filter((c) => c && typeof c.value === 'number');
+    if (measured.length) {
+      const latest = measured[measured.length - 1];
+      summaryParts.push(`${serie.label}: latest ${Math.round(latest.value)}${unit} (${measured.length}/${periods.length} checkpoints measured).`);
+    } else {
+      summaryParts.push(`${serie.label}: not yet measurable.`);
+    }
+  }
+  if (suppressedCount > 0) summaryParts.push(`${suppressedCount} checkpoint(s) suppressed for pulse anonymity.`);
+  if (hasApproximate) summaryParts.push('Hollow markers denote approximate historical checkpoints.');
+  const summary = summaryParts.join(' ');
+
+  const formatCell = (cell) => {
+    if (!cell || cell.value === null || cell.value === undefined) {
+      if (cell?.status === 'suppressed') return 'Hidden (privacy)';
+      if (cell?.status === 'pre-history') return 'Before records';
+      return '—';
+    }
+    const base = `${Math.round(cell.value * 10) / 10}${unit}`;
+    return cell.fidelity === 'approximate' ? `${base} (approx.)` : base;
+  };
+
+  return h(
+    'figure',
+    { class: 'chart' },
+    h(
+      'svg',
+      { viewBox: `0 0 ${width} ${height}`, class: 'chart-svg', role: 'img', 'aria-label': summary },
+      ...grid,
+      ...renderedSeries,
+      ...xLabels,
+    ),
+    h(
+      'figcaption',
+      { class: 'chart-legend' },
+      ...seriesList.map((serie) => {
+        const style = SERIES_STYLES[serie.key] || SERIES_STYLES.overall;
+        return h(
+          'span',
+          { class: 'legend-item' },
+          h('span', {
+            class: `legend-swatch ${style.dash ? 'legend-swatch-dashed' : ''}`,
+            style: { borderColor: style.color, background: style.dash ? 'transparent' : style.color },
+          }),
+          `${serie.label}`,
+        );
+      }),
+      hasApproximate ? h('span', { class: 'legend-note' }, 'Hollow point = approximate history') : null,
+      suppressedCount > 0 ? h('span', { class: 'legend-note' }, 'Gaps = suppressed or unmeasured') : null,
+    ),
+    h(
+      'details',
+      { class: 'chart-table-details' },
+      h('summary', null, `Data table: ${title}`),
+      h(
+        'div',
+        { class: 'table-wrap' },
+        h(
+          'table',
+          { class: 'table' },
+          h(
+            'thead',
+            null,
+            h(
+              'tr',
+              null,
+              h('th', { scope: 'col' }, 'Series'),
+              ...periods.map((p) => h('th', { scope: 'col' }, p.label)),
+            ),
+          ),
+          h(
+            'tbody',
+            null,
+            ...seriesList.map((serie) =>
+              h(
+                'tr',
+                null,
+                h('th', { scope: 'row' }, serie.label),
+                ...serie.values.map((cell) => h('td', null, formatCell(cell))),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+/**
+ * Feedback observation-to-conversation latency chart (lower is faster) with
+ * target convention line and accessible data table.
+ */
+export function latencyChart(points, { targetDays = 7, height = 188 } = {}) {
+  if (!points || !points.length) {
+    return h('p', { class: 'muted' }, 'No feedback windows yet.');
+  }
+  const width = CHART_W;
+  const pad = { top: 18, right: 20, bottom: 30, left: 38 };
+  const innerW = width - pad.left - pad.right;
+  const innerH = height - pad.top - pad.bottom;
+  const measuredValues = points.map((p) => p.averageDays).filter((v) => typeof v === 'number');
+  const maxY = Math.max(targetDays + 3, 10, ...measuredValues.map((v) => Math.ceil(v + 1)));
+  const yFor = (v) => pad.top + innerH - (Math.max(0, Math.min(maxY, v)) / maxY) * innerH;
+  const xFor = (i) => pad.left + (points.length === 1 ? innerW / 2 : (i / (points.length - 1)) * innerW);
+
+  const ticks = [0, targetDays, maxY].filter((v, idx, arr) => arr.indexOf(v) === idx).sort((a, b) => a - b);
+  const grid = ticks.map((tick) =>
+    h(
+      'g',
+      null,
+      h('line', {
+        x1: pad.left,
+        x2: width - pad.right,
+        y1: yFor(tick),
+        y2: yFor(tick),
+        stroke: tick === targetDays ? 'var(--warn)' : 'var(--line)',
+        'stroke-width': tick === targetDays ? 1.2 : 0.7,
+        'stroke-dasharray': tick === targetDays ? '5 3' : '2 4',
+      }),
+      h('text', { x: pad.left - 8, y: yFor(tick) + 4, 'text-anchor': 'end', class: 'chart-tick' }, `${tick}d`),
+    ),
+  );
+
+  const segments = [];
+  let current = [];
+  points.forEach((p, idx) => {
+    if (typeof p.averageDays === 'number') {
+      current.push({ x: xFor(idx), y: yFor(p.averageDays), v: p.averageDays, over: p.averageDays > targetDays });
+    } else if (current.length) {
+      segments.push(current);
+      current = [];
+    }
+  });
+  if (current.length) segments.push(current);
+
+  const latest = [...points].reverse().find((p) => typeof p.averageDays === 'number');
+  const summary = [
+    `Feedback observation-to-conversation latency over ${points.length} periods (convention ${targetDays} days or fewer).`,
+    latest ? `Latest measured window (${latest.label}): ${latest.averageDays} days average across ${latest.measured} note(s).` : 'No given feedback with an observed date yet.',
+  ].join(' ');
+
+  return h(
+    'figure',
+    { class: 'chart' },
+    h(
+      'svg',
+      { viewBox: `0 0 ${width} ${height}`, class: 'chart-svg', role: 'img', 'aria-label': summary },
+      ...grid,
+      ...segments.map((seg) => (
+        seg.length === 1
+          ? null
+          : h('polyline', {
+              points: seg.map((p) => `${p.x},${p.y}`).join(' '),
+              fill: 'none',
+              stroke: '#4a6fa5',
+              'stroke-width': 2.2,
+              'stroke-linejoin': 'round',
+              'stroke-linecap': 'round',
+            })
+      )),
+      ...segments.flatMap((seg) =>
+        seg.map((p) =>
+          h('circle', {
+            cx: p.x,
+            cy: p.y,
+            r: 3.6,
+            fill: p.over ? 'var(--warn)' : 'var(--accent)',
+            stroke: 'var(--panel)',
+            'stroke-width': 1.2,
+          }),
+        ),
+      ),
+      ...points.map((p, idx) =>
+        h('text', { x: xFor(idx), y: height - 8, 'text-anchor': 'middle', class: 'chart-tick' }, p.label),
+      ),
+    ),
+    h(
+      'figcaption',
+      { class: 'chart-legend' },
+      h('span', { class: 'legend-item' }, h('span', { class: 'legend-dot', style: { background: 'var(--accent)' } }), `Within ${targetDays}d convention`),
+      h('span', { class: 'legend-item' }, h('span', { class: 'legend-dot', style: { background: 'var(--warn)' } }), `Above ${targetDays}d`),
+      h('span', { class: 'legend-note' }, 'Gaps = no observed-date samples in window'),
+    ),
+    h(
+      'details',
+      { class: 'chart-table-details' },
+      h('summary', null, 'Data table: Feedback latency'),
+      h(
+        'div',
+        { class: 'table-wrap' },
+        h(
+          'table',
+          { class: 'table' },
+          h(
+            'thead',
+            null,
+            h(
+              'tr',
+              null,
+              h('th', { scope: 'col' }, 'Period end'),
+              h('th', { scope: 'col' }, 'Avg latency'),
+              h('th', { scope: 'col' }, 'Measured'),
+              h('th', { scope: 'col' }, 'Missing observed date'),
+              h('th', { scope: 'col' }, `Above ${targetDays}d`),
+            ),
+          ),
+          h(
+            'tbody',
+            null,
+            ...points.map((p) =>
+              h(
+                'tr',
+                null,
+                h('th', { scope: 'row' }, p.label),
+                h('td', null, typeof p.averageDays === 'number' ? `${p.averageDays}d` : p.status === 'pre-history' ? 'Before records' : '—'),
+                h('td', null, String(p.measured)),
+                h('td', null, String(p.unmeasured)),
+                h('td', null, p.measured > 0 ? String(p.delayed) : '—'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+/**
+ * Shewhart / Wheeler Individuals & Moving Range (XmR) Process Behaviour Chart.
+ * Renders the Individuals (X) chart with Center Line X̄, Upper/Lower Natural
+ * Process Limits (X̄ ± 2.66 mR̄), optional target line, special-cause markers,
+ * and an accessible data table including Moving Ranges (mR).
+ */
+export function xmrChart(spc, { title = 'Process metric', unit = '', targetValue = null, height = 210 } = {}) {
+  if (!spc || !Array.isArray(spc.points) || spc.points.length === 0) {
+    return h('p', { class: 'muted' }, 'No observations recorded yet.');
+  }
+
+  const pts = spc.points;
+  if (!spc.available) {
+    return h(
+      'div',
+      { class: 'stack-sm' },
+      h('p', { class: 'muted small' }, spc.reason || 'At least 4 observations and 3 adjacent moving ranges are needed before XmR natural process limits can be computed.'),
+      h(
+        'div',
+        { class: 'table-wrap' },
+        h(
+          'table',
+          { class: 'table', 'aria-label': `Observations for ${title}` },
+          h(
+            'thead',
+            null,
+            h(
+              'tr',
+              null,
+              h('th', { scope: 'col' }, 'Date'),
+              h('th', { scope: 'col' }, `Value${unit ? ` (${unit})` : ''}`),
+              h('th', { scope: 'col' }, 'Note'),
+            ),
+          ),
+          h(
+            'tbody',
+            null,
+            ...pts.map((p) =>
+              h(
+                'tr',
+                null,
+                h('th', { scope: 'row' }, p.label || p.date || '—'),
+                h('td', null, p.value !== null ? `${p.value}${unit ? ` ${unit}` : ''}` : '—'),
+                h('td', { class: 'muted small' }, p.note || '—'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  const width = CHART_W;
+  const padLeft = 44;
+  const innerW = width - padLeft - PAD.right;
+  const innerH = height - PAD.top - PAD.bottom;
+
+  const numericVals = [
+    ...pts.filter((p) => p.value !== null).map((p) => p.value),
+    spc.mean,
+    spc.unpl,
+    spc.lnpl,
+    ...(typeof targetValue === 'number' && Number.isFinite(targetValue) ? [targetValue] : []),
+  ].filter((v) => typeof v === 'number' && Number.isFinite(v));
+
+  let minY = Math.min(...numericVals);
+  let maxY = Math.max(...numericVals);
+  if (minY === maxY) {
+    minY -= 1;
+    maxY += 1;
+  } else {
+    const pad = (maxY - minY) * 0.12;
+    minY -= pad;
+    maxY += pad;
+  }
+
+  const yFor = (v) => PAD.top + innerH - ((v - minY) / (maxY - minY)) * innerH;
+  const xFor = (i) => padLeft + (pts.length === 1 ? innerW / 2 : (i / (pts.length - 1)) * innerW);
+
+  const signalByIndex = new Map();
+  for (const sig of spc.signals || []) {
+    if (!signalByIndex.has(sig.index)) {
+      signalByIndex.set(sig.index, sig);
+    }
+  }
+  const mrByIndex = new Map();
+  for (const mr of spc.movingRanges || []) {
+    mrByIndex.set(mr.index, mr.range);
+  }
+
+  const segments = [];
+  let current = [];
+  pts.forEach((p, idx) => {
+    if (p.value !== null) {
+      current.push({ x: xFor(idx), y: yFor(p.value), pt: p, sig: signalByIndex.get(idx) || null });
+    } else if (current.length) {
+      segments.push(current);
+      current = [];
+    }
+  });
+  if (current.length) segments.push(current);
+
+  const fmtVal = (v) => (v === null || v === undefined ? '—' : `${v}${unit ? ` ${unit}` : ''}`);
+  const summary = [
+    `XmR process behaviour chart for ${title}: ${spc.measuredCount} observations.`,
+    `Center line ${fmtVal(spc.mean)}, lower natural limit ${fmtVal(spc.lnpl)}, upper natural limit ${fmtVal(spc.unpl)}.`,
+    spc.regime === 'common-cause'
+      ? 'Process is in statistical control (common-cause variation only).'
+      : `${spc.signals.length} special-cause signal(s) detected.`,
+  ].join(' ');
+
+  const refLine = (val, labelText, stroke, dash = '') => {
+    if (typeof val !== 'number' || !Number.isFinite(val)) return null;
+    const y = yFor(val);
+    return h(
+      'g',
+      null,
+      h('line', {
+        x1: padLeft,
+        x2: width - PAD.right,
+        y1: y,
+        y2: y,
+        stroke,
+        'stroke-width': dash ? 1.1 : 1.5,
+        'stroke-dasharray': dash,
+      }),
+      h('text', { x: padLeft - 6, y: y + 3.5, 'text-anchor': 'end', class: 'chart-tick' }, String(Math.round(val * 10) / 10)),
+      labelText
+        ? h('text', { x: width - PAD.right - 2, y: y - 4, 'text-anchor': 'end', class: 'chart-tick' }, labelText)
+        : null,
+    );
+  };
+
+  const labelStride = pts.length > 8 ? Math.ceil(pts.length / 6) : 1;
+
+  return h(
+    'figure',
+    { class: 'chart' },
+    h(
+      'svg',
+      { viewBox: `0 0 ${width} ${height}`, class: 'chart-svg', role: 'img', 'aria-label': summary },
+      refLine(spc.unpl, 'UNPL', 'var(--warn)', '4 4'),
+      refLine(spc.mean, 'X̄', 'var(--muted)', ''),
+      refLine(spc.lnpl, 'LNPL', 'var(--warn)', '4 4'),
+      typeof targetValue === 'number' && Number.isFinite(targetValue)
+        ? refLine(targetValue, 'Target', 'var(--good)', '2 3')
+        : null,
+      ...segments.map((seg) =>
+        seg.length === 1
+          ? null
+          : h('polyline', {
+              points: seg.map((p) => `${p.x},${p.y}`).join(' '),
+              fill: 'none',
+              stroke: 'var(--accent)',
+              'stroke-width': 2.1,
+              'stroke-linejoin': 'round',
+              'stroke-linecap': 'round',
+            }),
+      ),
+      ...segments.flatMap((seg) =>
+        seg.map((p) => {
+          const fill = p.sig
+            ? p.sig.polarity === 'favorable'
+              ? 'var(--good)'
+              : p.sig.polarity === 'adverse'
+                ? 'var(--bad)'
+                : 'var(--warn)'
+            : 'var(--accent)';
+          return h('circle', {
+            cx: p.x,
+            cy: p.y,
+            r: p.sig ? 5 : 3.5,
+            fill,
+            stroke: 'var(--panel)',
+            'stroke-width': 1.3,
+          });
+        }),
+      ),
+      ...pts.map((p, idx) =>
+        idx % labelStride === 0 || idx === pts.length - 1
+          ? h('text', { x: xFor(idx), y: height - 8, 'text-anchor': 'middle', class: 'chart-tick' }, (p.label || p.date || '').slice(-5))
+          : null,
+      ),
+    ),
+    h(
+      'figcaption',
+      { class: 'chart-legend' },
+      h('span', { class: 'legend-item' }, h('span', { class: 'legend-dot', style: { background: 'var(--accent)' } }), `Common-cause (X̄ = ${fmtVal(spc.mean)}, mR̄ = ${fmtVal(spc.avgMovingRange)})`),
+      h('span', { class: 'legend-item' }, h('span', { class: 'legend-dot', style: { background: 'var(--warn)' } }), `Natural limits [${fmtVal(spc.lnpl)}, ${fmtVal(spc.unpl)}]`),
+      spc.signals.length > 0
+        ? h('span', { class: 'legend-item' }, h('span', { class: 'legend-dot', style: { background: spc.regime === 'special-cause-adverse' ? 'var(--bad)' : 'var(--good)' } }), `${spc.signals.length} special-cause signal(s)`)
+        : h('span', { class: 'legend-note' }, 'In statistical control'),
+    ),
+    h(
+      'details',
+      { class: 'chart-table-details' },
+      h('summary', null, `Data table: ${title} (X & mR)`),
+      h(
+        'div',
+        { class: 'table-wrap' },
+        h(
+          'table',
+          { class: 'table', 'aria-label': `XmR data table for ${title}` },
+          h(
+            'thead',
+            null,
+            h(
+              'tr',
+              null,
+              h('th', { scope: 'col' }, 'Date'),
+              h('th', { scope: 'col' }, `Individual X${unit ? ` (${unit})` : ''}`),
+              h('th', { scope: 'col' }, 'Moving range mR'),
+              h('th', { scope: 'col' }, 'Process signal'),
+            ),
+          ),
+          h(
+            'tbody',
+            null,
+            ...pts.map((p, idx) => {
+              const sig = signalByIndex.get(idx);
+              const mr = mrByIndex.get(idx);
+              return h(
+                'tr',
+                null,
+                h('th', { scope: 'row' }, p.date || p.label || '—'),
+                h('td', null, p.value !== null ? fmtVal(p.value) : '—'),
+                h('td', null, typeof mr === 'number' ? fmtVal(mr) : '—'),
+                h('td', null, sig ? `${sig.ruleCode}: ${sig.summary}` : p.value !== null ? 'Common-cause' : 'Gap'),
+              );
+            }),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+/**
+ * Monte Carlo committed-demand distribution histogram with P50 / P80 / Supply
+ * vertical markers, non-colour overload border differentiation, and an
+ * accessible HTML data-table alternative.
+ */
+export function monteCarloHistogramChart(sim, { height = 186 } = {}) {
+  if (!sim || !sim.available || !sim.committedDemand?.bins?.length) {
+    return h('p', { class: 'muted small' }, sim?.reason || 'Not enough estimated work to plot a Monte Carlo distribution.');
+  }
+  const bins = sim.committedDemand.bins;
+  const width = CHART_W;
+  const padLeft = 44;
+  const padRight = 20;
+  const innerW = width - padLeft - padRight;
+  const innerH = height - PAD.top - PAD.bottom;
+
+  const minX = Math.min(bins[0].from, sim.allocatableDays > 0 ? sim.allocatableDays * 0.85 : bins[0].from);
+  const maxX = Math.max(bins[bins.length - 1].to, sim.allocatableDays > 0 ? sim.allocatableDays * 1.05 : bins[bins.length - 1].to);
+  const spanX = Math.max(1e-6, maxX - minX);
+  const maxProb = Math.max(0.05, ...bins.map((b) => b.probability));
+
+  const xFor = (v) => padLeft + ((v - minX) / spanX) * innerW;
+  const yForProb = (p) => PAD.top + innerH - (p / maxProb) * innerH;
+
+  const summary = [
+    `Monte Carlo committed-demand histogram (${sim.trials} trials, seed ${sim.seed}).`,
+    `Median P50 ${sim.committedDemand.p50} person-days, P80 ${sim.committedDemand.p80} days, P90 ${sim.committedDemand.p90} days against ${sim.allocatableDays} allocatable days.`,
+    `Horizon fit confidence ${Math.round(sim.horizonFitProbability * 100)}% (${Math.round(sim.overloadProbability * 100)}% overload probability).`,
+  ].join(' ');
+
+  const vMarker = (val, labelText, stroke, dash = '') => {
+    if (typeof val !== 'number' || !Number.isFinite(val) || val < minX || val > maxX) return null;
+    const x = xFor(val);
+    return h(
+      'g',
+      null,
+      h('line', {
+        x1: x,
+        x2: x,
+        y1: PAD.top,
+        y2: PAD.top + innerH,
+        stroke,
+        'stroke-width': dash ? 1.4 : 1.8,
+        'stroke-dasharray': dash,
+      }),
+      h('text', { x, y: PAD.top - 4, 'text-anchor': 'middle', class: 'chart-tick' }, labelText),
+    );
+  };
+
+  return h(
+    'figure',
+    { class: 'chart' },
+    h(
+      'svg',
+      { viewBox: `0 0 ${width} ${height}`, class: 'chart-svg', role: 'img', 'aria-label': summary },
+      h('line', {
+        x1: padLeft,
+        x2: width - padRight,
+        y1: PAD.top + innerH,
+        y2: PAD.top + innerH,
+        stroke: 'var(--line)',
+        'stroke-width': 1,
+      }),
+      ...bins.map((b) => {
+        const x1 = xFor(b.from);
+        const x2 = xFor(b.to);
+        const barW = Math.max(3, x2 - x1 - 2);
+        const y = yForProb(b.probability);
+        const barH = Math.max(1, PAD.top + innerH - y);
+        return h('rect', {
+          x: x1 + 1,
+          y,
+          width: barW,
+          height: barH,
+          rx: 2,
+          fill: b.exceedsCutoff ? 'var(--bad)' : 'var(--accent)',
+          'fill-opacity': b.exceedsCutoff ? 0.55 : 0.72,
+          stroke: b.exceedsCutoff ? 'var(--bad)' : 'none',
+          'stroke-width': b.exceedsCutoff ? 1.2 : 0,
+          'stroke-dasharray': b.exceedsCutoff ? '3 2' : '',
+        });
+      }),
+      vMarker(sim.committedDemand.p50, `P50 (${sim.committedDemand.p50}d)`, 'var(--ink)', ''),
+      vMarker(sim.committedDemand.p80, `P80 (${sim.committedDemand.p80}d)`, 'var(--warn)', '5 3'),
+      sim.allocatableDays > 0
+        ? vMarker(sim.allocatableDays, `Supply (${sim.allocatableDays}d)`, 'var(--good)', '2 3')
+        : null,
+      h('text', { x: padLeft, y: height - 8, 'text-anchor': 'start', class: 'chart-tick' }, `${Math.round(minX * 10) / 10}d`),
+      h('text', { x: width - padRight, y: height - 8, 'text-anchor': 'end', class: 'chart-tick' }, `${Math.round(maxX * 10) / 10}d`),
+    ),
+    h(
+      'figcaption',
+      { class: 'chart-legend' },
+      h('span', { class: 'legend-item' }, h('span', { class: 'legend-dot', style: { background: 'var(--accent)' } }), `Fits supply (${Math.round(sim.horizonFitProbability * 100)}%)`),
+      h('span', { class: 'legend-item' }, h('span', { class: 'legend-dot', style: { background: 'var(--bad)' } }), `Exceeds ${sim.allocatableDays}d supply (${Math.round(sim.overloadProbability * 100)}%)`),
+      h('span', { class: 'legend-note' }, `Seed ${sim.seed} · ${sim.trials} Beta-PERT trials`),
+    ),
+    h(
+      'details',
+      { class: 'chart-table-details' },
+      h('summary', null, 'Data table: Monte Carlo committed demand distribution'),
+      h(
+        'div',
+        { class: 'table-wrap' },
+        h(
+          'table',
+          { class: 'table', 'aria-label': 'Monte Carlo committed demand histogram bins' },
+          h(
+            'thead',
+            null,
+            h(
+              'tr',
+              null,
+              h('th', { scope: 'col' }, 'Demand bin (person-days)'),
+              h('th', { scope: 'col' }, 'Trials'),
+              h('th', { scope: 'col' }, 'Share'),
+              h('th', { scope: 'col' }, 'Horizon supply check'),
+            ),
+          ),
+          h(
+            'tbody',
+            null,
+            ...bins.map((b) =>
+              h(
+                'tr',
+                null,
+                h('th', { scope: 'row' }, `${b.from}d – ${b.to}d`),
+                h('td', null, String(b.count)),
+                h('td', null, `${Math.round(b.probability * 1000) / 10}%`),
+                h('td', null, b.exceedsCutoff ? 'Exceeds allocatable supply' : 'Within supply'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+/**
+ * Stochastic Satir J-Curve fan chart (P10–P90 confidence band, P50 median,
+ * zero break-even line, and accessible month-by-month data table).
+ */
+export function jCurveFanChart(jcurve, { title = 'Change J-curve', height = 196 } = {}) {
+  if (!jcurve || !jcurve.available || !Array.isArray(jcurve.months) || jcurve.months.length < 2) {
+    return h('p', { class: 'muted small' }, jcurve?.reason || 'No J-curve trajectory available.');
+  }
+  const pts = jcurve.months;
+  const width = CHART_W;
+  const padLeft = 56;
+  const padRight = 18;
+  const innerW = width - padLeft - padRight;
+  const innerH = height - PAD.top - PAD.bottom;
+
+  const allVals = [0, ...pts.flatMap((m) => [m.p10, m.p50, m.p90])];
+  let minY = Math.min(...allVals);
+  let maxY = Math.max(...allVals);
+  if (maxY - minY < 1) {
+    minY -= 1;
+    maxY += 1;
+  } else {
+    const pad = (maxY - minY) * 0.1;
+    minY -= pad;
+    maxY += pad;
+  }
+
+  const xFor = (i) => padLeft + (i / (pts.length - 1)) * innerW;
+  const yFor = (v) => PAD.top + innerH - ((v - minY) / (maxY - minY)) * innerH;
+
+  const upperBand = pts.map((m, i) => `${xFor(i)},${yFor(m.p90)}`);
+  const lowerBand = [...pts].reverse().map((m, revIdx) => {
+    const i = pts.length - 1 - revIdx;
+    return `${xFor(i)},${yFor(m.p10)}`;
+  });
+  const polygonPoints = [...upperBand, ...lowerBand].join(' ');
+  const p50Points = pts.map((m, i) => `${xFor(i)},${yFor(m.p50)}`).join(' ');
+  const p90Points = pts.map((m, i) => `${xFor(i)},${yFor(m.p90)}`).join(' ');
+  const p10Points = pts.map((m, i) => `${xFor(i)},${yFor(m.p10)}`).join(' ');
+
+  const fmtMoney = (v) => `${jcurve.currency} ${Math.round(v).toLocaleString('en-US')}`;
+  const summary = [
+    `Stochastic Satir J-curve fan chart for ${title} over ${jcurve.horizonMonths} months (${jcurve.trials} trials, seed ${jcurve.seed}).`,
+    `Valley trough P50 ${fmtMoney(jcurve.valley.troughValueP50)} around month ${jcurve.valley.troughMonthP50}.`,
+    `Payback P50 ${jcurve.paybackMonths.p50 !== null ? `${jcurve.paybackMonths.p50} months` : 'beyond horizon'} (P80 ${jcurve.paybackMonths.p80 !== null ? `${jcurve.paybackMonths.p80} months` : 'beyond horizon'}).`,
+    `Horizon net value P10 ${fmtMoney(jcurve.horizonNet.p10)}, P50 ${fmtMoney(jcurve.horizonNet.p50)}, P90 ${fmtMoney(jcurve.horizonNet.p90)} (${Math.round(jcurve.horizonNet.probabilityPositive * 100)}% positive).`,
+  ].join(' ');
+
+  const zeroY = yFor(0);
+  const labelStride = pts.length > 13 ? Math.ceil(pts.length / 8) : 2;
+
+  return h(
+    'figure',
+    { class: 'chart' },
+    h(
+      'svg',
+      { viewBox: `0 0 ${width} ${height}`, class: 'chart-svg', role: 'img', 'aria-label': summary },
+      h('line', {
+        x1: padLeft,
+        x2: width - padRight,
+        y1: zeroY,
+        y2: zeroY,
+        stroke: 'var(--muted)',
+        'stroke-width': 1.2,
+        'stroke-dasharray': '4 3',
+      }),
+      h('text', { x: padLeft - 6, y: zeroY + 3.5, 'text-anchor': 'end', class: 'chart-tick' }, '0'),
+      h('polygon', {
+        points: polygonPoints,
+        fill: 'var(--accent)',
+        'fill-opacity': 0.14,
+      }),
+      h('polyline', {
+        points: p90Points,
+        fill: 'none',
+        stroke: 'var(--good)',
+        'stroke-width': 1.3,
+        'stroke-dasharray': '5 3',
+      }),
+      h('polyline', {
+        points: p10Points,
+        fill: 'none',
+        stroke: 'var(--bad)',
+        'stroke-width': 1.3,
+        'stroke-dasharray': '2 3',
+      }),
+      h('polyline', {
+        points: p50Points,
+        fill: 'none',
+        stroke: 'var(--accent)',
+        'stroke-width': 2.2,
+        'stroke-linejoin': 'round',
+        'stroke-linecap': 'round',
+      }),
+      ...pts.map((m, idx) =>
+        idx === 0 || idx === pts.length - 1 || idx % labelStride === 0
+          ? h('text', { x: xFor(idx), y: height - 8, 'text-anchor': 'middle', class: 'chart-tick' }, `M${m.month}`)
+          : null,
+      ),
+    ),
+    h(
+      'figcaption',
+      { class: 'chart-legend' },
+      h('span', { class: 'legend-item' }, h('span', { class: 'legend-dot', style: { background: 'var(--accent)' } }), `P50 median (${fmtMoney(jcurve.horizonNet.p50)} at M${jcurve.horizonMonths})`),
+      h('span', { class: 'legend-item' }, h('span', { class: 'legend-dot', style: { background: 'var(--good)' } }), `P90 upside (${fmtMoney(jcurve.horizonNet.p90)})`),
+      h('span', { class: 'legend-item' }, h('span', { class: 'legend-dot', style: { background: 'var(--bad)' } }), `P10 downside (${fmtMoney(jcurve.horizonNet.p10)})`),
+    ),
+    h(
+      'details',
+      { class: 'chart-table-details' },
+      h('summary', null, `Data table: ${title} monthly J-curve percentiles`),
+      h(
+        'div',
+        { class: 'table-wrap' },
+        h(
+          'table',
+          { class: 'table', 'aria-label': `Monthly J-curve percentiles for ${title}` },
+          h(
+            'thead',
+            null,
+            h(
+              'tr',
+              null,
+              h('th', { scope: 'col' }, 'Month'),
+              h('th', { scope: 'col' }, `P10 (${jcurve.currency})`),
+              h('th', { scope: 'col' }, `P50 (${jcurve.currency})`),
+              h('th', { scope: 'col' }, `P80 (${jcurve.currency})`),
+              h('th', { scope: 'col' }, `P90 (${jcurve.currency})`),
+            ),
+          ),
+          h(
+            'tbody',
+            null,
+            ...pts.map((m) =>
+              h(
+                'tr',
+                null,
+                h('th', { scope: 'row' }, `Month ${m.month}`),
+                h('td', null, String(Math.round(m.p10))),
+                h('td', null, String(Math.round(m.p50))),
+                h('td', null, String(Math.round(m.p80))),
+                h('td', null, String(Math.round(m.p90))),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+/**
+ * Ronald Howard (1988) One-at-a-Time (OAT) Tornado Sensitivity SVG Chart.
+ *
+ * Ranks workspace levers from widest total P80 schedule swing to narrowest
+ * around the vertical Baseline spine, paired with an accessible HTML data table.
+ */
+export function tornadoChart(
+  tornado,
+  {
+    title = 'P80 schedule & overload tornado sensitivity',
+    width = 680,
+  } = {},
+) {
+  if (!tornado || !tornado.available || !Array.isArray(tornado.bars) || tornado.bars.length === 0) {
+    return h(
+      'p',
+      { class: 'muted' },
+      tornado?.reason || 'Not enough estimated commitments to compute tornado sensitivity.',
+    );
+  }
+
+  const bars = tornado.bars.slice(0, 8);
+  const rowH = 30;
+  const padTop = 26;
+  const padBottom = 28;
+  const padLeft = 240;
+  const padRight = 56;
+  const height = padTop + bars.length * rowH + padBottom;
+  const base = Number(tornado.baselineP80Days) || 0;
+
+  let minVal = base;
+  let maxVal = base;
+  for (const b of bars) {
+    minVal = Math.min(minVal, b.favorableP80Days, b.adverseP80Days);
+    maxVal = Math.max(maxVal, b.favorableP80Days, b.adverseP80Days);
+  }
+  const halfSpan = Math.max(2, base - minVal, maxVal - base);
+  const lo = Math.max(0, base - halfSpan * 1.12);
+  const hi = base + halfSpan * 1.12;
+  const plotW = width - padLeft - padRight;
+  const xFor = (v) => padLeft + ((v - lo) / Math.max(1e-6, hi - lo)) * plotW;
+  const xBase = xFor(base);
+
+  const topDriver = bars[0];
+  const ariaSummary = [
+    `Tornado sensitivity chart for ${title} across ${bars.length} factors around baseline P80 of ${base} calendar days.`,
+    topDriver
+      ? `Largest schedule driver is ${topDriver.label} with a ${topDriver.p80SwingDays}-day P80 swing and ${topDriver.overloadSwingPct} percentage-point overload swing.`
+      : '',
+  ].filter(Boolean).join(' ');
+
+  const shortText = (s, max = 34) => {
+    const str = String(s || '');
+    return str.length > max ? `${str.slice(0, max - 1)}…` : str;
+  };
+
+  return h(
+    'figure',
+    { class: 'chart' },
+    h(
+      'svg',
+      { viewBox: `0 0 ${width} ${height}`, class: 'chart-svg', role: 'img', 'aria-label': ariaSummary },
+      h('text', { x: xBase, y: 15, 'text-anchor': 'middle', class: 'chart-tick' }, `Baseline P80: ${base}d`),
+      ...bars.map((b, idx) => {
+        const y = padTop + idx * rowH;
+        const barY = y + 6;
+        const barH = 16;
+        const xFav = xFor(b.favorableP80Days);
+        const xAdv = xFor(b.adverseP80Days);
+        const favLeft = Math.min(xFav, xBase);
+        const favW = Math.max(1.5, Math.abs(xBase - xFav));
+        const advLeft = Math.min(xAdv, xBase);
+        const advW = Math.max(1.5, Math.abs(xAdv - xBase));
+        const favDeltaStr = `${b.deltaFavorableP80Days <= 0 ? '' : '+'}${Math.round(b.deltaFavorableP80Days)}d`;
+        const advDeltaStr = `${b.deltaAdverseP80Days <= 0 ? '' : '+'}${Math.round(b.deltaAdverseP80Days)}d`;
+        return h(
+          'g',
+          null,
+          h('text', { x: padLeft - 10, y: y + 18, 'text-anchor': 'end', class: 'chart-tick' }, shortText(b.label, 36)),
+          h('rect', {
+            x: favLeft,
+            y: barY,
+            width: favW,
+            height: barH,
+            rx: 3,
+            fill: 'var(--good)',
+            opacity: '0.82',
+          }),
+          h('rect', {
+            x: advLeft,
+            y: barY,
+            width: advW,
+            height: barH,
+            rx: 3,
+            fill: 'var(--bad)',
+            opacity: '0.82',
+          }),
+          b.deltaFavorableP80Days !== 0
+            ? h('text', { x: favLeft - 4, y: y + 18, 'text-anchor': 'end', class: 'chart-tick' }, favDeltaStr)
+            : null,
+          b.deltaAdverseP80Days !== 0
+            ? h('text', { x: advLeft + advW + 4, y: y + 18, 'text-anchor': 'start', class: 'chart-tick' }, advDeltaStr)
+            : null,
+        );
+      }),
+      h('line', {
+        x1: xBase,
+        x2: xBase,
+        y1: padTop - 4,
+        y2: height - padBottom + 4,
+        stroke: 'var(--text)',
+        'stroke-width': 1.5,
+      }),
+    ),
+    h(
+      'figcaption',
+      { class: 'chart-legend' },
+      h('span', { class: 'legend-item' }, h('span', { class: 'legend-dot', style: { background: 'var(--good)' } }), 'Favorable lever / optimistic bound (faster P80)'),
+      h('span', { class: 'legend-item' }, h('span', { class: 'legend-dot', style: { background: 'var(--bad)' } }), 'Adverse shock / pessimistic bound (slower P80)'),
+      h('span', { class: 'legend-note' }, `Common Random Numbers: seed ${tornado.seed} · ${tornado.trials} trials`),
+    ),
+    h(
+      'details',
+      { class: 'chart-table-details' },
+      h('summary', null, `Data table: ${title}`),
+      h(
+        'div',
+        { class: 'table-wrap' },
+        h(
+          'table',
+          { class: 'table', 'aria-label': `Tornado sensitivity rankings for ${title}` },
+          h(
+            'thead',
+            null,
+            h(
+              'tr',
+              null,
+              h('th', { scope: 'col' }, 'Factor'),
+              h('th', { scope: 'col' }, 'Category'),
+              h('th', { scope: 'col' }, 'Favorable case (P80)'),
+              h('th', { scope: 'col' }, 'Adverse case (P80)'),
+              h('th', { scope: 'col' }, 'P80 swing (days)'),
+              h('th', { scope: 'col' }, 'Overload swing (pp)'),
+            ),
+          ),
+          h(
+            'tbody',
+            null,
+            ...bars.map((b) =>
+              h(
+                'tr',
+                null,
+                h('th', { scope: 'row' }, b.label),
+                h('td', null, b.category),
+                h('td', null, `${b.favorableLabel}: ${b.favorableP80Days}d (${b.deltaFavorableP80Days <= 0 ? '' : '+'}${b.deltaFavorableP80Days}d)`),
+                h('td', null, `${b.adverseLabel}: ${b.adverseP80Days}d (${b.deltaAdverseP80Days <= 0 ? '' : '+'}${b.deltaAdverseP80Days}d)`),
+                h('td', null, `${b.p80SwingDays}d`),
+                h('td', null, `${b.overloadSwingPct}pp`),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+/**
+ * Reliability (calibration) diagram for decision forecasts: stated probability
+ * (x) vs observed success rate (y) in quintile bins, against the diagonal of
+ * perfect calibration. Points below the diagonal are overconfidence — the
+ * record claimed more certainty than outcomes delivered (Tetlock & Gardner,
+ * 2015). Bins with no forecasts draw nothing: the chart never draws a point
+ * it does not have.
+ */
+export function calibrationChart(decisionCal, { height = 260 } = {}) {
+  const curve = decisionCal?.curve || [];
+  const plotted = curve.filter((b) => b.count > 0 && b.meanForecast !== null && b.observedRate !== null);
+  if (!plotted.length) {
+    return h(
+      'p',
+      { class: 'muted' },
+      'No scored decision forecasts yet — record a probability when you decide, and the outcome review will plot it here.',
+    );
+  }
+
+  const width = 520;
+  const pad = { top: 14, right: 18, bottom: 34, left: 38 };
+  const plotW = width - pad.left - pad.right;
+  const plotH = height - pad.top - pad.bottom;
+  const xFor = (v) => pad.left + v * plotW;
+  const yFor = (v) => pad.top + (1 - v) * plotH;
+  const pct = (v) => `${Math.round(v * 100)}%`;
+
+  const worst = plotted
+    .slice()
+    .sort((a, b) => Math.abs(b.meanForecast - b.observedRate) - Math.abs(a.meanForecast - a.observedRate))[0];
+  const ariaSummary = [
+    `Calibration diagram across ${decisionCal.n} scored decision forecasts.`,
+    `Brier score ${decisionCal.brier} (0 is perfect; 0.25 is always saying 50%).`,
+    worst
+      ? `Largest deviation in the ${pct(worst.lo)}–${pct(worst.hi)} forecast band: average forecast ${pct(worst.meanForecast)} vs observed success ${pct(worst.observedRate)} (n=${worst.count}).`
+      : null,
+    'Points below the dashed diagonal mean overconfidence; above it, underconfidence.',
+  ].filter(Boolean).join(' ');
+
+  const gridVals = [0, 0.25, 0.5, 0.75, 1];
+  const polyline = plotted.map((b) => `${xFor(b.meanForecast)},${yFor(b.observedRate)}`).join(' ');
+
+  const svg = h(
+    'svg',
+    {
+      viewBox: `0 0 ${width} ${height}`,
+      class: 'chart-svg',
+      role: 'img',
+      'aria-label': ariaSummary,
+      preserveAspectRatio: 'xMidYMid meet',
+    },
+    ...gridVals.map((v) =>
+      h('line', { x1: xFor(v), y1: pad.top, x2: xFor(v), y2: pad.top + plotH, class: 'chart-grid' }),
+    ),
+    ...gridVals.map((v) =>
+      h('line', { x1: pad.left, y1: yFor(v), x2: pad.left + plotW, y2: yFor(v), class: 'chart-grid' }),
+    ),
+    h('line', {
+      x1: xFor(0), y1: yFor(0), x2: xFor(1), y2: yFor(1),
+      class: 'chart-diagonal', 'stroke-dasharray': '5 4',
+    }),
+    h('text', { x: xFor(0.97), y: yFor(0.99), class: 'chart-tick', 'text-anchor': 'end' }, 'perfect calibration'),
+    plotted.length > 1
+      ? h('polyline', { points: polyline, class: 'chart-series-line', fill: 'none' })
+      : null,
+    ...plotted.map((b) =>
+      h('circle', {
+        cx: xFor(b.meanForecast),
+        cy: yFor(b.observedRate),
+        r: 5 + Math.min(5, b.count),
+        class: 'chart-point',
+      }),
+    ),
+    ...plotted.map((b) =>
+      h('text', {
+        x: xFor(b.meanForecast) + 10,
+        y: yFor(b.observedRate) + 3,
+        class: 'chart-tick',
+      }, `n=${b.count}`),
+    ),
+    ...gridVals.map((v) =>
+      h('text', { x: xFor(v), y: height - 10, class: 'chart-tick', 'text-anchor': 'middle' }, pct(v)),
+    ),
+    ...gridVals.map((v) =>
+      h('text', { x: pad.left - 6, y: yFor(v) + 3, class: 'chart-tick', 'text-anchor': 'end' }, pct(v)),
+    ),
+  );
+
+  return h(
+    'figure',
+    { class: 'chart-frame' },
+    svg,
+    h('figcaption', { class: 'muted tiny' }, 'Stated forecast probability (horizontal) vs observed success rate (vertical), in quintile bands. Points below the dashed diagonal claimed more certainty than outcomes delivered.'),
+    h(
+      'details',
+      { class: 'chart-table-details' },
+      h('summary', null, 'Calibration data table'),
+      h(
+        'div',
+        { class: 'table-wrap' },
+        h(
+          'table',
+          { class: 'table', 'aria-label': 'Decision forecast calibration by probability band' },
+          h(
+            'thead',
+            null,
+            h(
+              'tr',
+              null,
+              h('th', { scope: 'col' }, 'Forecast band'),
+              h('th', { scope: 'col' }, 'Forecasts (n)'),
+              h('th', { scope: 'col' }, 'Average forecast'),
+              h('th', { scope: 'col' }, 'Observed success'),
+              h('th', { scope: 'col' }, 'Gap'),
+            ),
+          ),
+          h(
+            'tbody',
+            null,
+            ...curve.map((b) =>
+              h(
+                'tr',
+                null,
+                h('th', { scope: 'row' }, `${pct(b.lo)}–${pct(b.hi)}`),
+                h('td', null, `${b.count}`),
+                h('td', null, b.count ? pct(b.meanForecast) : '—'),
+                h('td', null, b.count ? pct(b.observedRate) : '—'),
+                h('td', null, b.count ? `${b.meanForecast - b.observedRate >= 0 ? '+' : ''}${Math.round((b.meanForecast - b.observedRate) * 100)}pp` : '—'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+/**
+ * Session 32 — Case-Cost Calibration (Schema v22). Realised ÷ assessed
+ * exposure for every scored materialised case: bars past the 1.0× line are
+ * settlements that cost more than the opening forecast expected (deficient
+ * reserves); bars short of it are redundant reserves. The display scale is
+ * capped so one catastrophe cannot compress every other bar to invisibility
+ * — the true ratio is always printed next to its bar and in the data table,
+ * so the cap clips pixels, never numbers.
+ */
+export function caseRatioChart(exposure, { title = 'Settled vs assessed case exposure' } = {}) {
+  const pairs = (exposure?.pairs || []).filter((p) => p.exposureRatio !== null);
+  if (!pairs.length) {
+    return h(
+      'p',
+      { class: 'muted' },
+      'No settled case costs scored yet — record settled actuals when a quantified case resolves and its opening forecast is scored here.',
+    );
+  }
+
+  const shown = pairs.slice().sort((a, b) => b.exposureRatio - a.exposureRatio).slice(0, 12);
+  const maxRatio = Math.max(...pairs.map((p) => p.exposureRatio));
+  const scaleMax = Math.min(4, Math.max(2, Math.ceil(maxRatio * 2) / 2));
+  const width = 640;
+  const padLeft = 170;
+  const padRight = 56;
+  const padTop = 24;
+  const padBottom = 26;
+  const barH = 16;
+  const rowH = 26;
+  const plotW = width - padLeft - padRight;
+  const height = padTop + shown.length * rowH + padBottom;
+  const xFor = (ratio) => padLeft + (Math.min(ratio, scaleMax) / scaleMax) * plotW;
+  const money = (currency, amount) => `${currency} ${Number(amount || 0).toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
+  const shortText = (s, n) => (s && s.length > n ? `${s.slice(0, n - 1)}…` : s || '');
+
+  const medianLine = exposure.medianRatio !== null && exposure.medianRatio !== undefined
+    ? ` Median settlement ${exposure.medianRatio}× assessed exposure across ${exposure.n} materialised case(s).`
+    : '';
+  const ariaSummary = `${title}: realised exposure divided by the exposure expected when each case was opened. 1.0× means the settlement matched the forecast.${medianLine} Worst: “${shown[0].title}” at ${shown[0].exposureRatio}×.`;
+
+  const gridVals = [0, 0.5, 1, 1.5, 2, 3, 4].filter((v) => v <= scaleMax);
+  const svg = h(
+    'svg',
+    {
+      viewBox: `0 0 ${width} ${height}`,
+      class: 'chart-svg',
+      role: 'img',
+      'aria-label': ariaSummary,
+      preserveAspectRatio: 'xMidYMid meet',
+    },
+    ...gridVals.map((v) =>
+      h('line', { x1: xFor(v), y1: padTop - 6, x2: xFor(v), y2: height - padBottom + 2, class: 'chart-grid' }),
+    ),
+    ...gridVals.map((v) =>
+      h('text', { x: xFor(v), y: height - 8, class: 'chart-tick', 'text-anchor': 'middle' }, `${v}×`),
+    ),
+    ...shown.flatMap((p, i) => {
+      const y = padTop + i * rowH;
+      const fill = p.exposureRatio >= 1.25 ? 'var(--bad)' : p.exposureRatio <= 0.8 ? 'var(--warn)' : 'var(--good)';
+      const clipped = p.exposureRatio > scaleMax;
+      return [
+        h('text', { x: padLeft - 8, y: y + barH - 4, 'text-anchor': 'end', class: 'chart-tick' }, shortText(p.title, 30)),
+        h('rect', {
+          x: padLeft,
+          y,
+          width: Math.max(2, xFor(p.exposureRatio) - padLeft),
+          height: barH,
+          rx: 3,
+          fill,
+          opacity: '0.85',
+        }),
+        h('text', {
+          x: xFor(p.exposureRatio) + 5,
+          y: y + barH - 4,
+          class: 'chart-tick',
+        }, `${p.exposureRatio}×${clipped ? ' »' : ''}`),
+      ];
+    }),
+    h('line', {
+      x1: xFor(1),
+      x2: xFor(1),
+      y1: padTop - 8,
+      y2: height - padBottom + 2,
+      stroke: 'var(--text)',
+      'stroke-width': 1.5,
+    }),
+    h('text', { x: xFor(1), y: padTop - 12, 'text-anchor': 'middle', class: 'chart-tick' }, 'settled = assessed'),
+  );
+
+  return h(
+    'figure',
+    { class: 'chart-frame' },
+    svg,
+    h('figcaption', { class: 'muted tiny' }, `Realised ÷ expected exposure per materialised case, scored against the forecast frozen at open time (RULE-FCT-03). Bars beyond 1.25× are deficient reserves; below 0.8×, redundant reserves.${pairs.length > shown.length ? ` Showing the ${shown.length} largest of ${pairs.length}; all appear in the data table.` : ''}`),
+    h(
+      'details',
+      { class: 'chart-table-details' },
+      h('summary', null, 'Case settlement data table'),
+      h(
+        'div',
+        { class: 'table-wrap' },
+        h(
+          'table',
+          { class: 'table', 'aria-label': 'Settled case exposure versus opening forecast' },
+          h(
+            'thead',
+            null,
+            h(
+              'tr',
+              null,
+              h('th', { scope: 'col' }, 'Case'),
+              h('th', { scope: 'col' }, 'Expected exposure'),
+              h('th', { scope: 'col' }, 'Realised exposure'),
+              h('th', { scope: 'col' }, 'Ratio'),
+              h('th', { scope: 'col' }, 'Inside range'),
+              h('th', { scope: 'col' }, 'Scored against'),
+            ),
+          ),
+          h(
+            'tbody',
+            null,
+            ...pairs.map((p) =>
+              h(
+                'tr',
+                null,
+                h('th', { scope: 'row' }, p.title),
+                h('td', null, money(p.currency, p.costExpected)),
+                h('td', null, money(p.currency, p.realisedExposure)),
+                h('td', null, `${p.exposureRatio}×`),
+                h('td', null, p.withinRange === null ? '—' : p.withinRange ? 'Yes' : 'No'),
+                h('td', null, p.source === 'opening-forecast' ? 'Frozen opening forecast' : 'Resolution-time estimate'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+/**
+ * The coupling reliability diagram (Schema v78). One band's coincidence rate
+ * against the declared ρ that is supposed to produce it.
+ *
+ *   x — the rank correlation ρ the copula is run at (−0.9 … 0.99)
+ *   y — the share of pairs predicted to resolve inside the same calendar block
+ *   the curve — the model's own mapping, evaluated on this band's own block
+ *              counts, so the reference is the record's grain and not a
+ *              generic curve
+ *   the dashed horizontal rule — the rate actually observed in the record
+ *   the solid vertical rule — the ρ the leader declared
+ *   the dotted vertical rule — the ρ the record's rate would imply, when the
+ *              inversion is identified at all
+ *
+ * A chart never draws a point it does not have: with no testable pairs the
+ * band is not charted at all, and a refused inversion draws no dotted rule.
+ */
+export function couplingCurveChart(band, { height = 220 } = {}) {
+  const width = CHART_W;
+  const curves = band?.modelByMapping || [];
+  const grid = band?.implied?.grid || null;
+  if (!grid || grid.length < 3) {
+    return h('p', { class: 'muted small' },
+      'No reference curve is drawn: the record had too few testable pairs for the copula to be evaluated at this band’s grain.');
+  }
+  const innerW = width - PAD.left - PAD.right;
+  const innerH = height - PAD.top - PAD.bottom;
+  const rhoMin = -0.9;
+  const rhoMax = 0.99;
+  const yMax = Math.max(10, Math.ceil(Math.max(...grid.map((g) => g.pct), band.observedCollisionPct || 0) / 10) * 10);
+  const xOf = (rho) => PAD.left + ((rho - rhoMin) / (rhoMax - rhoMin)) * innerW;
+  const yOf = (pct) => PAD.top + innerH - (Math.max(0, Math.min(yMax, pct)) / yMax) * innerH;
+  const line = grid.map((g) => `${xOf(g.rho).toFixed(1)},${yOf(g.pct).toFixed(1)}`).join(' ');
+  const summary = `Coincidence rate against declared rank correlation for the ${band.label} band. `
+    + `The model curve runs from ${grid[0].pct}% at ρ ${grid[0].rho} to ${grid[grid.length - 1].pct}% at ρ ${grid[grid.length - 1].rho}. `
+    + `You declared ρ ${band.declaredMidRho}${curves[0] ? `, which predicts ${curves[0].collisionAllTestablePct}%` : ''}. `
+    + `The record observed ${band.observedCollisionPct}% across ${band.testablePairs} testable pair(s).`
+    + (band.implied?.identified ? ` The observed rate would imply ρ ${band.implied.rho}.` : ' The observed rate does not identify a ρ at this window length.');
+
+  const ticks = [-0.9, -0.6, -0.3, 0, 0.3, 0.6, 0.9];
+  return h('figure', { class: 'chart' },
+    h('svg', { viewBox: `0 0 ${width} ${height}`, class: 'chart-svg', role: 'img', 'aria-label': summary },
+      h('line', { x1: PAD.left, x2: width - PAD.right, y1: PAD.top + innerH, y2: PAD.top + innerH, stroke: 'var(--line)' }),
+      h('line', { x1: PAD.left, x2: PAD.left, y1: PAD.top, y2: PAD.top + innerH, stroke: 'var(--line)' }),
+      ...ticks.map((rho) => h('text', {
+        x: xOf(rho), y: height - 8, 'text-anchor': 'middle', class: 'chart-tick',
+      }, String(rho))),
+      ...[0, yMax / 2, yMax].map((pct) => h('text', {
+        x: PAD.left - 6, y: yOf(pct) + 4, 'text-anchor': 'end', class: 'chart-tick',
+      }, `${Math.round(pct)}%`)),
+      h('polyline', { points: line, fill: 'none', stroke: 'var(--accent)', 'stroke-width': 2.2, 'stroke-linejoin': 'round' }),
+      // The observed rate: the fact the model is being asked about.
+      h('line', {
+        x1: PAD.left, x2: width - PAD.right, y1: yOf(band.observedCollisionPct), y2: yOf(band.observedCollisionPct),
+        stroke: 'var(--ink)', 'stroke-width': 1.4, 'stroke-dasharray': '6 4',
+      }),
+      h('text', { x: width - PAD.right, y: yOf(band.observedCollisionPct) - 6, 'text-anchor': 'end', class: 'chart-value' },
+        `observed ${band.observedCollisionPct}%`),
+      // The declared ρ.
+      h('line', {
+        x1: xOf(band.declaredMidRho), x2: xOf(band.declaredMidRho), y1: PAD.top, y2: PAD.top + innerH,
+        stroke: 'var(--warn)', 'stroke-width': 1.6,
+      }),
+      h('text', { x: xOf(band.declaredMidRho) + 4, y: PAD.top + 12, class: 'chart-tick' }, `declared ρ ${band.declaredMidRho}`),
+      // The implied ρ, only when it is identified.
+      band.implied?.identified && typeof band.implied.rho === 'number'
+        ? h('line', {
+          x1: xOf(band.implied.rho), x2: xOf(band.implied.rho), y1: PAD.top, y2: PAD.top + innerH,
+          stroke: 'var(--good)', 'stroke-width': 1.4, 'stroke-dasharray': '2 3',
+        })
+        : null,
+      band.implied?.identified && typeof band.implied.rho === 'number'
+        ? h('text', { x: xOf(band.implied.rho) - 4, y: PAD.top + innerH - 6, 'text-anchor': 'end', class: 'chart-tick' },
+          `record implies ρ ${band.implied.rho}`)
+        : null,
+    ),
+    h('figcaption', { class: 'chart-caption muted tiny' },
+      `Curve: P(two calls resolve in the same ${band.medianBlocks}-block window) under a Gaussian copula at rank correlation ρ, evaluated on this band’s own block counts. The declared ρ is a correlation of value innovations, not of times — the mapping between them is a printed convention, so read this as an ordinal reference, not a conversion.`),
+    h('p', { class: 'sr-only' }, summary));
+}

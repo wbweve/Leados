@@ -1,83 +1,66 @@
-// src/lib/types.ts
-// Original type layer for this sandbox build. Not copied from any verified
-// file in github.com/wbweve/Leados (see AI-SESSION-LOG.md).
+// Shared types for Part 48 — Commitments, Delegation, Proactive Drafts, Loops.
 
-export type Category =
-  | "STRATEGIC"
-  | "OPERATIONAL"
-  | "FINANCIAL"
-  | "PEOPLE"
-  | "GOVERNANCE"
-  | "MARKET"
-  | "REPUTATIONAL"
-  | "RESILIENCE";
+export type Explain<T> = {
+  result: T;
+  passed: boolean;
+  reason: string;
+  evidence: Record<string, unknown>;
+  ruleRef?: string;
+};
 
-export const CATEGORIES: Category[] = [
-  "STRATEGIC",
-  "OPERATIONAL",
-  "FINANCIAL",
-  "PEOPLE",
-  "GOVERNANCE",
-  "MARKET",
-  "REPUTATIONAL",
-  "RESILIENCE",
-];
+export type CommitmentStatus = "open" | "kept" | "broken" | "renegotiated";
 
-export interface Person {
+export type Person = {
   id: string;
   name: string;
   role: string;
-}
+  team: string;
+  email: string;
+  powerLevel: number;
+  managerId: string | null;
+};
 
-export interface RuleDef {
-  id: string; // "R1".."R100", bare IDs, non-contiguous by design
-  title: string;
-  category: Category;
-  sev: 1 | 2 | 3 | 4 | 5;
-  personLinkable?: boolean;
-  polarity?: "positive"; // marks a small number of intentionally "healthy signal" rules
-}
-
-export interface ToggleLogEntry {
-  ruleId: string;
-  active: boolean;
-  ts: number; // epoch ms
-}
-
-export interface SignalState {
-  ruleId: string;
-  active: boolean;
-  sev: 1 | 2 | 3 | 4 | 5;
-  personId?: string;
-  lastToggledAt: number;
-}
-
-export interface OrgEvent {
+export type Commitment = {
   id: string;
-  ts: number; // epoch ms
-  type: string; // event type, substrate for Shannon entropy
-  category: Category;
-  personId?: string;
-  direction?: "in" | "out"; // used for bottleneck ("information in") detection
-}
+  promisorId: string;
+  promiseeId: string;
+  content: string;
+  dueAt: Date;
+  context: { sourceType: string; sourceId?: string; surface?: string };
+  status: CommitmentStatus;
+  confirmed: boolean;
+  renegotiatedFromId: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
 
-export interface AppState {
-  version: number;
-  signals: Record<string, SignalState>;
-  toggleLog: ToggleLogEntry[];
-  people: Person[];
-  runwayMonths: number;
-  events: OrgEvent[];
-}
+export type AutonomyTier = "T1" | "T2" | "T3" | "T4";
 
-export interface Finding {
-  key: string; // ruleId, or ruleId:personId when linked
-  ruleId: string;
-  title: string;
-  category: Category;
-  sev: 1 | 2 | 3 | 4 | 5;
-  score: number;
-  personId?: string;
-  ts: number;
-  polarity?: "positive";
-}
+export type Stakes = "normal" | "elevated" | "critical";
+
+export type TriggerType =
+  | "deadline_slipping"
+  | "decision_stagnating"
+  | "meeting_no_actions"
+  | "metric_drifting"
+  | "delegation_unchecked";
+
+export type DraftType = "email" | "agenda_item" | "task" | "nudge" | "digest";
+
+export type ProactiveDraft = {
+  id: string;
+  triggerType: TriggerType;
+  surfaceRef: Record<string, unknown>;
+  draftType: DraftType;
+  targetPersonId: string;
+  draftContent: string;
+  whyThis: string;
+  whyNow: string;
+  stakes: Stakes;
+  actionClassKey: string;
+  autonomyTier: AutonomyTier;
+  batchedCount: number;
+  status: "queued" | "approved" | "sent" | "dismissed" | "auto_sent";
+};
+
+export type DelegationCheckType = "authority" | "capacity" | "growth";

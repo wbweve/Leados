@@ -1,0 +1,7377 @@
+/**
+ * app/core/demo.js — an explicitly labelled demo workspace.
+ *
+ * This is the ONLY place in the application that fabricates records, it is
+ * never loaded automatically, it is marked `meta.isDemo = true`, the UI shows a
+ * banner while it is active, and `store.clearDemo()` removes every trace of it.
+ * All scoring and insight logic runs on it exactly as it would on real data —
+ * the numbers are computed, not written by hand.
+ *
+ * Deterministic for a given `now`, so the demo is reproducible in tests.
+ */
+
+import { addDays, dayKey } from './time.js';
+import { createEmptyState, normalizeState } from './schema.js';
+import { goalProgress } from './domain/goals.js';
+import { harvestReviewObservations, normalCdf, reliabilityReport } from './domain/reliability.js';
+import { buildCouplingReview, couplingLedgerReport, gradeCouplingReview } from './domain/couplingLedger.js';
+import { buildSupplyPlan, gradeSupplyPlan, supplyReport } from './domain/supply.js';
+import { buildSolvencyReading, gradeSolvencyReading, solvencyReport } from './domain/solvency.js';
+import { buildScepticRound, extractClaims, gradeScepticRound, scepticReport } from './domain/sceptic.js';
+import { buildForecastSnapshot } from './domain/calibration.js';
+import { freezeMeasurementPrediction } from './domain/measurement.js';
+import { analyzeIntakeText } from './domain/intake.js';
+import { commsRule } from './domain/comms.js';
+import { earlyWarningRule, scanWatch } from './domain/earlyWarning.js';
+import { allocationRule } from './domain/allocation.js';
+import { loadRule } from './domain/load.js';
+import { premiseRule } from './domain/premises.js';
+import { deferralCandidates } from './domain/deferralOption.js';
+import { valueOfInformationRule } from './domain/valueOfInformationRules.js';
+import { dynamicsRule, buildDynamicsReport, evaluatePolicy } from './domain/dynamics.js';
+import { scoreCheckpoint } from './domain/checkpointScoring.js';
+import { fairnessReading } from './domain/comp.js';
+import { buildFairnessSnapshot } from './domain/compSchema.js';
+import { transitionReading } from './domain/transition.js';
+import { buildTransitionSnapshot } from './domain/transitionSchema.js';
+import { freezePlan, scoreAttentionPlan } from './domain/attentionMarket.js';
+import { agreementTemplate } from './domain/autopilot.js';
+import { normalizePolicyPayload } from './domain/autopilotSchema.js';
+import { defaultAction } from './domain/autopilotRegistry.js';
+import {
+  buildReportingIndex,
+  conventionsFromSettings as signalConventions,
+  readClass,
+} from './domain/signalPath.js';
+import { freezeSignalPrediction } from './domain/signalPathSchema.js';
+import { performanceRule, PERFORMANCE_EVENTS } from './domain/performanceRules.js';
+import { ANSWER_KEYS } from './domain/performanceSchema.js';
+import { evaluateStudy } from './domain/impact.js';
+import {
+  buildEvidenceReview,
+  evidenceReport,
+} from './domain/evidence.js';
+import { normalizeEvidenceReviews } from './domain/evidenceSchema.js';
+import {
+  buildIntegrityReview,
+  gradeIntegrityReview,
+  integrityReport,
+  signalInstanceKey,
+} from './domain/integrity.js';
+import {
+  buildCredibilityFrame,
+  credibilityReport,
+  gradeCredibilityFrame,
+} from './domain/credibility.js';
+import {
+  buildConfidenceCertificate,
+  confidenceReport,
+  extractConfidenceSamples,
+  gradeConfidenceCertificate,
+} from './domain/confidence.js';
+import {
+  buildSettlementVerdict,
+  settlementReport,
+} from './domain/settlement.js';
+
+
+/**
+ * Session 88 (Schema v62): three performance concerns over the demo roster.
+ *
+ * The demo is the only place in the app that fabricates records, and it is also
+ * the first place a leader sees this module. So the seed is chosen to show the
+ * three states the engine exists for, not the flattering one:
+ *
+ *   1. A concern with no recorded expectation. It cannot support a plan, and
+ *      the real rule opens an owned task and a blameless 1:1 prompt.
+ *   2. A concern with a plan whose review date has passed. The frozen
+ *      prediction is unscored, and the real scan opens the overdue task.
+ *   3. A resolved concern with a scored prediction. One sample is shown as one
+ *      sample: the calibration reading says five are needed before it reports.
+ *
+ * Every propagation artefact here is produced by calling the real rule, not by
+ * hand-writing a decision. If the rule changes, the demo changes with it.
+ */
+function seedPerformance(state, now) {
+  const today = dayKey(now);
+  const at = (daysAgo) => addDays(today, -daysAgo);
+  const iso = (day) => new Date(`${day}T09:00:00.000Z`).toISOString();
+  const find = (fragment) => (state.people || []).find((p) => String(p.name || '').includes(fragment)) || null;
+  const priya = find('Priya');
+  const freya = find('Freya');
+  const samuel = find('Samuel');
+  const jordan = find('Jordan');
+  if (!priya || !freya || !samuel || !jordan) return;
+
+  let seq = 0;
+  const idFactory = (prefix) => `${prefix}-demo-perf${(seq += 1)}`;
+  const blankAnswers = () => Object.fromEntries(ANSWER_KEYS.map((key) => [key, null]));
+  const base = (over) => ({
+    id: '',
+    personId: null,
+    label: '',
+    status: 'assessing',
+    openedOn: today,
+    closedOn: null,
+    ownerId: priya.id,
+    standard: { expectation: '', source: 'none', recordedOn: null, recordId: null },
+    gap: { observed: '', impact: '', gapSharePct: null, currency: 'USD', teamHoursPerWeek: null },
+    observations: [],
+    conversations: [],
+    supports: [],
+    answers: blankAnswers(),
+    plan: null,
+    outcome: null,
+    withdrawnReason: '',
+    history: [],
+    notes: [],
+    markers: [],
+    ...over,
+  });
+
+  // 1 — no expectation, and the evidence floor is not met. This is the state a
+  // leader is in when they are annoyed before they are informed.
+  const unfunded = base({
+    id: 'perf-demo-1',
+    personId: freya.id,
+    label: 'Release notes reaching the on-call rota after the handover call',
+    status: 'assessing',
+    openedOn: at(18),
+    gap: {
+      observed: 'The handover call moves forward without the release notes; the on-call engineer rebuilds the context from the ticket queue.',
+      impact: 'Two of the last four weeks started with a re-derivation that ran past the first hour of cover.',
+      gapSharePct: 15,
+      currency: 'USD',
+      teamHoursPerWeek: 2,
+    },
+    answers: {
+      couldDoIfTried: true,
+      knowsWhat: null,
+      knowsWhen: false,
+      obstacle: null,
+      consequenceMissing: null,
+      capacity: null,
+      feedbackLoop: null,
+    },
+    history: [{ at: iso(at(18)), type: 'created', summary: `Concern opened on ${at(18)}` }],
+  });
+
+  // 2 — a full record, a plan adopted sixty days ago, a review date that has
+  // passed and nobody recorded what happened.
+  const overdue = base({
+    id: 'perf-demo-2',
+    personId: samuel.id,
+    label: 'Escalation rota not published by Monday 09:00',
+    status: 'plan',
+    openedOn: at(96),
+    standard: {
+      expectation: 'The escalation rota is published to #support-ops before Monday 09:00, covering the full week including the bank-holiday cover line.',
+      source: 'role',
+      recordedOn: at(120),
+      recordId: null,
+    },
+    gap: {
+      observed: 'The rota appeared on Tuesday or later in three of five weeks; the first two weeks it was published without the holiday line at all.',
+      impact: 'Two escalations in the first week of the month sat with the wrong team for a day. Support absorbed the customer conversation.',
+      gapSharePct: 25,
+      currency: 'USD',
+      teamHoursPerWeek: 4,
+    },
+    observations: [
+      {
+        id: 'perf-demo-obs1',
+        date: at(74),
+        source: 'direct',
+        situation: 'Monday support standup, first week of the month, samuel absent',
+        behavior: 'The rota channel had no post at 09:00 on Monday and it appeared Tuesday at 16:20',
+        impact: 'Two P2 escalations were assigned to the platform team by default',
+        note: '',
+        createdAt: iso(at(74)),
+      },
+      {
+        id: 'perf-demo-obs2',
+        date: at(60),
+        source: 'feedback',
+        situation: 'Monday support standup, second week',
+        behavior: 'The rota was posted at 11:40 on Monday and again without the holiday cover line',
+        impact: 'The bank-holiday on-call slot was unassigned until Wednesday',
+        note: 'Priya flagged it in the standup notes',
+        createdAt: iso(at(60)),
+      },
+      {
+        id: 'perf-demo-obs3',
+        date: at(46),
+        source: 'case',
+        situation: 'The billing case escalation on the first Tuesday',
+        behavior: 'The escalation went to the platform queue because the rota still showed last week\u2019s owner',
+        impact: 'The billing case sat one day with the wrong owner before it was rerouted',
+        note: '',
+        createdAt: iso(at(46)),
+      },
+    ],
+    conversations: [
+      {
+        id: 'perf-demo-conv1',
+        date: at(45),
+        kind: 'two-way',
+        note: 'Samuel: the rota depends on two people confirming their holiday plans, and neither answers before Sunday. He believed publishing on Tuesday was acceptable because the cover was still there.',
+        createdAt: iso(at(45)),
+      },
+      {
+        id: 'perf-demo-conv2',
+        date: at(44),
+        kind: 'notice',
+        note: 'Told Samuel the Monday 09:00 deadline is the standard and that the Tuesday pattern cannot continue.',
+        createdAt: iso(at(44)),
+      },
+    ],
+    supports: [
+      {
+        id: 'perf-demo-supp1',
+        date: at(43),
+        kind: 'clarity',
+        note: 'Agreed one owner for the holiday confirmation and a Friday 15:00 cut-off, so Monday is a publish rather than a chase.',
+        createdAt: iso(at(43)),
+      },
+      {
+        id: 'perf-demo-supp2',
+        date: at(41),
+        kind: 'tooling',
+        note: 'Added the rota template to the support runbook so the holiday line cannot be dropped by accident.',
+        createdAt: iso(at(41)),
+      },
+    ],
+    answers: {
+      couldDoIfTried: true,
+      knowsWhat: true,
+      knowsWhen: true,
+      obstacle: true,
+      consequenceMissing: false,
+      capacity: false,
+      feedbackLoop: true,
+    },
+    plan: {
+      adoptedOn: at(60),
+      reviewOn: at(6),
+      cadenceDays: 14,
+      objectives: [
+        { id: 'perf-demo-obj1', text: 'Escalation rota published before Monday 09:00', measure: '5 of 5 weeks published before 09:00', byWhen: at(6) },
+        { id: 'perf-demo-obj2', text: 'Holiday cover line present every week', measure: '5 of 5 weeks with a named holiday owner', byWhen: at(6) },
+      ],
+      supportKinds: ['clarity', 'tooling'],
+      prediction: { probabilityPct: 70, frozenOn: at(60), horizonDays: 54 },
+      overrideReason: '',
+    },
+    history: [
+      { at: iso(at(96)), type: 'created', summary: `Concern opened on ${at(96)}` },
+      { at: iso(at(60)), type: 'plan', summary: 'Plan adopted with a frozen 70% prediction for the review date' },
+    ],
+  });
+
+  // 3 — a closed loop. The prediction was frozen at 65% and the review says it
+  // was met. One scored plan is shown as one sample, never as a calibration.
+  const closed = base({
+    id: 'perf-demo-3',
+    personId: jordan.id,
+    label: 'Activation definition changing after the weekly review',
+    status: 'resolved',
+    openedOn: at(150),
+    closedOn: at(72),
+    standard: {
+      expectation: 'The activation definition is frozen for the quarter and any proposed change goes through the weekly metric review before it is applied.',
+      source: 'goal',
+      recordedOn: at(160),
+      recordId: null,
+    },
+    gap: {
+      observed: 'The definition was changed twice in one sprint without going through the review, and the two changes moved the weekly number in opposite directions.',
+      impact: 'The activation trend for the quarter is not comparable across the two halves.',
+      gapSharePct: 10,
+      currency: 'USD',
+      teamHoursPerWeek: 1.5,
+    },
+    observations: [
+      {
+        id: 'perf-demo-obs4',
+        date: at(120),
+        source: 'direct',
+        situation: 'Weekly metric review, first sprint of the quarter',
+        behavior: 'The activation definition was changed in the dashboard without a proposal in the review',
+        impact: 'The weekly number moved by four points with no explanation in the notes',
+        note: '',
+        createdAt: iso(at(120)),
+      },
+      {
+        id: 'perf-demo-obs5',
+        date: at(112),
+        source: 'goal',
+        situation: 'The following week, in the same sprint',
+        behavior: 'The definition reverted to the old one mid-week, again without a review entry',
+        impact: 'The quarter trend needed a footnote to be read at all',
+        note: '',
+        createdAt: iso(at(112)),
+      },
+      {
+        id: 'perf-demo-obs6',
+        date: at(105),
+        source: 'oneonone',
+        situation: '1:1 on the Wednesday after the second change',
+        behavior: 'Jordan described the two changes and said the review felt like an obstacle to shipping',
+        impact: 'The team had stopped treating the definition as stable',
+        note: '',
+        createdAt: iso(at(105)),
+      },
+    ],
+    conversations: [
+      {
+        id: 'perf-demo-conv3',
+        date: at(104),
+        kind: 'two-way',
+        note: 'Jordan: the weekly review was a bottleneck when the definition was clearly wrong, and waiting a week felt like shipping a broken number. He had not known the trend comparability was the reason for the freeze.',
+        createdAt: iso(at(104)),
+      },
+    ],
+    supports: [
+      {
+        id: 'perf-demo-supp3',
+        date: at(100),
+        kind: 'feedback',
+        note: 'Agreed a same-day exception channel: a definition change with a written reason can be applied immediately and reviewed at the next weekly session.',
+        createdAt: iso(at(100)),
+      },
+      {
+        id: 'perf-demo-supp4',
+        date: at(99),
+        kind: 'coaching',
+        note: 'Worked through two real examples of comparability loss so the cost of an unlogged change was concrete, not procedural.',
+        createdAt: iso(at(99)),
+      },
+    ],
+    answers: {
+      couldDoIfTried: true,
+      knowsWhat: true,
+      knowsWhen: true,
+      obstacle: false,
+      consequenceMissing: false,
+      capacity: false,
+      feedbackLoop: true,
+    },
+    plan: {
+      adoptedOn: at(100),
+      reviewOn: at(76),
+      cadenceDays: 14,
+      objectives: [
+        { id: 'perf-demo-obj3', text: 'Every definition change is accompanied by a written review entry', measure: '4 of 4 changes logged in the weekly review', byWhen: at(76) },
+      ],
+      supportKinds: ['feedback', 'coaching'],
+      prediction: { probabilityPct: 65, frozenOn: at(100), horizonDays: 24 },
+      overrideReason: '',
+    },
+    outcome: {
+      reviewedOn: at(72),
+      verdict: 'met',
+      notes: 'Four consecutive weeks with every change logged, including one applied same-day under the exception channel. The comparability footnote was not needed in the last three weeks.',
+    },
+    history: [
+      { at: iso(at(150)), type: 'created', summary: `Concern opened on ${at(150)}` },
+      { at: iso(at(100)), type: 'plan', summary: 'Plan adopted with a frozen 65% prediction for the review date' },
+      { at: iso(at(72)), type: 'reviewed', summary: `Reviewed ${at(72)}: met` },
+    ],
+  });
+
+  state.performanceConcerns = [overdue, unfunded, closed];
+
+  const run = (type, entityId) => performanceRule(state, {
+    event: { type, entity: 'perfconcern', entityId },
+    now,
+    settings: state.settings,
+    idFactory,
+  });
+  run(PERFORMANCE_EVENTS.CREATED, unfunded.id);
+  run(PERFORMANCE_EVENTS.CREATED, overdue.id);
+  run(PERFORMANCE_EVENTS.PLAN, overdue.id);
+  run(PERFORMANCE_EVENTS.PLAN, closed.id);
+  run(PERFORMANCE_EVENTS.REVIEWED, closed.id);
+  // The explicit scan, exactly as the button on the page runs it: it finds the
+  // passed review and opens one owned task, once.
+  run(PERFORMANCE_EVENTS.SCAN);
+}
+
+/**
+ * Deterministic historical records for the demo.
+ *
+ * A fixed 32-bit LCG, seeded from a constant, keeps the demo byte-identical on
+ * every load while still producing the irregular spacing real calendars have.
+ * Random-looking history generated from a fixed seed is honest demo data; a
+ * random one would make screenshots and tests disagree with each other.
+ *
+ * The history is generated *around* the three pre-registered studies rather
+ * than independently of them, because a demo in which the interventidates
+ * happened to coincide with nothing would be a demo of a tool that never finds
+ * anything. The two effects written in here are the fictional leader's real
+ * ones: feedback volume steps up after the weekly ritual, and feedback latency
+ * gets *worse* at the same time, because batching the conversation to Friday
+ * means the observation is older by the time it is written down. One hypothesis
+ * is supported and one is contradicted by the same intervention — which is
+ * precisely the situation a single before/after dashboard cannot represent.
+ */
+function seedHistoricalRecords(state, now) {
+  const today = dayKey(now);
+  const at = (daysAgo) => addDays(today, -daysAgo);
+  const ritualStarted = at(70);
+  const podsRestructured = at(14);
+  let sequence = 9000;
+  let seed = 20261027;
+  const nextId = (prefix) => `${prefix}-demo-h${++sequence}`;
+  const rnd = () => {
+    seed = (seed * 1103515245 + 12345) % 2147483648;
+    return seed / 2147483648;
+  };
+
+  const people = (state.people || []);
+  if (!people.length) return;
+  /**
+   * Who existed on a given day, and who is deliberately left out.
+   *
+   * Generating history for someone before their start date would put words in
+   * the app's mouth about a person who had not joined yet, so eligibility is
+   * checked per record date. Priya is excluded from generated feedback on
+   * purpose: the demo's headline conversation finding is that a long-tenured
+   * report has never had a single piece of feedback recorded, and seeding a
+   * warm history for her would quietly delete the problem the demo exists to
+   * show.
+   */
+  const eligibleOn = (date) => people
+    .filter((person) => person.id !== 'person-demo-1')
+    .filter((person) => !person.startDate || person.startDate <= date)
+    .map((person) => person.id);
+
+  const feedback = [];
+  const recognition = [];
+  const situations = [
+    'In Tuesday’s prioritisation review',
+    'During the schema walkthrough on Thursday',
+    'In the incident retro on Friday',
+    'On the customer call about activation',
+    'In the weekly metrics review',
+    'While reviewing the migration plan together',
+    'After the support handover',
+    'In the planning session for next quarter',
+  ];
+  const praises = [
+    'you flagged the reconciliation risk before it became an outage',
+    'you rewrote the proposal overnight so the decision could actually be taken',
+    'you pushed back on the deadline with evidence instead of quietly absorbing it',
+    'you made the handover legible to people outside the team',
+    'you cut the scope of the release to protect the migration window',
+    'you named the disagreement out loud in the review instead of routing around it',
+  ];
+  const critiques = [
+    'the design doc landed two hours before the meeting with no summary at the top',
+    'the escalation ran through three people before anyone owned it',
+    'the estimate was given as a single number with no range',
+    'the status update described activity rather than what had actually changed',
+  ];
+
+  // Twenty-two complete weeks of ordinary work, ending in the week before this one.
+  for (let weeksAgo = 22; weeksAgo >= 1; weeksAgo -= 1) {
+    const monday = addDays(today, -weeksAgo * 7);
+    const afterRitual = addDays(monday, 4) >= ritualStarted;
+    // Before the ritual: two or three notes a week. After it: four to six,
+    // because the Friday conversation produces several at once.
+    const notesThisWeek = afterRitual ? 4 + Math.floor(rnd() * 3) : 2 + Math.floor(rnd() * 2);
+    for (let note = 0; note < notesThisWeek; note += 1) {
+      const date = addDays(monday, Math.floor(rnd() * 5));
+      if (date >= today) continue;
+      const constructive = rnd() < 0.28;
+      const pool = eligibleOn(date);
+      if (!pool.length) continue;
+      const personId = pool[Math.floor(rnd() * pool.length)];
+      // After the ritual the note is written days after the event, because it
+      // waited for the Friday slot. That is the mechanism behind the latency
+      // regression, and it is generated rather than asserted.
+      const lag = afterRitual ? 3 + Math.floor(rnd() * 4) : 1 + Math.floor(rnd() * 3);
+      feedback.push({
+        id: nextId('fb'),
+        personId,
+        direction: 'given',
+        kind: constructive ? 'constructive' : 'praise',
+        situation: situations[Math.floor(rnd() * situations.length)],
+        behavior: constructive
+          ? critiques[Math.floor(rnd() * critiques.length)]
+          : praises[Math.floor(rnd() * praises.length)],
+        impact: constructive
+          ? 'It cost the room a day of rework and made the decision harder to take.'
+          : 'It shortened the loop and gave the rest of the team something concrete to copy.',
+        tags: constructive ? ['clarity'] : ['recognition'],
+        date,
+        observedOn: addDays(date, -lag),
+        followUpOn: null,
+        followUpDone: false,
+        followUpCompletedOn: null,
+        createdAt: new Date(`${date}T17:30:00.000Z`).toISOString(),
+      });
+    }
+
+    // Recognition roughly every other week, because that is what a real calendar
+    // looks like when nobody has been told to fill a quota.
+    if (weeksAgo % 2 === 0) {
+      const date = addDays(monday, 2 + Math.floor(rnd() * 3));
+      const recPool = eligibleOn(date);
+      if (date < today && recPool.length) {
+        recognition.push({
+          id: nextId('rec'),
+          personId: recPool[Math.floor(rnd() * recPool.length)],
+          what: praises[Math.floor(rnd() * praises.length)].replace(/^you /, 'Owned the moment where they '),
+          values: ['Ownership', 'Rigour'],
+          visibility: 'public',
+          date,
+          createdAt: new Date(`${date}T18:00:00.000Z`).toISOString(),
+        });
+      }
+    }
+  }
+
+  // The existing demo 1:1 log reaches back eight weeks, which is not enough
+  // baseline to evaluate anything. These older, already-held sessions give the
+  // cadence and mood vitals a real past without touching the recent records
+  // that the Today view and the prep sheet are built around.
+  const oneOnOnes = [];
+  for (let weeksAgo = 22; weeksAgo >= 9; weeksAgo -= 1) {
+    const monday = addDays(today, -weeksAgo * 7);
+    const sessions = 1 + Math.floor(rnd() * 2);
+    for (let i = 0; i < sessions; i += 1) {
+      const date = addDays(monday, Math.floor(rnd() * 5));
+      if (date >= addDays(today, -56)) continue;
+      // Mood drifts down as the single support queue gets heavier, then lifts a
+      // little once the pods are split — the effect the running study is about.
+      const base = weeksAgo > 6 ? 3.6 : 3.1;
+      const afterSplit = date >= podsRestructured ? 0.35 : 0;
+      const mood = Math.max(1, Math.min(5, Math.round(base + afterSplit + (rnd() - 0.5) * 1.1)));
+      const ooPool = eligibleOn(date);
+      if (!ooPool.length) continue;
+      oneOnOnes.push({
+        id: nextId('oo'),
+        personId: ooPool[Math.floor(rnd() * ooPool.length)],
+        date,
+        status: 'held',
+        mood,
+        agenda: [],
+        notes: mood >= 4
+          ? 'Steady: the work is clear and the blockers were resolvable in the room.'
+          : 'Tense: two competing priorities and no owner for the handover.',
+        actions: [],
+        createdAt: new Date(`${date}T09:00:00.000Z`).toISOString(),
+      });
+    }
+  }
+
+  state.feedback = [...(state.feedback || []), ...feedback];
+  state.recognition = [...(state.recognition || []), ...recognition];
+  state.oneOnOnes = [...(state.oneOnOnes || []), ...oneOnOnes];
+}
+
+/**
+ * Three studies in three different states, all of them pre-registered.
+ *
+ * Two windows have closed and are waiting to be scored — which is the honest
+ * default state of any real ledger — and one is still running. Every study is
+ * declared before its intervention date, so the demo never shows a
+ * retrospective study dressed up as evidence.
+ */
+/**
+ * Schema v32 — demo outbox. Drafts are produced by the real RULE-COMMS-01 path
+ * (not hand-written), so the demo can never show a message the engine would not
+ * write. Links are produced the same way and merged into the demo graph.
+ */
+/**
+ * Schema v33 — demo Allocation Governor. Runs the real RULE-ALLOC scan over
+ * the demo portfolio, so the rebalancing decision and its typed links in the
+ * demo are exactly what the engine would produce live (exploratory share of
+ * recently funded effort is 0% against a 10% floor, with one candidate
+ * queued). No hand-written decision text.
+ */
+function seedAllocation(state, now) {
+  let seq = 0;
+  const idFactory = (prefix) => `${prefix}-demo-alloc-${++seq}`;
+  allocationRule(state, { event: { type: 'allocation.scan', entityId: '' }, now, idFactory });
+}
+
+/**
+ * Schema v34 — demo Cognitive Load Governor. Runs the real RULE-LOAD scan
+ * over the demo roster, so the load-shedding decision, WIP and learning
+ * prompts and typed links in the demo are exactly what the engine would
+ * produce live. No hand-written decision or talking-point text.
+ */
+function seedLoad(state, now) {
+  let seq = 0;
+  const idFactory = (prefix) => `${prefix}-demo-load-${++seq}`;
+  loadRule(state, { event: { type: 'load.scan', entityId: '' }, now, idFactory });
+}
+
+
+/**
+ * Schema v37 — demo Operating System Dynamics Lab.
+ *
+ * Two real records, not hand-written copy: one adopted experiment (which runs
+ * RULE-DYN-03 and therefore produces a real checkpoint delegation carrying the
+ * frozen prediction) and one draft experiment. The scan then runs the real
+ * structural report over the demo roster, so any decision or talking point that
+ * appears in the demo is exactly what the engine would produce live.
+ */
+function seedDynamics(state, now) {
+  const adoptedOn = dayKey(addDays(now, -11));
+  state.dynamicsExperiments = [
+    {
+      id: 'dyn-demo-1',
+      name: 'Cap work in progress before hiring',
+      hypothesis: 'If intake is throttled to protect the current team, cycle time falls and saturation stops climbing within six weeks — without adding senior load.',
+      levers: { hirePerWeek: 0, wipCapPct: 20, scopeCutPct: 0, reworkInvestment: 0, delegationShare: 0, learningShare: 0 },
+      horizonWeeks: 26,
+      ownerId: state.people[0]?.id || null,
+      checkpointOn: dayKey(addDays(now, 14)),
+      status: 'adopted',
+      adoptedOn,
+      predicted: {
+        endSaturationPct: 118,
+        endWipDays: 62,
+        endCapacityPerWeek: 15.1,
+        endDependencyPct: 44,
+        horizonWeeks: 26,
+        frozenAt: new Date(`${adoptedOn}T09:00:00.000Z`).toISOString(),
+        engineVersion: 'os-dynamics-2026.10-v1',
+      },
+      notes: 'Chosen after the June overload: the queue was draining and refilling at the same rate.',
+      createdOn: adoptedOn,
+      createdAt: new Date(`${adoptedOn}T09:00:00.000Z`).toISOString(),
+      updatedAt: new Date(`${adoptedOn}T09:00:00.000Z`).toISOString(),
+    },
+    {
+      id: 'dyn-demo-2',
+      name: 'Protect 15% for learning',
+      hypothesis: 'If a sixth of capacity is protected for mentoring and design review, the delivery ceiling rises — but not inside a quarter.',
+      levers: { hirePerWeek: 0, wipCapPct: 10, scopeCutPct: 0, reworkInvestment: 0.2, delegationShare: 0.3, learningShare: 0.15 },
+      horizonWeeks: 40,
+      ownerId: state.people[2]?.id || null,
+      checkpointOn: null,
+      status: 'draft',
+      adoptedOn: null,
+      predicted: null,
+      notes: 'Not adopted: the first pass costs throughput for two quarters before the ceiling moves.',
+      createdOn: dayKey(addDays(now, -4)),
+      createdAt: new Date(`${dayKey(addDays(now, -4))}T09:00:00.000Z`).toISOString(),
+      updatedAt: new Date(`${dayKey(addDays(now, -4))}T09:00:00.000Z`).toISOString(),
+    },
+  ];
+}
+
+/**
+ * The scan runs *after* the demo state has been through the real normalizer,
+ * because the structural report reads the load governor's bottleneck, which is
+ * derived from normalized roster fields. Running it on the raw fixture would
+ * quietly produce no talking point and make the demo look less capable than the
+ * product is.
+ */
+function seedDynamicsScan(state, now) {
+  let seq = 0;
+  const idFactory = (prefix) => `${prefix}-demo-dyn-${++seq}`;
+  dynamicsRule(state, { event: { type: 'dynamics.scan', entityId: '' }, now, idFactory });
+  dynamicsRule(state, { event: { type: 'dynamics.experiment.adopted', entityId: 'dyn-demo-1' }, now, idFactory });
+}
+
+/**
+ * Schema v38 — demo Structural Capital Allocation.
+ *
+ * One draft portfolio and one *scored* out-of-sample checkpoint. The checkpoint
+ * is generated the same way a live one is: the prediction and the do-nothing
+ * baseline are frozen from the derived model, the observed stocks are a dated
+ * fixture, and `scoreCheckpoint` computes the skill — nothing is hand-written
+ * into the score field. The checkpoint is deliberately a single row, so the
+ * pooled-skill suppression (counts only below two) is visible in the demo
+ * instead of being glossed over.
+ */
+function seedCapital(state, now) {
+  const today = dayKey(now);
+  const report = buildDynamicsReport(state, now);
+  const experiment = (state.dynamicsExperiments || []).find((row) => row && row.id === 'dyn-demo-1');
+  if (!report.adequate || !experiment) return;
+  const evaluation = evaluatePolicy(report.model, experiment.levers, { weeks: experiment.horizonWeeks });
+  const frozen = (summary) => ({
+    endSaturationPct: summary.endSaturationPct,
+    endWipDays: summary.endWipDays,
+    endCapacityPerWeek: summary.endCapacityPerWeek,
+    endDependencyPct: summary.endDependencyPct,
+  });
+  experiment.predicted = {
+    ...frozen(evaluation.scenario.summary),
+    horizonWeeks: evaluation.scenario.horizonWeeks,
+    frozenAt: new Date(`${experiment.adoptedOn}T09:00:00.000Z`).toISOString(),
+    engineVersion: report.engineVersion,
+    baseline: frozen(evaluation.baseline.summary),
+  };
+
+  const recordedOn = addDays(today, -3);
+  // The fiction: the cap was applied, pressure eased most of the way to the
+  // prediction but WIP drained faster than modelled. Recorded as observations,
+  // not as a score.
+  const observed = {
+    saturationPct: Math.round(evaluation.scenario.summary.endSaturationPct + 4),
+    wipDays: Math.round(evaluation.scenario.summary.endWipDays * 0.82),
+    capacityPerWeek: Math.round(evaluation.scenario.summary.endCapacityPerWeek * 0.97 * 100) / 100,
+  };
+  state.dynamicsCheckpoints = [{
+    id: 'chk-demo-1',
+    subjectType: 'experiment',
+    subjectId: experiment.id,
+    recordedOn,
+    observed,
+    scoring: scoreCheckpoint(experiment.predicted, observed),
+    note: 'Recorded in the weekly review: the intake cap held, two items were closed early, and one person was out for a week.',
+    createdOn: recordedOn,
+    createdAt: new Date(`${recordedOn}T16:30:00.000Z`).toISOString(),
+  }];
+
+  state.capitalPolicies = [{
+    id: 'cap-demo-1',
+    name: 'Protect flow before adding headcount',
+    hypothesis: 'If intake is capped and a fifth of repair capacity moves to prevention, pressure falls below 100% within a quarter without eroding throughput by more than 5%.',
+    levers: {
+      hirePerWeek: 0, wipCapPct: 15, scopeCutPct: 0, reworkInvestment: 0.2, delegationShare: 0.3, learningShare: 0.1,
+    },
+    budgetUnits: 8,
+    weights: { saturation: 0.35, throughput: 0.25, capacity: 0.2, wip: 0.2 },
+    horizonWeeks: 26,
+    ownerId: state.people[0]?.id || null,
+    checkpointOn: addDays(today, 21),
+    status: 'draft',
+    adoptedOn: null,
+    predicted: null,
+    notes: 'Drafted after the June overload. Not adopted yet: the model has not been graded out of sample twice, so the comparison is directional at best.',
+    createdOn: addDays(today, -4),
+    createdAt: new Date(`${addDays(today, -4)}T11:00:00.000Z`).toISOString(),
+    updatedAt: new Date(`${addDays(today, -4)}T11:00:00.000Z`).toISOString(),
+  }];
+}
+
+/**
+ * Schema v35 — demo Assumption Ledger.
+ *
+ * Two pre-registered premises are attached to real demo dependencies and a
+ * real decision. The real RULE-PREM scan produces the typed links, dated
+ * evidence and posterior beliefs — no hand-written "demo evidence". One
+ * premise lands in the watch band and one stays supported, so the terminal
+ * demonstrates both sensing and honest non-alarm without opening a DACI
+ * re-decision that would perturb the rest of the demo workspace.
+ */
+function seedPremises(state, now, { decisionId, ownerA, ownerB, dependencyA, dependencyB }) {
+  const today = dayKey(now);
+  const createdAt = (daysAgo) => new Date(new Date(`${addDays(today, -daysAgo)}T09:00:00.000Z`).getTime()).toISOString();
+  const reviewBy = addDays(today, 21);
+  let seq = 0;
+  const nextId = (prefix) => `${prefix}-demo-prem-${++seq}`;
+  state.premises = [
+    {
+      id: nextId('premise'),
+      title: 'Signing-service recovery fits the survival window',
+      statement: 'The KMS signing layer can be restored within the 0.5-day survival window before month-end webhook reconciliation is jeopardised.',
+      signpost: 'A recorded continuity dependency with TTR greater than TTS, or a failed regional restore drill, is the first dated warning that this premise has broken.',
+      decisionId,
+      ownerId: ownerA,
+      criticality: 'load-bearing',
+      priorPct: 80,
+      watchPct: 60,
+      breachPct: 30,
+      halfLifeDays: 90,
+      reviewBy,
+      lastReviewedOn: null,
+      acknowledgedOn: null,
+      acknowledgedAt: null,
+      humanDisposition: null,
+      sourceRefs: [{ sourceType: 'dependency', sourceId: dependencyA }],
+      observations: [],
+      history: [{ at: createdAt(10), type: 'registered', summary: 'Pre-registered before the continuity review' }],
+      status: 'unobserved',
+      reviewCycle: 0,
+      posteriorPct: 80,
+      logBayesFactor: 0,
+      autoPropagate: true,
+      createdAt: createdAt(10),
+      updatedAt: createdAt(10),
+    },
+    {
+      id: nextId('premise'),
+      title: 'Month-end reconciliation stays inside its runbook window',
+      statement: 'The documented reconciliation runbook can complete close within two days using a verified backup steward, so the metrics cutover will not stall finance close.',
+      signpost: 'A dated TTR that exceeds TTS on the runbook, a failed shadow close, or a reviewed decision outcome of bad would be the first recorded invalidation signal.',
+      decisionId,
+      ownerId: ownerB,
+      criticality: 'major',
+      priorPct: 70,
+      watchPct: 55,
+      breachPct: 30,
+      halfLifeDays: 90,
+      reviewBy,
+      lastReviewedOn: null,
+      acknowledgedOn: null,
+      acknowledgedAt: null,
+      humanDisposition: null,
+      sourceRefs: [{ sourceType: 'dependency', sourceId: dependencyB }],
+      observations: [],
+      history: [{ at: createdAt(8), type: 'registered', summary: 'Pre-registered with an owner and signpost' }],
+      status: 'unobserved',
+      reviewCycle: 0,
+      posteriorPct: 70,
+      logBayesFactor: 0,
+      autoPropagate: true,
+      createdAt: createdAt(8),
+      updatedAt: createdAt(8),
+    },
+  ];
+  const idFactory = (prefix) => `${prefix}-demo-prem-${++seq}`;
+  premiseRule(state, { event: { type: 'premise.scan', entityId: '' }, now, idFactory });
+}
+
+function seedCommsDrafts(state, now) {
+  let seq = 0;
+  const working = {
+    cases: state.cases || [],
+    people: state.people || [],
+    commsDrafts: [],
+    links: Array.isArray(state.links) ? state.links : [],
+  };
+  const idFactory = (prefix) => `${prefix}-demo-${++seq}`;
+  for (const c of working.cases) {
+    commsRule(working, { event: { type: 'case.updated', entityId: c.id }, now, idFactory });
+  }
+  state.links = working.links;
+  return working.commsDrafts;
+}
+
+function seedImpactStudies(state, now) {
+  const today = dayKey(now);
+  const at = (daysAgo) => addDays(today, -daysAgo);
+  const stampFor = (day, hour = 9) => new Date(`${day}T0${hour}:00:00.000Z`).toISOString();
+
+  const studies = [
+    {
+      title: 'Weekly feedback ritual',
+      hypothesis: 'If I give every report one specific piece of feedback each week, the feedback cadence across the team rises by about a third of a note per person per month.',
+      vitalId: 'feedback-cadence',
+      interventionType: 'feedback',
+      interventionLabel: 'Weekly feedback ritual',
+      windowStart: at(70),
+      baselineWeeks: 8,
+      windowWeeks: 4,
+      alpha: 0.1,
+      expectedEffect: 0.3,
+      expectedConfidence: 70,
+      declaredOn: at(75),
+      notes: 'Started after the review cycle feedback that nobody could remember what they had been told.',
+    },
+    {
+      title: 'Ritual makes feedback more timely',
+      hypothesis: 'Writing the week’s feedback in one Friday pass, rather than in the moment, should shorten the gap between observing something and recording it, because the conversation gets protected time.',
+      vitalId: 'feedback-latency',
+      interventionType: 'feedback',
+      interventionLabel: 'Weekly feedback ritual',
+      windowStart: at(70),
+      baselineWeeks: 8,
+      windowWeeks: 4,
+      alpha: 0.1,
+      expectedEffect: 1,
+      expectedConfidence: 60,
+      declaredOn: at(75),
+      notes: 'Declared alongside the cadence study, deliberately: the same intervention was expected to help one metric and help another. The second one was wrong, and the record says so.',
+    },
+    {
+      title: 'Support pod restructure',
+      hypothesis: 'Moving support from one queue to three product-aligned pods raises the mood scores recorded in 1:1s, because people stop carrying every product’s context at once.',
+      vitalId: 'oneoneone-mood',
+      interventionType: 'change',
+      interventionLabel: 'Support pod restructure',
+      windowStart: at(14),
+      baselineWeeks: 8,
+      windowWeeks: 4,
+      alpha: 0.1,
+      expectedEffect: 0.25,
+      expectedConfidence: 65,
+      declaredOn: at(16),
+      notes: 'Declared while it was still reversible; if the mood series does not move it will be unwound.',
+    },
+  ];
+
+  return studies.map((study, index) => ({
+    id: `impact-demo-${index + 1}`,
+    ...study,
+    interventionId: null,
+    status: 'running',
+    lockedOn: null,
+    verdict: null,
+    evaluation: null,
+    outcomeNotes: '',
+    autoPropagate: true,
+    replicationOfId: null,
+    history: [
+      {
+        at: stampFor(study.declaredOn),
+        type: 'declared',
+        summary: `Declared before scoring. Grade: confirmatory.`,
+      },
+    ],
+    createdAt: stampFor(study.declaredOn),
+    updatedAt: stampFor(study.declaredOn),
+  }));
+}
+
+/**
+ * Schema v50 — implementation plans over the demo's own records.
+ *
+ * The first plan is a feedback ritual that the records say was genuinely
+ * delivered; it is settled, because a settled example is what makes the frozen
+ * reading legible. The second is a 1:1 cadence declared with a dose the calendar
+ * could not support, deliberately left active: settling it in the app is the
+ * demonstration of the whole cross-module path (repair decision, owned task,
+ * blameless question).
+ */
+function seedFidelityPlans(state, now) {
+  const today = dayKey(now);
+  const at = (daysAgo) => addDays(today, -daysAgo);
+  const stampFor = (day, hour = 9) => new Date(`${day}T${String(hour).padStart(2, '0')}:00:00.000Z`).toISOString();
+  const people = (state.people || []).filter((p) => p && p.status !== 'archived');
+  const attest = (verdict, on, note) => ({ verdict, on, byId: people[0]?.id || null, note, at: stampFor(on) });
+
+  return [
+    {
+      id: 'fidelity-demo-1',
+      title: 'Weekly SBI feedback ritual',
+      interventionType: 'feedback',
+      interventionId: null,
+      interventionLabel: 'Weekly SBI feedback ritual',
+      studyId: 'impact-demo-1',
+      ownerId: people[1]?.id || null,
+      population: people.length || 5,
+      plannedUnits: 24,
+      windowStart: at(28),
+      windowEnd: at(1),
+      status: 'settled',
+      stages: [
+        { key: 'reach', targetOn: at(14), attested: attest('met', at(14), 'Everyone got at least one note in the first fortnight.') },
+        { key: 'dose', targetOn: at(1), attested: attest('met', at(1), 'Twenty-three notes against twenty-four planned. Close enough not to argue about.') },
+        { key: 'fidelity', targetOn: at(1), attested: attest('partial', at(1), 'Every note has all three SBI parts, but two of them describe an impact I cannot actually evidence.') },
+        { key: 'sustain', targetOn: at(1), attested: attest('met', at(1), 'Still writing them in week four, which is the part that usually fails.') },
+        { key: 'adaptation', targetOn: at(1), attested: attest('met', at(1), 'Moved the writing pass from Friday to Thursday so it no longer collides with the review cycle.') },
+      ],
+      settlement: {
+        version: 1,
+        on: at(1),
+        at: stampFor(at(1), 17),
+        byId: null,
+        gradeId: 'strong',
+        indexPct: 92.5,
+        coveragePct: 100,
+        exposurePct: 88.4,
+        unitCount: 23,
+        populationCount: people.length || 5,
+        plannedUnits: 24,
+        instrumented: true,
+        stages: [
+          { key: 'reach', scorePct: 100, source: 'records', agreement: 'concordant' },
+          { key: 'dose', scorePct: 95.8, source: 'records', agreement: 'concordant' },
+          { key: 'fidelity', scorePct: 100, source: 'records', agreement: 'lenient' },
+          { key: 'sustain', scorePct: 100, source: 'records', agreement: 'concordant' },
+          { key: 'adaptation', scorePct: 100, source: 'attestation', agreement: 'unverifiable' },
+        ],
+      },
+      notes: 'Declared on the day the ritual started. The denominator was fixed then, which is the only reason the number means anything now.',
+      createdAt: stampFor(at(28)),
+      updatedAt: stampFor(at(1), 17),
+      history: [
+        { at: stampFor(at(28)), type: 'declared', summary: 'Declared before delivery was graded: 24 planned notes across 5 people.' },
+        { at: stampFor(at(1), 17), type: 'settled', summary: 'Settled: Delivered as designed — index 92.5%, exposure 88.4%.' },
+      ],
+    },
+    {
+      id: 'fidelity-demo-2',
+      title: 'Twice-weekly 1:1 cadence through the restructure',
+      interventionType: 'oneonone',
+      interventionId: null,
+      interventionLabel: 'Twice-weekly 1:1 cadence',
+      studyId: null,
+      ownerId: people[0]?.id || null,
+      population: people.length || 5,
+      plannedUnits: 10,
+      windowStart: at(9),
+      windowEnd: today,
+      status: 'active',
+      stages: [
+        { key: 'reach', targetOn: at(4), attested: null },
+        { key: 'dose', targetOn: today, attested: attest('met', today, 'Ten conversations happened, even if only a few of them are in here.') },
+        { key: 'fidelity', targetOn: today, attested: null },
+        { key: 'sustain', targetOn: today, attested: null },
+        { key: 'adaptation', targetOn: today, attested: attest('partial', today, 'Dropped the second weekly slot for two of the five people — no record of why beyond “diary pressure”.') },
+      ],
+      settlement: null,
+      notes: 'Declared with a dose the diary could not carry. Left unsettled on purpose: settling it is the demonstration.',
+      createdAt: stampFor(at(9)),
+      updatedAt: stampFor(today),
+      history: [
+        { at: stampFor(at(9)), type: 'declared', summary: 'Declared before delivery was graded: 10 planned 1:1s across 5 people.' },
+        { at: stampFor(today), type: 'attested', summary: 'Attested dose: Met (records disagree — claims more delivery than the records show)' },
+      ],
+    },
+  ];
+}
+
+
+/**
+ * Schema v51 — the merit & pay-equity terminal over the demo's own roster.
+ *
+ * Two cycles, both real:
+ *
+ *  - a **past cycle** that took effect a year ago and has been finalized, with
+ *    its audit frozen by the same function the finalize action calls and its
+ *    departure predictions resolved against the roster. Its calibration card is
+ *    the honest small-sample case, not a flattering one.
+ *  - a **current cycle** mid-flight: the budget declared, every current salary
+ *    recorded, no proposals yet. Applying a policy and finalizing it is the
+ *    demonstration.
+ *
+ * The demo's five-person team is deliberately *too small* for the Oaxaca–Blinder
+ * decomposition (two groups, five people) and the page says so. That refusal is
+ * the feature: a decomposition on three-versus-two would be a number nobody
+ * should quote, and the demo would be teaching the wrong lesson.
+ */
+function seedMerit(state, now) {
+  const today = dayKey(now);
+  const stampFor = (day, hour = 9) => new Date(`${day}T${String(hour).padStart(2, '0')}:00:00.000Z`).toISOString();
+  const people = (state.people || []).filter((person) => person && person.status !== 'archived');
+  if (!people.length) return { bands: [], cycles: [] };
+
+  // Bands are declared per level in the roster, dated before either cycle so a
+  // band cannot be invented after the fact to fit the decisions.
+  const ranges = {
+    ic: { label: 'Analyst / IC', min: 65000, mid: 78000, max: 92000 },
+    senior: { label: 'Senior IC / PM', min: 92000, mid: 108000, max: 125000 },
+    lead: { label: 'Lead', min: 112000, mid: 130000, max: 148000 },
+    manager: { label: 'Manager', min: 118000, mid: 136000, max: 155000 },
+    director: { label: 'Director', min: 145000, mid: 168000, max: 192000 },
+    vp: { label: 'VP', min: 180000, mid: 210000, max: 245000 },
+  };
+  const levels = [...new Set(people.map((person) => person.level).filter((level) => ranges[level]))];
+  const bands = levels.map((level, index) => ({
+    id: `band-demo-${index + 1}`,
+    level,
+    label: ranges[level].label,
+    min: ranges[level].min,
+    mid: ranges[level].mid,
+    max: ranges[level].max,
+    effectiveOn: addDays(today, -400),
+    notes: 'Declared from the level and scope of the work, not from what the current team happens to be paid.',
+    createdAt: stampFor(addDays(today, -400)),
+    updatedAt: stampFor(addDays(today, -400)),
+  }));
+
+  /**
+   * Current pay by person, chosen so the page has something real to find:
+   * the lead sits below her band midpoint, and the external hire at senior level
+   * is paid above the internal one at the same level (the loyalty penalty).
+   */
+  const pay = {
+    'person-demo-1': { current: 118000, origin: 'internal' }, // Priya, lead
+    'person-demo-2': { current: 112000, origin: 'internal' }, // Jordan, senior
+    'person-demo-3': { current: 116000, origin: 'external' }, // Mei, senior, joined 260 days ago
+    'person-demo-4': { current: 139000, origin: 'external' }, // Samuel, manager, joined 38 days ago
+    'person-demo-5': { current: 76000, origin: 'internal' }, // Freya, ic
+  };
+  const rowsFor = (factor) => people
+    .filter((person) => pay[person.id])
+    .map((person) => {
+      const base = Math.round((pay[person.id].current * factor) / 500) * 500;
+      return {
+        personId: person.id,
+        level: person.level,
+        currentPay: base,
+        proposedPay: base,
+        origin: pay[person.id].origin,
+        retentionConcern: person.id === 'person-demo-1',
+        note: '',
+        updatedAt: stampFor(today),
+      };
+    });
+
+  // ---- the past cycle: finalized, frozen, with resolved outcomes.
+  const pastEffective = addDays(today, -365);
+  const pastAsOf = new Date(`${pastEffective}T12:00:00.000Z`);
+  const pastCycle = {
+    id: 'merit-demo-1',
+    label: 'FY25 merit cycle',
+    currency: 'USD',
+    effectiveOn: pastEffective,
+    status: 'draft',
+    budget: { kind: 'amount', value: 26000 },
+    comparison: { dimension: 'origin' },
+    ownerId: people[0]?.id || null,
+    rows: rowsFor(0.94),
+    audit: null,
+    outcomes: [],
+    createdAt: stampFor(addDays(pastEffective, -14)),
+    updatedAt: stampFor(pastEffective),
+    history: [{ at: stampFor(addDays(pastEffective, -14)), type: 'declared', summary: 'Declared with a USD 26,000 budget and a hire-origin comparison.' }],
+  };
+  const pastState = { ...state, meritCycles: [pastCycle], compBands: bands };
+  const pastReading = fairnessReading(pastState, pastCycle, pastAsOf);
+  pastCycle.audit = buildFairnessSnapshot(pastReading, { capturedAt: stampFor(pastEffective, 17) });
+  pastCycle.status = 'finalized';
+  pastCycle.history.push({
+    at: stampFor(pastEffective, 17),
+    type: 'finalized',
+    summary: `Froze the audit: ${Math.round(pastReading.spent)} committed against ${Math.round(pastReading.budget.amount)}, ${pastReading.compression.length} relative-pay finding(s).`,
+  });
+  // Every prediction's window has closed and everyone is still here, so each
+  // resolves as a stay. That is the honest input the calibration card receives —
+  // including the case where the base-rate comparator has no variance at all.
+  const horizonOn = addDays(pastEffective, 365);
+  pastCycle.outcomes = (pastCycle.audit?.predictions || []).map((prediction) => ({
+    personId: prediction.personId,
+    on: horizonOn,
+    departed: false,
+    horizonOn,
+  }));
+
+  // ---- the current cycle: mid-flight, nothing proposed yet.
+  const currentCycle = {
+    id: 'merit-demo-2',
+    label: 'FY26 merit cycle',
+    currency: 'USD',
+    effectiveOn: addDays(today, 21),
+    status: 'draft',
+    budget: { kind: 'amount', value: 26000 },
+    comparison: { dimension: 'origin' },
+    ownerId: people[0]?.id || null,
+    rows: rowsFor(1),
+    audit: null,
+    outcomes: [],
+    createdAt: stampFor(addDays(today, -3)),
+    updatedAt: stampFor(today),
+    history: [{
+      at: stampFor(addDays(today, -3)),
+      type: 'declared',
+      summary: 'Declared with a USD 26,000 budget (1.7% of payroll) and a hire-origin comparison. Current pay recorded; no proposals yet.',
+    }],
+  };
+
+  return { bands, cycles: [pastCycle, currentCycle] };
+}
+
+/**
+ * Schema v39 — run the Early-Warning Watch over the demo's dated records.
+ *
+ * This is the real rule, not a fixture: it tests every monitored series, applies
+ * the same step-up with the same q, records promotions *and* suppressions, and
+ * freezes the next-week prediction. If the demo's series show no special cause,
+ * the demo shows an empty queue and says so — which is the honest outcome and
+ * exactly what the module is supposed to make visible.
+ */
+function seedWatch(state, now) {
+  let seq = 0;
+  const idFactory = (prefix) => `${prefix}-demo-w${++seq}`;
+
+  // Illustrative pseudo-real-time replay over the *current* demo records.
+  // Dated filtering does not restore historical data vintages or rule out
+  // revisions/lookahead. These rows are explicitly excluded from real skill.
+  for (let back = 3; back >= 1; back -= 1) {
+    const asOf = new Date(new Date(`${addDays(dayKey(now), -7 * back)}T23:59:59.000Z`).getTime());
+    const replay = scanWatch(state, asOf);
+    for (const f of replay.forecasts) {
+      state.watchForecasts.push({
+        id: idFactory('ewf'),
+        seriesId: f.seriesId,
+        issuedOn: f.issuedOn,
+        issuedAt: asOf.toISOString(),
+        dueOn: f.dueOn,
+        point: f.point,
+        lo: f.lo,
+        hi: f.hi,
+        baselinePoint: f.baselinePoint,
+        sigma: f.sigma,
+        method: 'demo-reconstruction',
+      });
+    }
+  }
+
+  // Then the live scan, which is the one that can actually promote an alert.
+  earlyWarningRule(state, { event: { type: 'watch.scan' }, now, idFactory });
+  return state;
+}
+
+
+/**
+ * Schema v42 — demo Strategy Coherence Terminal.
+ *
+ * Three bets with deliberately different quality, written against the demo
+ * workspace's own goals and plan items: one falsifiable and over-funded, one
+ * partially falsifiable, and one active bet that is neither funded nor
+ * falsifiable. One stop rule is deliberately overdue so the terminal
+ * demonstrates a verdict that is due rather than only a tidy dashboard. No
+ * record is tagged that the demo's own work does not justify, and the declared
+ * shares sum to 100 so the gap is computable rather than decorative.
+ */
+/**
+ * Schema v43 — the After-Action Review & Learning Ledger.
+ *
+ * The demo carries three reviews, chosen so the terminal can show each of its
+ * honesty properties at once rather than a tidy success story:
+ *
+ *  1. The settled invoice-duplication incident, reviewed five days after it
+ *     closed, with two lessons that were genuinely applied — a **closed loop**,
+ *     with the note that says what is now different.
+ *  2. The anchored P1 handoff change, reviewed four days after it anchored, with
+ *     a process change applied.
+ *  3. The same lesson class appears in both, and the earlier review's committed
+ *     change was never made — the **unclosed recurrence** the terminal exists to
+ *     print. Nothing here is fabricated about a person: the lesson names a
+ *     dependency nobody owned, not a person who failed.
+ *
+ * The demo deliberately leaves one completed delegation unreviewed and past the
+ * 14-day convention, so the queue is not empty and LEARN-01 has something true
+ * to say. No review is back-dated into a held state it could not have had: each
+ * `heldOn` is after the outcome it reviews.
+ */
+/**
+ * Schema v47: one committed demo scorecard.
+ *
+ * It is the support-throughput card the demo's own records already describe — a
+ * single support queue, tickets closed, and a quality problem that the volume
+ * metric cannot see. The prediction is frozen through the same
+ * `freezeMeasurementPrediction` the commit action uses, so the demo shows a
+ * genuine out-of-sample record rather than a hand-written score.
+ *
+ * Deliberately committed WITHOUT an observation: the page then shows the
+ * "record what happened" step, which is the point of the ledger. No decision,
+ * delegation or review is fabricated here — those are the rule spine's job on a
+ * real commit, and inventing them would misrepresent the propagation engine.
+ */
+function seedMeasurement(state, now) {
+  const today = dayKey(now);
+  const personId = (match) => (state.people || []).find((p) => p && p.name.includes(match))?.id || null;
+  const owner = personId('Priya') || personId('Jordan') || (state.people || [])[0]?.id || null;
+  const scorecard = {
+    id: 'scorecard-demo-1',
+    title: 'Support throughput',
+    objective: 'Customers get a resolution that holds, from a queue that stays survivable.',
+    ownerId: owner,
+    status: 'committed',
+    stakesPct: 60,
+    professionalismPct: 20,
+    riskAversionPct: 40,
+    detectionPct: 25,
+    effortHoursPerWeek: 32,
+    reviewOn: addDays(today, 28),
+    tasks: [
+      {
+        id: 'mtask-demo-1',
+        name: 'Tickets closed per week',
+        kind: 'measured',
+        weightPct: 65,
+        trueValue: 30,
+        effortCost: 25,
+        gamingEase: 70,
+        noisePct: 15,
+        ratchetPct: 45,
+      },
+      {
+        id: 'mtask-demo-2',
+        name: 'Customer-confirmed resolution',
+        kind: 'measured',
+        weightPct: 35,
+        trueValue: 85,
+        effortCost: 60,
+        gamingEase: 20,
+        noisePct: 40,
+        ratchetPct: 10,
+      },
+      {
+        id: 'mtask-demo-3',
+        name: 'Writing the runbook nobody reads yet',
+        kind: 'unmeasured',
+        weightPct: 0,
+        trueValue: 70,
+        effortCost: 45,
+        gamingEase: 0,
+        noisePct: 10,
+        ratchetPct: 0,
+      },
+    ],
+    frozen: null,
+    observation: null,
+    committedAt: new Date(`${addDays(today, -21)}T16:00:00.000Z`).toISOString(),
+    reviewedAt: null,
+    createdAt: new Date(`${addDays(today, -24)}T16:00:00.000Z`).toISOString(),
+    updatedAt: new Date(`${addDays(today, -21)}T16:00:00.000Z`).toISOString(),
+    history: [
+      { at: new Date(`${addDays(today, -24)}T16:00:00.000Z`).toISOString(), type: 'created', summary: 'Declared the support scorecard' },
+      { at: new Date(`${addDays(today, -21)}T16:00:00.000Z`).toISOString(), type: 'committed', summary: 'Committed after the June overload review' },
+    ],
+  };
+  scorecard.frozen = { at: scorecard.committedAt, prediction: freezeMeasurementPrediction(scorecard) };
+  state.scorecards = [scorecard];
+}
+
+function seedLearning(state, now) {
+  const today = dayKey(now);
+  const at = (daysAgo) => addDays(today, -daysAgo);
+  const ts = (daysAgo) => new Date(`${at(daysAgo)}T15:00:00.000Z`).toISOString();
+  const personId = (match) => (state.people || []).find((p) => p && p.name.includes(match))?.id || null;
+  const jordan = personId('Jordan');
+  const priya = personId('Priya');
+  const samuel = personId('Samuel');
+  const mei = personId('Mei');
+
+  const settledCase = (state.cases || []).find((c) => c && c.title.includes('webhook retries duplicated'));
+  const anchoredChange = (state.changes || []).find((c) => c && c.status === 'anchored');
+
+  const retros = [];
+
+  if (settledCase) {
+    retros.push({
+      id: 'retro-demo-1',
+      subjectType: 'case',
+      subjectId: settledCase.id,
+      subjectLabel: settledCase.title,
+      outcomeOn: settledCase.resolvedOn || at(58),
+      status: 'held',
+      autoDrafted: true,
+      intended: `Frozen at opening: expected exposure ≈ ${settledCase.forecastSnapshot?.costExpected ?? 16333.33} USD and ${settledCase.forecastSnapshot?.capacityDaysExpected ?? 6.17} diverted day(s). The plan assumed the duplicate check at month-end close was enough.`,
+      actual: `14 invoices reached customers before Finance Ops halted the batch; realised exposure ${settledCase.actuals?.realisedExposure ?? 19500} USD and ${settledCase.actuals?.divertedDays ?? 8} diverted day(s) — worse than the most-likely estimate, inside the pessimistic one.`,
+      cause: 'Idempotency was treated as transport metadata rather than a persisted business invariant, so a retry was structurally indistinguishable from a new invoice. No pre-send duplicate check existed, which is why detection happened after the customer had the document.',
+      sustain: 'The Friday reconciliation review caught the drift within one cycle and Finance Ops stopped the batch without waiting for permission. That escalation instinct is the thing to keep.',
+      improve: 'Persist the idempotency key at first attempt and block batch send on any duplicate detection — done and verified across two clean billing cycles.',
+      skipReason: '',
+      heldOn: at(53),
+      participants: [jordan, mei].filter(Boolean),
+      lessons: [
+        {
+          id: 'lesson-demo-1',
+          class: 'quality',
+          text: 'A correctness invariant that only exists in a retry path needs a test that exercises the retry, not the happy path.',
+          changeType: 'delegation',
+          changeNote: 'Add a replay test for every webhook handler that creates a financial record, and block merges without it.',
+          state: 'applied',
+          ownerId: mei,
+          committedOn: at(53),
+          appliedOn: at(20),
+          appliedNote: 'Replay tests exist for all four financial webhook handlers and run in CI; two real double-send defects were caught in staging by them.',
+          droppedOn: null,
+          droppedReason: '',
+          createdAt: ts(53),
+        },
+        {
+          id: 'lesson-demo-2',
+          class: 'process',
+          text: 'A month-end close checklist is a detection control, not a prevention control, and the review treated it as prevention.',
+          changeType: 'process',
+          changeNote: 'Pre-send duplicate monitor owned by Finance Ops, alarmed before customer delivery rather than reconciled afterwards.',
+          state: 'applied',
+          ownerId: jordan,
+          committedOn: at(53),
+          appliedOn: at(40),
+          appliedNote: 'Monitor live since the last close; it has fired twice on staging replays and never in production.',
+          droppedOn: null,
+          droppedReason: '',
+          createdAt: ts(53),
+        },
+        {
+          id: 'lesson-demo-3',
+          class: 'dependency',
+          text: 'Nobody owned the list of third-party dependencies whose retry semantics we rely on, so nobody could answer what a gateway timeout meant.',
+          changeType: 'delegation',
+          changeNote: 'Name an owner per external dependency, record its retry semantics, and review the list quarterly.',
+          state: 'open',
+          ownerId: priya,
+          committedOn: at(53),
+          appliedOn: null,
+          appliedNote: '',
+          droppedOn: null,
+          droppedReason: '',
+          createdAt: ts(53),
+        },
+      ],
+      createdAt: ts(58),
+      updatedAt: ts(20),
+      history: [
+        { at: ts(58), type: 'created', summary: 'Drafted from the closing record (resolution date)' },
+        { at: ts(53), type: 'held', summary: 'Review held on ' + at(53) },
+        { at: ts(20), type: 'annotated', summary: 'Replay tests verified in CI' },
+      ],
+    });
+  }
+
+  if (anchoredChange) {
+    retros.push({
+      id: 'retro-demo-2',
+      subjectType: 'change',
+      subjectId: anchoredChange.id,
+      subjectLabel: anchoredChange.title,
+      outcomeOn: anchoredChange.anchoredOn || at(11),
+      status: 'held',
+      autoDrafted: true,
+      intended: 'A single written 5-line P1 handoff packet with an explicit incident-commander transfer in under fifteen minutes, measured on the XmR chart.',
+      actual: 'Anchored: handoff time shifted from a ~47 minute baseline to ~20 minutes and the packet is in the runbook and onboarding. Ad-hoc paging still happens when the incident starts in a channel nobody is watching.',
+      cause: 'The handoff contract fixed the transfer between pods but assumed the incident was already declared. Discovery inside a customer thread has no declared incident yet, so the contract had nothing to attach to.',
+      sustain: 'Writing the packet in the incident channel rather than in DMs — that is what made the time measurable at all.',
+      improve: 'Extend the contract to cover pre-declaration discovery, or accept the gap knowingly.',
+      skipReason: '',
+      heldOn: at(7),
+      participants: [samuel].filter(Boolean),
+      lessons: [
+        {
+          id: 'lesson-demo-4',
+          class: 'dependency',
+          text: 'A handoff contract between two teams still leaves the discovery-to-declaration gap inside each team unowned.',
+          changeType: 'process',
+          changeNote: 'Add a first-responder rule: whoever finds a customer-impacting issue declares the incident, before diagnosing it.',
+          state: 'applied',
+          ownerId: samuel,
+          committedOn: at(7),
+          appliedOn: at(2),
+          appliedNote: 'Rule is in the support runbook and the triage template; it has been used three times this week.',
+          droppedOn: null,
+          droppedReason: '',
+          createdAt: ts(7),
+        },
+      ],
+      createdAt: ts(11),
+      updatedAt: ts(2),
+      history: [
+        { at: ts(11), type: 'created', summary: 'Drafted from the closing record (anchoring date)' },
+        { at: ts(7), type: 'held', summary: 'Review held on ' + at(7) },
+      ],
+    });
+  }
+
+  if (retros.length) state.retros = retros;
+}
+
+function seedStrategy(state, now) {
+  const today = dayKey(now);
+  const at = (daysAgo) => addDays(today, -daysAgo);
+  const ts = (daysAgo) => new Date(`${at(daysAgo)}T09:00:00.000Z`).toISOString();
+  const goalId = (match) => (state.goals || []).find((g) => g && g.title.includes(match))?.id || null;
+  const caseId = (match) => (state.cases || []).find((c) => c && c.title.includes(match))?.id || null;
+  const planId = (match) => (state.portfolio || []).find((p) => p && p.title.includes(match))?.id || null;
+  const personId = (match) => (state.people || []).find((p) => p && p.name.includes(match))?.id || null;
+
+  const jordan = personId('Jordan');
+  const priya = personId('Priya');
+  const samuel = personId('Samuel');
+
+  state.strategyBets = [
+    {
+      id: 'bet-demo-1',
+      title: 'Win the mid-market with a faster first value',
+      kind: 'where-to-play',
+      advantage: 'differentiation',
+      diagnosis: 'Onboarding takes fourteen days to first value; mid-market trials churn before they ever see the product do something useful.',
+      guidingPolicy: 'Guided onboarding for the 50–200 seat segment, instrumented end to end, until median time to first value is under ten minutes.',
+      weightPct: 60,
+      horizonWeeks: 26,
+      ownerId: jordan,
+      notDoing: [
+        'No self-serve tier this half — activation is the constraint, not acquisition.',
+        'No new enterprise customisations while the funnel is leaking.',
+      ],
+      killCriterion: {
+        metric: 'Median time to first value',
+        threshold: 14,
+        direction: 'above',
+        checkOn: at(6),
+        note: 'If we are still above fourteen days at this date, the guided-onboarding mechanism is not working.',
+      },
+      status: 'active',
+      adoptedOn: at(65),
+      retiredOn: null,
+      retiredReason: '',
+      verdict: null,
+      notes: 'The one bet the whole operating plan is arranged around.',
+      createdOn: at(66),
+      createdAt: ts(66),
+      updatedAt: ts(65),
+      history: [
+        { at: ts(66), type: 'created', summary: 'Bet recorded as a draft' },
+        { at: ts(65), type: 'adopted', summary: 'Adopted with a declared share of 60% of effort' },
+      ],
+    },
+    {
+      id: 'bet-demo-2',
+      title: 'Make reliability a precondition rather than a project',
+      kind: 'capability',
+      advantage: 'focus',
+      diagnosis: 'Two weekend P1s went untouched for over an hour because the rota assumed a support pod that no longer exists.',
+      guidingPolicy: 'Rebuild escalation and the on-call rota first, then hold the line with a response-time stop rule.',
+      weightPct: 25,
+      horizonWeeks: 26,
+      ownerId: priya,
+      notDoing: ['We will not add another on-call rotation without removing one.'],
+      killCriterion: {
+        metric: 'P1 first response under 30 minutes',
+        threshold: 80,
+        direction: 'below',
+        checkOn: at(-40),
+        note: 'Judged at the next quarterly review.',
+      },
+      status: 'active',
+      adoptedOn: at(40),
+      retiredOn: null,
+      retiredReason: '',
+      verdict: null,
+      notes: '',
+      createdOn: at(41),
+      createdAt: ts(41),
+      updatedAt: ts(40),
+      history: [{ at: ts(40), type: 'adopted', summary: 'Adopted with a declared share of 25% of effort' }],
+    },
+    {
+      id: 'bet-demo-3',
+      title: 'Cut cost to serve by a fifth',
+      kind: 'how-to-win',
+      advantage: 'cost',
+      diagnosis: 'Resolving a ticket costs twice the benchmark because the top three classes are handled by hand.',
+      guidingPolicy: '',
+      weightPct: 15,
+      horizonWeeks: 26,
+      ownerId: samuel,
+      notDoing: [],
+      killCriterion: null,
+      status: 'active',
+      adoptedOn: at(30),
+      retiredOn: null,
+      retiredReason: '',
+      verdict: null,
+      notes: 'Adopted before the guiding policy or a stop rule existed — the terminal grades it as unfalsifiable rather than pretending otherwise.',
+      createdOn: at(32),
+      createdAt: ts(32),
+      updatedAt: ts(30),
+      history: [{ at: ts(30), type: 'adopted', summary: 'Adopted with a declared share of 15% of effort' }],
+    },
+  ];
+
+  const tag = (betId, entityType, entityId, effortWeeks, daysAgo) => {
+    if (!entityId) return;
+    state.strategyTags.push({
+      id: `tag-demo-${state.strategyTags.length + 1}`,
+      betId,
+      entityType,
+      entityId,
+      effortWeeks,
+      note: '',
+      createdOn: at(daysAgo),
+      createdAt: ts(daysAgo),
+    });
+  };
+
+  tag('bet-demo-1', 'goal', goalId('Cut activation time'), 4, 60);
+  tag('bet-demo-1', 'portfolio', planId('Activation funnel instrumentation'), 3, 28);
+  tag('bet-demo-2', 'goal', goalId('Rebuild escalation'), 2, 35);
+  tag('bet-demo-2', 'portfolio', planId('On-call tooling v1'), 2, 25);
+  tag('bet-demo-2', 'case', caseId('Weekend P1'), 1, 12);
+}
+
+
+/* ---------------------------------------------- Schema v57: attention plans */
+
+/**
+ * Two committed plans, built by the real solver over the demo's own records.
+ *
+ * The first is committed ten days ago, past its review date, and is then scored
+ * by the real scoring function — so the terminal shows a prediction that has
+ * already been held to the records, including whatever the records actually said.
+ * The second is committed today and stays live. Neither is hand-written: if the
+ * solver changes, the demo changes with it, which is the only way a demo can stay
+ * honest about what the product does.
+ *
+ * The demo's delegation history is deliberately thin — one completed hand-off —
+ * so every success probability in the first plan is a prior and the screen says
+ * so. That is the honest state of a new workspace, and a demo that hid it would
+ * be advertising a measurement the user does not have.
+ */
+function seedAttention(state, now) {
+  const today = dayKey(now);
+  const past = addDays(today, -10);
+  const at = new Date(`${past}T09:00:00.000Z`);
+  const stampFor = (day) => new Date(`${day}T09:00:00.000Z`).toISOString();
+  const plans = [];
+
+  const first = freezePlan(state, at, { budgetHours: 10 });
+  if (first.ok) {
+    plans.push({
+      id: 'attplan-demo-1',
+      label: 'Week 43 — hold the migration and the vendor call',
+      status: 'committed',
+      currency: first.result.currency,
+      budgetHours: first.result.budgetHours,
+      committedOn: first.result.committedOn,
+      provenance: { kind: 'demo' },
+      result: first.result,
+      review: null,
+      markers: ['linksAttached'],
+      notes: [],
+      history: [{
+        at: stampFor(past),
+        type: 'committed',
+        summary: `Committed ${first.result.items.length} obligation(s) for ${first.result.usedHours} h of a ${first.result.budgetHours} h budget; ${first.result.forgone.length} consciously left to carry.`,
+      }],
+      createdAt: stampFor(past),
+      updatedAt: stampFor(past),
+    });
+    // Score it against the records as they stand ten days later. Whatever the
+    // verdict is, it is the real verdict.
+    const scoring = scoreAttentionPlan(plans[0], state, now);
+    if (scoring.ok) {
+      plans[0].review = {
+        reviewedOn: today,
+        currency: scoring.currency,
+        predictedValue: scoring.predictedValue,
+        measuredAvoided: scoring.measuredAvoided,
+        attainmentPct: scoring.attainmentPct,
+        brier: scoring.brier,
+        brierN: scoring.brierN,
+        complete: scoring.complete,
+        counts: scoring.counts,
+        readings: scoring.readings,
+        notes: scoring.notes,
+      };
+      plans[0].status = 'reviewed';
+      plans[0].history.push({
+        at: stampFor(today),
+        type: 'reviewed',
+        summary: `Measured ${Math.round(scoring.measuredAvoided)} against a frozen prediction of ${Math.round(scoring.predictedValue)}; ${scoring.counts.open} item(s) still open.`,
+      });
+    }
+  }
+
+  const second = freezePlan(state, now, { budgetHours: 8 });
+  if (second.ok) {
+    plans.push({
+      id: 'attplan-demo-2',
+      label: 'This week — eight hours, one plan',
+      status: 'committed',
+      currency: second.result.currency,
+      budgetHours: second.result.budgetHours,
+      committedOn: second.result.committedOn,
+      provenance: { kind: 'demo' },
+      result: second.result,
+      review: null,
+      markers: ['linksAttached'],
+      notes: [],
+      history: [{
+        at: stampFor(today),
+        type: 'committed',
+        summary: `Committed ${second.result.items.length} obligation(s) against an 8 h budget. Review due ${second.result.reviewOn}.`,
+      }],
+      createdAt: stampFor(today),
+      updatedAt: stampFor(today),
+    });
+  }
+
+  state.attentionPlans = plans;
+  return plans;
+}
+
+
+/**
+ * Schema v58 — Autopilot Studio over the demo's own records.
+ *
+ * Both agreements are built by the real validator (`normalizePolicyPayload`),
+ * so the demo can never contain a definition the app itself would refuse.
+ * They stay drafts: activation requires a rehearsal approval no seed may give.
+ */
+function seedAutopilot(state, now) {
+  const today = dayKey(now);
+  const stampFor = (day) => new Date(`${day}T09:00:00.000Z`).toISOString();
+  const declared = addDays(today, -2);
+  const build = (id, input) => {
+    const result = normalizePolicyPayload(input, state, null);
+    if (!result.ok) throw new Error(`Demo autopilot seed is invalid: ${result.error}`);
+    return {
+      ...result.value,
+      id,
+      createdAt: stampFor(declared),
+      updatedAt: stampFor(declared),
+      history: [{ at: stampFor(declared), type: 'declared', summary: 'Declared as a draft. Rehearsal is required before activation.' }],
+    };
+  };
+  state.autopilotPolicies = [
+    build('ap-demo-1', {
+      name: 'Material case exposure \u2192 coordinated response',
+      purpose: 'Any delivery risk carrying a four-figure expected cost gets one accountable response instead of five ad-hoc threads.',
+      sourceType: 'case',
+      trigger: 'case.updated',
+      conditions: [
+        { field: 'kind', op: 'eq', value: 'risk' },
+        { field: 'exposure', op: 'gte', value: 10000 },
+      ],
+      actions: [defaultAction('decision'), defaultAction('delegation')],
+      maxRuns: 25,
+    }),
+    build('ap-demo-2', agreementTemplate('delay')),
+  ];
+  state.autopilotRuns = [];
+}
+
+/**
+ * Schema v59 — the Signal Path over the demo's own roster.
+ *
+ * The classes are read through `readClass` and frozen by the real
+ * `freezeSignalPrediction`, so a demo channel can never contain a reach figure
+ * the live screen would contradict. The probe ledger is deliberately hostile to
+ * the declaration: the committed channel claims what the conventions imply and
+ * the probes say it is worse, because a demo where the model is right teaches
+ * nothing.
+ */
+function seedSignalPath(state, now) {
+  const today = dayKey(now);
+  const conventions = signalConventions(state.settings);
+  const index = buildReportingIndex(state.people || []);
+  const find = (fragment) => (state.people || []).find((p) => String(p.name || '').includes(fragment)) || null;
+  const freya = find('Freya');
+  const mei = find('Mei');
+  const samuel = find('Samuel');
+  if (!freya || !mei || !samuel) return;
+
+  const stampFor = (day) => new Date(`${day}T09:00:00.000Z`).toISOString();
+  const build = (id, input) => {
+    const record = {
+      id,
+      status: 'committed',
+      currency: 'USD',
+      horizonDays: 90,
+      overrides: {},
+      direct: { enabled: false },
+      note: '',
+      markers: [],
+      notes: [],
+      history: [],
+      createdAt: stampFor(addDays(today, -21)),
+      updatedAt: stampFor(addDays(today, -7)),
+      ...input,
+    };
+    const reading = readClass(record, state, index, conventions, now);
+    if (reading.blockedReason) return null;
+    record.committedOn = addDays(today, -21);
+    record.frozen = freezeSignalPrediction(record, reading.reading, reading.chain);
+    record.history = [
+      { at: stampFor(addDays(today, -30)), type: 'declared', summary: 'Declared as a draft.' },
+      {
+        at: stampFor(addDays(today, -21)),
+        type: 'committed',
+        summary: `Committed: reach ${Math.round(reading.reading.reach * 100)}% over ${reading.reading.hopCount} hop(s), `
+          + `${reading.reading.carriedBits.toFixed(2)} of ${reading.reading.sourceBits.toFixed(2)} bits carried.`,
+      },
+    ];
+    return record;
+  };
+
+  const support = build('sig-demo-1', {
+    label: 'A customer-impacting slip on the support rota',
+    exposure: 48000,
+    probabilityPct: 45,
+    pathPersonId: freya.id,
+    ownerId: samuel.id,
+    reviewOn: addDays(today, 42),
+    note: 'The rota is Samuel\u2019s to run and Freya is the one who sees the queue first. If it slips, the customers who notice are not on this team.',
+  });
+  const attrition = build('sig-demo-2', {
+    label: 'A key engineer leaving without a hand-over',
+    exposure: 120000,
+    probabilityPct: 25,
+    pathPersonId: mei.id,
+    reviewOn: addDays(today, 60),
+    note: 'The billing migration knowledge is in one head. A hand-over takes two sprints and nobody has booked them.',
+  });
+  state.signalClasses = [support, attrition].filter(Boolean);
+  if (!state.signalClasses.length) return;
+
+  const declared = support?.frozen?.reach ?? 0;
+  const probe = (id, classId, offset, truth, learnedVia, latency) => {
+    const exists = addDays(today, -offset);
+    const learned = learnedVia === 'never' ? null : addDays(exists, latency ?? 3);
+    return {
+      id,
+      classId,
+      label: '',
+      truth,
+      existsSinceOn: exists,
+      learnedOn: learned,
+      learnedVia,
+      delivered: learnedVia === 'escalation',
+      latencyDays: learnedVia === 'escalation' ? latency ?? 3 : null,
+      status: 'settled',
+      prediction: { reach: declared, latencyDays: support?.frozen?.latencyDays ?? null, frozenOn: addDays(today, -21) },
+      settledOn: learned || addDays(today, -1),
+      note: '',
+      markers: [],
+      history: [{ at: stampFor(addDays(today, -1)), type: 'settled', summary: 'Recorded how the leader actually came to know.' }],
+      createdAt: stampFor(exists),
+      updatedAt: stampFor(addDays(today, -1)),
+    };
+  };
+  const supportProbes = support ? [
+    probe('sigprobe-demo-1', support.id, 60, 'event', 'escalation', 4),
+    probe('sigprobe-demo-2', support.id, 52, 'event', 'accident', null),
+    probe('sigprobe-demo-3', support.id, 45, 'event', 'escalation', 9),
+    probe('sigprobe-demo-4', support.id, 38, 'event', 'never', null),
+    probe('sigprobe-demo-5', support.id, 31, 'event', 'skip-level', null),
+    probe('sigprobe-demo-6', support.id, 24, 'event', 'accident', null),
+    probe('sigprobe-demo-7', support.id, 18, 'event', 'escalation', 2),
+    probe('sigprobe-demo-8', support.id, 45, 'none', 'never', null),
+    probe('sigprobe-demo-9', support.id, 33, 'none', 'accident', null),
+    probe('sigprobe-demo-10', support.id, 21, 'none', 'never', null),
+    probe('sigprobe-demo-11', support.id, 12, 'none', 'never', null),
+  ] : [];
+  // One probe left open so the settle dialog is reachable from the demo.
+  const openProbe = support ? {
+    id: 'sigprobe-demo-12',
+    classId: support.id,
+    label: 'The on-call runbook had no rollback step and nobody flagged it',
+    truth: 'event',
+    existsSinceOn: addDays(today, -5),
+    learnedOn: null,
+    learnedVia: null,
+    delivered: null,
+    latencyDays: null,
+    status: 'open',
+    prediction: { reach: declared, latencyDays: support?.frozen?.latencyDays ?? null, frozenOn: today },
+    settledOn: null,
+    note: '',
+    markers: [],
+    history: [{ at: stampFor(addDays(today, -5)), type: 'opened', summary: 'Opened with the declared reach frozen beside it.' }],
+    createdAt: stampFor(addDays(today, -5)),
+    updatedAt: stampFor(addDays(today, -5)),
+  } : null;
+
+  for (const row of supportProbes) {
+    const source = [
+      'A rota gap that nobody escalated',
+      'A backlog spike visible only in the queue',
+      'Two customers pulled out mid-week',
+      'An SLA breach found in the monthly report',
+      "A shift lead\u2019s warning nobody passed on",
+      'A renewal at risk raised after the fact',
+    ];
+    row.label = source[(Number(String(row.id).replace(/\D/g, '')) - 1) % source.length] || 'Rota risk';
+  }
+  state.signalProbes = [...(openProbe ? [openProbe] : []), ...supportProbes];
+
+  if (support && support.frozen) {
+    state.signalLevers = [{
+      id: 'siglever-demo-1',
+      classId: support.id,
+      leverId: 'skip-level',
+      label: 'A direct skip-level channel from the origin',
+      hours: Math.round(conventions.skipLevelHoursPerWeek * Math.max(1, (support.horizonDays || 90) / 7) * 100) / 100,
+      status: 'active',
+      reachBefore: support.frozen.reach,
+      reachAfter: Math.min(1, 1 - (1 - support.frozen.reach) * (1 - conventions.skipLevelDetect)),
+      latencyBefore: support.frozen.latencyDays,
+      latencyAfter: Math.min(support.frozen.latencyDays, conventions.skipLevelLagDays),
+      value: null,
+      cost: null,
+      ownerId: samuel.id,
+      adoptedOn: addDays(today, -14),
+      reviewOn: addDays(today, 42),
+      outcome: null,
+      markers: [],
+      history: [{ at: stampFor(addDays(today, -14)), type: 'adopted', summary: 'Adopted after the probe ledger contradicted the declaration.' }],
+      createdAt: stampFor(addDays(today, -14)),
+      updatedAt: stampFor(addDays(today, -14)),
+    }];
+  }
+}
+
+
+export function buildDemoState(now = new Date()) {
+  const today = dayKey(now);
+  const at = (daysAgo) => addDays(today, -daysAgo);
+  const ts = (daysAgo) => new Date(`${at(daysAgo)}T09:00:00.000Z`).toISOString();
+  let seq = 0;
+  const id = (prefix) => `${prefix}-demo-${++seq}`;
+
+  const state = createEmptyState(new Date(ts(120)).toISOString());
+  state.meta.isDemo = true;
+
+  const people = [
+    { name: 'Priya Natarajan', role: 'Engineering Lead', level: 'lead', startDate: at(700), focus: 'Platform reliability while the team doubles.', talkingPoints: ['On-call load is not sustainable', 'Wants a clearer promotion path for senior engineers'] },
+    { name: 'Jordan Alvarez', role: 'Product Manager', level: 'senior', startDate: at(420), focus: 'Own the activation metric end to end.', talkingPoints: ['Wants a decision on the activation definition', 'Asking for a larger design budget this quarter'] },
+    { name: 'Mei Lin Chen', role: 'Staff Engineer', level: 'senior', startDate: at(260), focus: 'Technical direction for the billing migration.' },
+    { name: 'Samuel Okafor', role: 'Support Team Lead', level: 'manager', startDate: at(38), focus: 'Rebuild the escalation process and the on-call rota.' },
+    { name: 'Freya Nilsson', role: 'Data Analyst', level: 'ic', startDate: at(150), focus: 'Make the weekly numbers trustworthy again.' },
+  ];
+  state.people = people.map((p, i) => ({
+    id: `person-demo-${i + 1}`,
+    name: p.name,
+    role: p.role,
+    level: p.level,
+    team: 'Platform',
+    managerId: null,
+    startDate: p.startDate,
+    focus: p.focus,
+    talkingPoints: p.talkingPoints || [],
+    status: 'active',
+    createdAt: new Date(ts(120 - i)).toISOString(),
+    archivedAt: null,
+  }));
+  const [priya, jordan, mei, samuel, freya] = state.people.map((p) => p.id);
+  // A demo roster with no reporting lines leaves the structural-design terminal
+  // unable to say anything at all, and every other screen silently assumes a
+  // hierarchy exists. One real line each, under the lead, keeps the demo honest:
+  // a four-person span inside the declared band of three to eight, one layer
+  // below the lead, and six coordination channels a week priced from the FY25
+  // cycle the merit terminal already holds.
+  for (const personId of [jordan, mei, samuel, freya]) {
+    state.people.find((person) => person.id === personId).managerId = priya;
+  }
+
+  // 1:1s — weekly rhythm for most, slipping for Priya, brand new for Samuel.
+  const oneOnOne = (personId, daysAgo, status, mood, notes, actions = []) => {
+    state.oneOnOnes.push({
+      id: id('oo'),
+      personId,
+      date: at(daysAgo),
+      status,
+      mood,
+      agenda: [
+        { id: id('ag'), text: 'Wins since last time', done: true, source: 'suggestion' },
+        { id: id('ag'), text: 'Blockers and decisions needed', done: true, source: 'suggestion' },
+      ],
+      notes,
+      actions: actions.map((a) => ({ id: id('ac'), text: a.text, due: a.due, done: a.done, personId, owner: a.owner || null })),
+      createdAt: new Date(ts(daysAgo)).toISOString(),
+    });
+  };
+
+  for (const [offset, status, mood] of [[7, 'held', 4], [14, 'held', 4], [21, 'held', 3], [28, 'held', 4], [35, 'held', 3], [42, 'held', 4], [49, 'held', 3]]) {
+    oneOnOne(jordan, offset, status, mood, 'Worked through the activation funnel and the two competing bets.');
+  }
+  for (const [offset, status, mood] of [[6, 'held', 3], [13, 'held', 3], [20, 'held', 4], [27, 'held', 2], [34, 'held', 3], [41, 'held', 4], [48, 'held', 3]]) {
+    oneOnOne(mei, offset, status, mood, 'Billing migration scope; Mei wants more decision authority on schema changes.');
+  }
+  // Priya: skipped twice, then a rushed one — a real cadence problem.
+  oneOnOne(priya, 8, 'skipped', null, 'Moved twice for a customer escalation.');
+  oneOnOne(priya, 15, 'skipped', null, 'Skipped — incident review ran over.');
+  oneOnOne(priya, 29, 'held', 3, 'Short check-in; reliability load is the main topic.');
+  oneOnOne(freya, 5, 'held', 4, 'Data trust work; she asked for pairing on the warehouse model.');
+  oneOnOne(freya, 12, 'held', 3, 'Reviewed the weekly metrics definition.');
+  oneOnOne(freya, 26, 'held', 3, 'First month check-in.');
+  oneOnOne(freya, 33, 'held', 4, 'Warehouse model pairing session.');
+  oneOnOne(freya, 40, 'held', 3, 'Set the metric ownership map.');
+  // Samuel joined recently and has had exactly one 1:1.
+  oneOnOne(samuel, 9, 'held', 4, 'Onboarding plan review; escalation process walkthrough.', [
+    { text: 'Draft the new escalation rota', due: at(-3), done: false, owner: 'them' },
+  ]);
+
+  // Follow-through history: real chains, so the demo shows a promise that was
+  // carried once and then closed, one that has already moved once and is still
+  // stuck, and a normal completion confirmed face to face.
+  const meetingOn = (personId, daysAgo) => state.oneOnOnes.find((m) => m.personId === personId && m.date === at(daysAgo));
+  const addAction = (meeting, id, text, due, owner = null) => {
+    const action = { id, text, due, done: false, completedOn: null, personId: meeting.personId, owner };
+    meeting.actions.push(action);
+    return action;
+  };
+
+  const jordan21 = meetingOn(jordan, 21);
+  const jordan14 = meetingOn(jordan, 14);
+  const jordan7 = meetingOn(jordan, 7);
+  const jordanFirst = addAction(jordan21, 'ac-demo-jordan-metric', 'Agree who owns the activation metric', at(14), 'shared');
+  const jordanCarried = addAction(jordan14, 'ac-demo-jordan-metric-2', 'Agree who owns the activation metric', at(7), 'shared');
+  jordanCarried.carriedFrom = { meetingId: jordan21.id, actionId: jordanFirst.id };
+  jordanFirst.carriedToMeetingId = jordan14.id;
+  jordanFirst.carriedToActionId = jordanCarried.id;
+  jordanCarried.done = true;
+  jordanCarried.completedOn = at(7);
+  jordanCarried.completedInMeetingId = jordan7.id;
+
+  const mei34 = meetingOn(mei, 34);
+  const mei27 = meetingOn(mei, 27);
+  // The leader promised to chase legal. It is overdue and carried once, which
+  // is exactly the debt the "What you owe" card and CONV-07 exist to surface.
+  const meiFirst = addAction(mei34, 'ac-demo-mei-legal', 'Get legal sign-off on the billing data-retention clause', at(27), 'leader');
+  const meiCarried = addAction(mei27, 'ac-demo-mei-legal-2', 'Get legal sign-off on the billing data-retention clause', at(6), 'leader');
+  meiCarried.carriedFrom = { meetingId: mei34.id, actionId: meiFirst.id };
+  meiFirst.carriedToMeetingId = mei27.id;
+  meiFirst.carriedToActionId = meiCarried.id;
+
+  const freya12 = meetingOn(freya, 12);
+  const freya5 = meetingOn(freya, 5);
+  const freyaMap = addAction(freya12, 'ac-demo-freya-map', 'Publish the metric ownership map', at(6), 'them');
+  freyaMap.done = true;
+  freyaMap.completedOn = at(5);
+  freyaMap.completedInMeetingId = freya5.id;
+
+  state.feedback = [
+    {
+      id: id('fb'), personId: jordan, direction: 'given', kind: 'praise',
+      situation: 'In Tuesday’s prioritisation review',
+      behavior: 'you rewrote the activation proposal the afternoon after the customer call and brought three options instead of one',
+      impact: 'the team made the call in twenty minutes instead of deferring it a week',
+      tags: ['ownership'], observedOn: at(5), date: at(4), followUpOn: null, followUpDone: false, createdAt: new Date(ts(4)).toISOString(),
+    },
+    {
+      id: id('fb'), personId: mei, direction: 'given', kind: 'constructive',
+      situation: 'During the schema review on Thursday',
+      behavior: 'the design doc landed two hours before the meeting with no summary at the top',
+      impact: 'four people read it cold and we spent half the session re-establishing context',
+      tags: ['communication'], observedOn: at(17), date: at(7), followUpOn: at(-7), followUpDone: false, createdAt: new Date(ts(7)).toISOString(),
+    },
+    {
+      id: id('fb'), personId: mei, direction: 'given', kind: 'praise',
+      situation: 'At the billing postmortem',
+      behavior: 'you named your own contribution to the outage before anyone else spoke',
+      impact: 'it set the tone and the review produced three real fixes rather than defensiveness',
+      tags: ['candor', 'leadership'], observedOn: at(19), date: at(18), followUpOn: null, followUpDone: false, createdAt: new Date(ts(18)).toISOString(),
+    },
+    {
+      id: id('fb'), personId: freya, direction: 'given', kind: 'praise',
+      situation: 'In the metrics working session',
+      behavior: 'you wrote down each definition in plain language and got agreement before building anything',
+      impact: 'the weekly report stopped being a recurring argument',
+      tags: ['rigour'], observedOn: at(11), date: at(11), followUpOn: null, followUpDone: false, createdAt: new Date(ts(11)).toISOString(),
+    },
+    {
+      id: id('fb'), personId: jordan, direction: 'received', kind: 'constructive',
+      situation: 'In our last 1:1',
+      behavior: 'you committed to deciding on the onboarding bet by Friday and it is now two weeks later',
+      impact: 'the team is doing discovery work that may be thrown away',
+      tags: ['decision-making'], observedOn: at(15), date: at(14), followUpOn: at(0), followUpDone: false, createdAt: new Date(ts(14)).toISOString(),
+    },
+  ];
+
+  const goal = (title, ownerId, scope, dueIn, krs, confidence, lastCheckinDaysAgo, note, coAuthored = null) => {
+    const keyResults = krs.map(([t, start, target, current, unit]) => ({
+      id: id('kr'), title: t, start, target, current, initialCurrent: start, unit,
+    }));
+    const g = {
+      id: id('goal'), title, description: '', ownerId, scope, coAuthored: ownerId ? coAuthored : null, dueDate: at(-Math.abs(dueIn)),
+      keyResults,
+      confidence, initialConfidence: 'on-track', status: 'active', completedOn: null, krUpdatedOn: null,
+      checkins: lastCheckinDaysAgo === null ? [] : [{
+        id: id('chk'),
+        date: at(lastCheckinDaysAgo),
+        note,
+        confidence,
+        progressPct: goalProgress({ keyResults }),
+        keyResults: keyResults.map((kr) => ({ id: kr.id, current: kr.current })),
+      }],
+      createdAt: new Date(ts(60)).toISOString(),
+    };
+    state.goals.push(g);
+    return g.id;
+  };
+
+  goal('Cut activation time to first value below 10 minutes', jordan, 'person', -40, [
+    ['Median time to first value', 26, 10, 21, 'min'],
+    ['Onboarding completion', 48, 75, 55, '%'],
+  ], 'at-risk', 19, 'Progress is real but the funnel drop is upstream of the work in flight.', true);
+  goal('Migrate billing to the new ledger without a customer-visible incident', mei, 'person', -75, [
+    ['Accounts migrated', 0, 100, 62, '%'],
+    ['Reconciliation mismatches', 40, 0, 6, 'count'],
+  ], 'on-track', 5, 'On pace; reconciliation is the remaining risk.', true);
+  goal('Rebuild escalation so no P1 sits untouched for more than 30 minutes', samuel, 'person', -60, [
+    ['P1 first response under 30m', 55, 95, 60, '%'],
+  ], 'at-risk', 21, 'Rota drafted, not yet agreed with support.', false);
+  goal('Make the weekly numbers trusted by every team', freya, 'person', -30, [
+    ['Metric definitions signed off', 0, 100, 80, '%'],
+    ['Report disputes per week', 6, 0, 2, 'count'],
+  ], 'on-track', 3, 'Definitions landed; two disputes left.', true);
+  goal('Ship the reliability programme', priya, 'person', -90, [
+    ['Error budget burn', 3.1, 1, 2.2, 'x'],
+  ], 'on-track', 24, 'No check-in for three weeks — calendar has been back-to-back.', false);
+
+  state.delegations = [
+    {
+      id: id('delegation'), personId: mei,
+      title: 'Own the billing migration reconciliation review',
+      expectedOutcome: 'A weekly reconciliation review with mismatches explained, owners assigned, and a summary the leader can read in five minutes.',
+      authority: 'act-inform',
+      support: 'Admin access to the reconciliation dashboard; Priya joins the first review; escalate customer-impacting discrepancies immediately.',
+      delegatedOn: at(20), dueOn: at(-3), status: 'active',
+      checkins: [{ id: id('dchk'), date: at(8), progress: 'on-track', note: 'The review format works. Mei will add mismatch ageing next week.', createdAt: new Date(ts(8)).toISOString() }],
+      completedOn: null, completionNote: '', returnedOn: null, returnReason: '',
+      createdAt: new Date(ts(20)).toISOString(), updatedAt: new Date(ts(8)).toISOString(),
+    },
+    {
+      id: id('delegation'), personId: samuel,
+      title: 'Own the new P1 escalation rota',
+      expectedOutcome: 'Every P1 has a named first responder and backup, with all three support pods agreeing to the rota before launch.',
+      authority: 'agree',
+      support: 'Pod leads have reserved Thursday for agreement; the leader will resolve any unresolved staffing constraint within one working day.',
+      delegatedOn: at(25), dueOn: at(2), status: 'active',
+      checkins: [{ id: id('dchk'), date: at(10), progress: 'blocked', note: 'Two pods cannot cover the same weekend. Need a staffing decision before the rota can be agreed.', createdAt: new Date(ts(10)).toISOString() }],
+      completedOn: null, completionNote: '', returnedOn: null, returnReason: '',
+      createdAt: new Date(ts(25)).toISOString(), updatedAt: new Date(ts(10)).toISOString(),
+    },
+    {
+      id: id('delegation'), personId: freya,
+      title: 'Publish the trusted metric-definition library',
+      expectedOutcome: 'The weekly metrics have one searchable definition, owner and source of truth, and the team stops maintaining competing copies.',
+      authority: 'own',
+      support: 'Freya controls the documentation space; Jordan supplies product definitions; the leader handles escalated ownership disputes.',
+      delegatedOn: at(45), dueOn: at(20), status: 'done',
+      checkins: [{ id: id('dchk'), date: at(25), progress: 'on-track', note: 'All definitions drafted; two ownership questions remain.', createdAt: new Date(ts(25)).toISOString() }],
+      completedOn: at(18), completionNote: 'Published 24 signed-off definitions and archived the duplicate team sheets. Remaining follow-up: monthly ownership review.', returnedOn: null, returnReason: '',
+      createdAt: new Date(ts(45)).toISOString(), updatedAt: new Date(ts(18)).toISOString(),
+    },
+    {
+      id: id('delegation'), personId: priya,
+      title: 'Draft the reliability programme budget',
+      expectedOutcome: 'A costed reliability proposal with three sequencing options and an explicit recommendation.',
+      authority: 'recommend',
+      support: 'Finance provided the current run-rate model and a 30-minute review slot.',
+      delegatedOn: at(30), dueOn: at(10), status: 'returned',
+      checkins: [{ id: id('dchk'), date: at(20), progress: 'on-track', note: 'Initial option costs collected.', createdAt: new Date(ts(20)).toISOString() }],
+      completedOn: null, completionNote: '', returnedOn: at(5), returnReason: 'Finance changed the planning window, so the leader took the budget back to re-scope it centrally. Priya retains the technical sequencing input.',
+      createdAt: new Date(ts(30)).toISOString(), updatedAt: new Date(ts(5)).toISOString(),
+    },
+  ];
+
+  // Mei's plan is the whole ledger in one place: a commitment carried twice and
+  // still open, one carried once and now late, one closed in a review, one
+  // dropped with a reason, and a review date that has been moved twice since it
+  // was held. Every one of those states is reachable from the UI.
+  const memoOriginal = id('ac');
+  const memoCurrent = id('ac');
+  const reviewOriginal = id('ac');
+  const reviewMoved = id('ac');
+  const reviewCurrent = id('ac');
+  const templateDone = id('ac');
+  const onCallDropped = id('ac');
+  const meiReview = id('gr');
+
+  state.growthPlans = [
+    {
+      id: id('gp'), personId: mei,
+      goal: 'Move from staff engineer to principal: own cross-team technical direction, not just the hardest code.',
+      reality: 'Strongest debugger on the team and trusted by peers; the gap is written communication and bringing others along. Two recent design docs landed without a summary.',
+      options: [
+        { id: id('opt'), text: 'Write a one-page decision memo for every significant design choice for a quarter.' },
+        { id: id('opt'), text: 'Shadow Priya in the architecture review for two cycles.' },
+      ],
+      will: [
+        {
+          id: memoOriginal, text: 'Publish a decision memo format and use it on the billing migration',
+          due: at(30), addedOn: at(40), done: false, personId: mei, delegationId: state.delegations[0].id, carriedToId: memoCurrent,
+        },
+        {
+          id: memoCurrent, text: 'Publish a decision memo format and use it on the billing migration',
+          due: at(10), addedOn: at(40), done: false, personId: mei, delegationId: state.delegations[0].id, carriedFromId: memoOriginal,
+        },
+        {
+          id: reviewOriginal, text: 'Co-run one architecture review with Priya',
+          due: at(16), addedOn: at(40), done: false, personId: mei, carriedToId: reviewMoved,
+        },
+        {
+          id: reviewMoved, text: 'Co-run one architecture review with Priya',
+          due: at(6), addedOn: at(40), done: false, personId: mei,
+          carriedFromId: reviewOriginal, carriedToId: reviewCurrent,
+        },
+        {
+          id: reviewCurrent, text: 'Co-run one architecture review with Priya',
+          due: at(-14), addedOn: at(40), done: false, personId: mei, carriedFromId: reviewMoved,
+        },
+        {
+          id: templateDone, text: 'Send Priya the memo template for review',
+          due: at(20), addedOn: at(40), done: true, completedOn: at(18),
+          completedInReviewId: meiReview, personId: mei,
+        },
+        {
+          id: onCallDropped, text: 'Shadow Priya through one on-call rotation',
+          due: at(18), addedOn: at(40), done: false, dropped: true, droppedOn: at(18),
+          droppedInReviewId: meiReview,
+          droppedReason: 'The rotation moved to the platform team, so the shadowing would no longer show what it was meant to.',
+          personId: mei,
+        },
+      ],
+      competencies: ['Written communication', 'Influence without authority'],
+      reviews: [
+        {
+          id: meiReview,
+          date: at(18),
+          notes: 'Walked through the memo format — it is in use on two design docs now. Dropped the on-call shadowing because the rotation moved. Next review set for the week after the billing cutover.',
+          nextReviewOn: at(12),
+          createdAt: new Date(ts(18)).toISOString(),
+        },
+      ],
+      // Agreed 12 days ago, pushed twice without a review being held.
+      reviewOn: at(6),
+      reviewDeferrals: 2,
+      reviewMovedOn: at(4),
+      status: 'active',
+      createdAt: new Date(ts(40)).toISOString(),
+    },
+    {
+      id: id('gp'), personId: samuel,
+      goal: 'Land the first 90 days: own the escalation process and be trusted by the support team.',
+      reality: 'Joined six weeks ago. Strong operations background, no context on the product or the people yet.',
+      options: [{ id: id('opt'), text: 'Weekly listening sessions with each support pod for the first month.' }],
+      will: [{
+        id: id('ac'), text: 'Complete a listening session with all three pods',
+        due: at(2), addedOn: at(30), done: false, personId: samuel,
+      }],
+      competencies: ['Team leadership', 'Process design'],
+      reviews: [],
+      reviewOn: at(9),
+      reviewDeferrals: 0,
+      reviewMovedOn: null,
+      status: 'active',
+      createdAt: new Date(ts(35)).toISOString(),
+    },
+  ];
+
+  // Pulse: five weeks of responses, anonymous, safety trending down as load rises.
+  const pulseWeek = (weeksAgo, entries) => {
+    entries.forEach(([scores, personId]) => {
+      state.pulses.push({
+        id: id('pulse'),
+        date: at(weeksAgo * 7 + 1),
+        personId: personId || null,
+        anonymity: personId ? 'named' : 'anonymous',
+        scores,
+        comment: '',
+        createdAt: new Date(ts(weeksAgo * 7 + 1)).toISOString(),
+      });
+    });
+  };
+  pulseWeek(7, [[{ safety: 4, clarity: 5, workload: 4, growth: 4 }], [{ safety: 4, clarity: 4, workload: 4, growth: 4 }], [{ safety: 5, clarity: 4, workload: 4, growth: 4 }]]);
+  pulseWeek(6, [[{ safety: 5, clarity: 4, workload: 4, growth: 4 }], [{ safety: 4, clarity: 5, workload: 3, growth: 4 }], [{ safety: 4, clarity: 4, workload: 4, growth: 3 }]]);
+  pulseWeek(5, [[{ safety: 4, clarity: 4, workload: 4, growth: 4 }], [{ safety: 5, clarity: 4, workload: 3, growth: 4 }], [{ safety: 4, clarity: 4, workload: 4, growth: 3 }]]);
+  pulseWeek(4, [[{ safety: 4, clarity: 4, workload: 4, growth: 4 }], [{ safety: 5, clarity: 3, workload: 3, growth: 4 }], [{ safety: 4, clarity: 4, workload: 3, growth: 3 }], [{ safety: 3, clarity: 4, workload: 2, growth: 3 }]]);
+  pulseWeek(3, [[{ safety: 4, clarity: 4, workload: 3, growth: 4 }], [{ safety: 4, clarity: 4, workload: 3, growth: 3 }], [{ safety: 4, clarity: 3, workload: 2, growth: 3 }]]);
+  pulseWeek(2, [[{ safety: 3, clarity: 3, workload: 2, growth: 3 }], [{ safety: 3, clarity: 4, workload: 2, growth: 3 }], [{ safety: 2, clarity: 3, workload: 2, growth: 2 }], [{ safety: 4, clarity: 4, workload: 3, growth: 4 }]]);
+  // Five responses in the most recent week, one short of the team, so the
+  // demo shows a *released* aggregate sitting just above the anonymity floor
+  // rather than a permanently suppressed one.
+  pulseWeek(0, [
+    [{ safety: 3, clarity: 3, workload: 2, growth: 3 }],
+    [{ safety: 2, clarity: 3, workload: 1, growth: 2 }],
+    [{ safety: 3, clarity: 2, workload: 2, growth: 3 }],
+    [{ safety: 3, clarity: 3, workload: 2, growth: 2 }],
+    [{ safety: 3, clarity: 3, workload: 3, growth: 3 }],
+  ]);
+
+  state.decisions = [
+    {
+      id: id('dec'),
+      title: 'Restructure support into pods',
+      question: 'Should support move from a single queue to three product-aligned pods this quarter?',
+      date: at(19),
+      reversibility: 'reversible',
+      driver: 'Priya Natarajan',
+      approver: 'Head of Platform',
+      contributors: 'Samuel Okafor, Jordan Alvarez',
+      informed: 'Support team, Sales',
+      options: [
+        { id: id('dopt'), label: 'Three product pods', pros: 'Clearer ownership, faster escalation', cons: 'Uneven load while volume is spiky' },
+        { id: id('dopt'), label: 'Keep one queue, add a triage rota', pros: 'No disruption', cons: 'Root cause ownership stays unclear' },
+      ],
+      chosen: '',
+      rationale: '',
+      reviewOn: at(0),
+      reviewedOn: null,
+      outcome: 'pending',
+      outcomeNotes: '',
+      createdAt: new Date(ts(19)).toISOString(),
+    },
+    {
+      id: id('dec'),
+      title: 'Freeze new hiring for the quarter',
+      question: 'Should we pause two open engineering roles to protect runway?',
+      date: at(46),
+      reversibility: 'irreversible',
+      driver: 'Head of Platform',
+      approver: 'CFO',
+      contributors: 'Priya Natarajan',
+      informed: 'All of Platform',
+      options: [
+        { id: id('dopt'), label: 'Freeze both roles', pros: 'Protects 3 months of runway', cons: 'Reliability work slows' },
+        { id: id('dopt'), label: 'Freeze one role', pros: 'Partial protection', cons: 'Delays the migration' },
+      ],
+      chosen: 'Freeze both roles',
+      rationale: 'Runway moved below the board threshold; reliability work can absorb one quarter of reduced capacity.',
+      // Forecast recorded when the call was made; the mixed review scores it
+      // (Brier contribution 0.04) so the calibration card has one real pair.
+      forecastProbability: 70,
+      // Schema v28: the day the call was actually made, so realised latency is
+      // measured rather than inferred (46 → 36 days = 10-day latency).
+      decidedOn: at(36),
+      reviewOn: at(16),
+      reviewedOn: at(15),
+      outcome: 'mixed',
+      outcomeNotes: 'Runway recovered, but on-call load rose and two engineers flagged burnout in the pulse.',
+      createdAt: new Date(ts(46)).toISOString(),
+    },
+    {
+      id: id('dec'),
+      title: 'Standardise weekly metrics on warehouse tables',
+      question: 'Should every team report weekly KPIs from governed warehouse tables instead of team spreadsheets?',
+      date: at(24),
+      reversibility: 'reversible',
+      driver: 'Freya Nilsson',
+      approver: 'Head of Platform',
+      contributors: 'Jordan Alvarez, Mei Lin Chen',
+      informed: 'Platform, Product',
+      options: [
+        { id: id('dopt'), label: 'Single warehouse source of truth', pros: 'Eliminates competing metric definitions', cons: 'Two-week cutover effort' },
+        { id: id('dopt'), label: 'Reconcile spreadsheets monthly', pros: 'Zero migration effort', cons: 'Weekly disputes continue' },
+      ],
+      chosen: 'Single warehouse source of truth',
+      rationale: 'Weekly metric disputes were burning leadership meeting time; Freya already drafted 24 definitions.',
+      forecastProbability: 80,
+      // 15-day realised latency (logged 24 days ago, called 9 days ago).
+      decidedOn: at(9),
+      reviewOn: at(4),
+      reviewedOn: null,
+      outcome: 'pending',
+      outcomeNotes: '',
+      createdAt: new Date(ts(24)).toISOString(),
+    },
+  ];
+
+  state.recognition = [
+    {
+      id: id('rec'), personId: mei,
+      what: 'Owned the billing outage call end to end and published the postmortem within 24 hours.',
+      values: ['Ownership', 'Candor'], visibility: 'public', date: at(17),
+      createdAt: new Date(ts(17)).toISOString(),
+    },
+    {
+      id: id('rec'), personId: freya,
+      what: 'Turned the weekly metrics argument into a signed-off definitions doc.',
+      values: ['Rigour'], visibility: 'public', date: at(30),
+      createdAt: new Date(ts(30)).toISOString(),
+    },
+  ];
+
+  state.readiness = [
+    { id: id('rd'), personId: mei, seat: 'Principal engineer', rating: 'ready-later', updatedAt: new Date(ts(40)).toISOString() },
+    { id: id('rd'), personId: priya, seat: 'Director of Engineering', rating: 'not-ready', updatedAt: new Date(ts(40)).toISOString() },
+  ];
+
+  state.onboarding = [
+    {
+      id: id('onb'),
+      personId: samuel,
+      kind: 'new-hire',
+      label: '',
+      startDate: at(38),
+      buddyId: priya,
+      buddyName: '',
+      roleClarity: 'Own the support escalation queue, partner with Platform on incident handoffs, and make the weekly rota sustainable.',
+      earlyWin: 'Publish a single-page escalation rota and run two shadow handoffs with Platform.',
+      stakeholders: [
+        { id: id('onbs'), name: 'Priya Natarajan', purpose: 'Platform incident handoffs and rota pairing', met: true, metOn: at(31) },
+        { id: id('onbs'), name: 'Jordan Alvarez', purpose: 'Customer impact priorities during activation launch', met: true, metOn: at(25) },
+        { id: id('onbs'), name: 'Mei Lin Chen', purpose: 'Billing migration escalation thresholds', met: false, metOn: null },
+      ],
+      checkpoints: [
+        {
+          id: id('onbc'),
+          horizon: 30,
+          category: 'clarity',
+          title: 'Walk through role scope, decision boundaries and what good looks like at 90 days',
+          due: at(24),
+          done: true,
+          completedOn: at(26),
+          notes: 'Aligned on support-to-platform escalation boundaries.',
+        },
+        {
+          id: id('onbc'),
+          horizon: 30,
+          category: 'culture',
+          title: 'Agree 1:1 rhythm, communication norms and how feedback flows both ways',
+          due: at(8),
+          done: false,
+          completedOn: null,
+          notes: '',
+        },
+        {
+          id: id('onbc'),
+          horizon: 60,
+          category: 'contribution',
+          title: 'Ship the new escalation rota and shadow two Platform incident handoffs',
+          due: at(-22),
+          done: false,
+          completedOn: null,
+          notes: '',
+        },
+        {
+          id: id('onbc'),
+          horizon: 60,
+          category: 'clarity',
+          title: 'Exchange explicit 60-day calibration feedback (what is working and one adjustment)',
+          due: at(-22),
+          done: false,
+          completedOn: null,
+          notes: '',
+        },
+        {
+          id: id('onbc'),
+          horizon: 90,
+          category: 'ownership',
+          title: 'Own end-to-end support escalation operations and weekly incident triage',
+          due: at(-52),
+          done: false,
+          completedOn: null,
+          notes: '',
+        },
+        {
+          id: id('onbc'),
+          horizon: 90,
+          category: 'ownership',
+          title: 'Transition from onboarding into a co-authored goal and GROW development plan',
+          due: at(-52),
+          done: false,
+          completedOn: null,
+          notes: '',
+        },
+      ],
+      reviews: { 30: null, 60: null, 90: null },
+      status: 'active',
+      completedOn: null,
+      createdAt: new Date(ts(37)).toISOString(),
+      updatedAt: new Date(ts(9)).toISOString(),
+    },
+    // Mei is 260 days into the team and has just stepped up into a tech-lead
+    // seat: a role transition, anchored to the day the new role started. Her
+    // original startDate (and tenure) are untouched — the plan is day 12 of
+    // the new scope, not day 260 of a botched onboarding.
+    {
+      id: id('onb'),
+      personId: mei,
+      kind: 'role-transition',
+      label: 'Billing platform tech lead',
+      startDate: at(12),
+      buddyId: null,
+      buddyName: 'Daniel Osei (Principal Engineer, Payments)',
+      roleClarity: 'Own technical direction for the billing migration; final say on schema changes within the agreed guardrails; represent Platform in the architecture review. Old IC deep-work commitments hand over by day 30.',
+      earlyWin: 'Publish the schema-change decision log and retire the two riskiest legacy billing tables.',
+      stakeholders: [
+        { id: id('onbs'), name: 'Priya Natarajan', purpose: 'Platform reliability guardrails for schema changes', met: true, metOn: at(9) },
+        { id: id('onbs'), name: 'Jordan Alvarez', purpose: 'Customer comms for billing changes', met: true, metOn: at(5) },
+        { id: id('onbs'), name: 'Finance ops', purpose: 'Revenue-close constraints on migration timing', met: false, metOn: null },
+      ],
+      checkpoints: [
+        {
+          id: id('onbc'),
+          horizon: 30,
+          category: 'clarity',
+          title: 'Agree the handover inventory for the old role: what stops, what transfers to whom, and by when',
+          due: at(-2),
+          done: false,
+          completedOn: null,
+          notes: '',
+        },
+        {
+          id: id('onbc'),
+          horizon: 30,
+          category: 'clarity',
+          title: 'Write down how the tech-lead scope differs: decision authority, review duties and what good looks like at 90 days',
+          due: at(-18),
+          done: false,
+          completedOn: null,
+          notes: '',
+        },
+        {
+          id: id('onbc'),
+          horizon: 60,
+          category: 'contribution',
+          title: 'Deliver or jointly review the first scoped early win in the new role (schema-change decision log)',
+          due: at(-48),
+          done: false,
+          completedOn: null,
+          notes: '',
+        },
+        {
+          id: id('onbc'),
+          horizon: 60,
+          category: 'culture',
+          title: 'Exchange 60-day calibration: which IC habits to drop, and what the tech-lead seat expects instead',
+          due: at(-48),
+          done: false,
+          completedOn: null,
+          notes: '',
+        },
+        {
+          id: id('onbc'),
+          horizon: 90,
+          category: 'ownership',
+          title: 'Own billing-migration technical direction end to end without falling back on the old IC scope',
+          due: at(-78),
+          done: false,
+          completedOn: null,
+          notes: '',
+        },
+        {
+          id: id('onbc'),
+          horizon: 90,
+          category: 'ownership',
+          title: 'Reset steady-state goals and the GROW plan to the expectations of the tech-lead role',
+          due: at(-78),
+          done: false,
+          completedOn: null,
+          notes: '',
+        },
+      ],
+      reviews: { 30: null, 60: null, 90: null },
+      status: 'active',
+      completedOn: null,
+      createdAt: new Date(ts(12)).toISOString(),
+      updatedAt: new Date(ts(3)).toISOString(),
+    },
+  ];
+
+  const billingCaseId = id('case');
+  const escalationCaseId = id('case');
+  const settledCaseId = id('case');
+
+  state.cases = [
+    {
+      id: billingCaseId,
+      kind: 'risk',
+      status: 'mitigating',
+      title: 'Billing ledger cutover reconciliation drift',
+      summary: 'Shadow dual-writes surfaced 6 multi-currency invoice rounding mismatches that would block month-end revenue close if cutover proceeds unguarded.',
+      ownerId: mei,
+      involvedPersonIds: [priya, jordan],
+      linkedGoalId: state.goals[1].id,
+      openedOn: at(14),
+      reviewOn: at(-5),
+      resolvedOn: null,
+      resolutionNotes: '',
+      fmea: {
+        severity: 8,
+        probability: 5,
+        detectability: 6,
+        failureMode: 'Multi-currency tax rounding diverges between legacy and new billing ledgers during cutover',
+        effect: 'Delayed month-end revenue close and manual invoice credits for enterprise accounts',
+        controls: 'Weekly batch reconciliation script without automated pre-cutover circuit breaker',
+        residualSeverity: null,
+        residualProbability: null,
+        residualDetectability: null,
+      },
+      financial: {
+        currency: 'USD',
+        optimistic: 12000,
+        mostLikely: 28000,
+        pessimistic: 65000,
+        mitigationCost: 6500,
+        capacityDaysOptimistic: 4,
+        capacityDaysMostLikely: 8,
+        capacityDaysPessimistic: 14,
+        opportunityCost: 'Defer self-serve invoice export polish by one sprint to fund automated ledger invariant checks.',
+      },
+      rca: {
+        problemStatement: '6 of 420 shadow enterprise invoices diverged by $0.01–$0.04 on FX tax rounding.',
+        whys: [
+          'Legacy ledger rounded line-item tax before FX conversion while the new service converts before rounding.',
+          'Contract spec documented USD examples only and omitted multi-currency rounding order.',
+          'CI staging suite lacked property-based shadow replay against historical multi-currency invoices.',
+        ],
+        rootCause: 'No canonical rounding-order contract or automated shadow-replay gate between billing and finance close.',
+        systemicBarrier: 'Automated CI invariant gate + pre-cutover reconciliation circuit breaker signed off by Finance Ops.',
+        preventiveAction: 'Add deterministic FX rounding contract tests and automated shadow-diff halt threshold before batch 3.',
+      },
+      stakeholders: [
+        {
+          id: id('cstk'),
+          name: 'Controller (Finance Ops)',
+          role: 'Revenue close sign-off',
+          power: 5,
+          interest: 4,
+          stance: 'skeptical',
+          commsCadence: 'immediate',
+          lastCommsOn: at(9),
+          nextCommsOn: at(2),
+          keyMessage: 'Share mismatch ageing trend and automated halt threshold before batch 3.',
+        },
+        {
+          id: id('cstk'),
+          name: 'Head of Platform',
+          role: 'Executive sponsor',
+          power: 5,
+          interest: 2,
+          stance: 'supportive',
+          commsCadence: 'milestone',
+          lastCommsOn: at(6),
+          nextCommsOn: at(-4),
+          keyMessage: 'Cutover remains within Q4 window; 8 person-days reallocated from export polish.',
+        },
+        {
+          id: id('cstk'),
+          name: 'Enterprise Support Lead',
+          role: 'Billing ticket readiness',
+          power: 2,
+          interest: 4,
+          stance: 'supportive',
+          commsCadence: 'weekly',
+          lastCommsOn: at(5),
+          nextCommsOn: at(-2),
+          keyMessage: 'Provide customer-facing billing FAQ and zero-impact shadow verification status.',
+        },
+      ],
+      autoPropagate: true,
+      forecastSnapshot: {
+        frozenOn: at(14),
+        currency: 'USD',
+        costOptimistic: 12000,
+        costMostLikely: 28000,
+        costPessimistic: 65000,
+        costExpected: 31500,
+        costStdDev: 8833.33,
+        costP10: 20179.63,
+        costP90: 42820.37,
+        capacityDaysOptimistic: 4,
+        capacityDaysMostLikely: 8,
+        capacityDaysPessimistic: 14,
+        capacityDaysExpected: 8.33,
+        mitigationCost: 6500,
+        fmeaProbability: 5,
+      },
+      actuals: null,
+      createdAt: new Date(ts(14)).toISOString(),
+      updatedAt: new Date(ts(4)).toISOString(),
+    },
+    {
+      id: escalationCaseId,
+      kind: 'escalation',
+      status: 'open',
+      title: 'Weekend P1 escalation gap across support pods',
+      summary: 'Two support pods lack overlapping weekend responder coverage while engineering hiring remains frozen, leaving P1 handoffs vulnerable.',
+      ownerId: samuel,
+      involvedPersonIds: [priya],
+      linkedGoalId: state.goals[2].id,
+      openedOn: at(9),
+      reviewOn: at(1),
+      resolvedOn: null,
+      resolutionNotes: '',
+      fmea: {
+        severity: 9,
+        probability: 6,
+        detectability: 5,
+        failureMode: 'Weekend P1 incident waits >30 minutes without an assigned pod responder',
+        effect: 'Enterprise SLA breach and unshielded on-call escalation to core platform engineers',
+        controls: 'Best-effort Slack paging without agreed cross-pod weekend rota',
+        residualSeverity: null,
+        residualProbability: null,
+        residualDetectability: null,
+      },
+      financial: {
+        currency: 'USD',
+        optimistic: 8000,
+        mostLikely: 18000,
+        pessimistic: 45000,
+        mitigationCost: 4000,
+        capacityDaysOptimistic: 3,
+        capacityDaysMostLikely: 6,
+        capacityDaysPessimistic: 10,
+        opportunityCost: 'Fund weekend stipend pool and pause non-urgent support tooling cleanup for two weeks.',
+      },
+      rca: {
+        problemStatement: 'Pod B and Pod C cannot staff simultaneous Saturday/Sunday primary + backup slots under current headcount.',
+        whys: [
+          'Pod split divided 6 weekend-eligible responders into three 2-person silos.',
+          'Pod proposal optimised weekday domain ownership without modelling weekend fault-tolerance.',
+          'Hiring freeze removed the planned seventh support engineer assumed in the rota draft.',
+        ],
+        rootCause: 'Single-pod weekend staffing lacks N+1 redundancy after the Q4 hiring freeze.',
+        systemicBarrier: 'Pooled cross-pod weekend primary/secondary rotation with explicit runbook triage.',
+        preventiveAction: 'Adopt pooled weekend primary rotation across pods while keeping weekday pod ownership.',
+      },
+      stakeholders: [
+        {
+          id: id('cstk'),
+          name: 'VP Customer Success',
+          role: 'SLA & pod co-sponsor',
+          power: 5,
+          interest: 5,
+          stance: 'blocker',
+          commsCadence: 'immediate',
+          lastCommsOn: null,
+          nextCommsOn: at(1),
+          keyMessage: 'Present pooled weekend rota vs full pod delay trade-off and SLA impact.',
+        },
+        {
+          id: id('cstk'),
+          name: 'Support Pod Leads',
+          role: 'Rota participants',
+          power: 3,
+          interest: 5,
+          stance: 'skeptical',
+          commsCadence: 'weekly',
+          lastCommsOn: at(7),
+          nextCommsOn: at(-1),
+          keyMessage: 'Co-design cross-pod runbook handoff so weekend responders are never paged blind.',
+        },
+      ],
+      autoPropagate: true,
+      forecastSnapshot: null,
+      actuals: null,
+      createdAt: new Date(ts(9)).toISOString(),
+      updatedAt: new Date(ts(2)).toISOString(),
+    },
+    {
+      // Schema v22: a settled incident whose actuals were recorded at
+      // resolution — the case-cost ledger's first (and so far only) scored
+      // settlement, so the demo honestly reports "collecting evidence".
+      id: settledCaseId,
+      kind: 'incident',
+      status: 'resolved',
+      title: 'Payment webhook retries duplicated enterprise invoices',
+      summary: 'Idempotency keys were dropped on webhook retry, so 14 enterprise accounts received duplicate invoices before Finance Ops halted the batch.',
+      ownerId: jordan,
+      involvedPersonIds: [mei],
+      linkedGoalId: state.goals[1].id,
+      openedOn: at(75),
+      reviewOn: at(68),
+      resolvedOn: at(58),
+      resolutionNotes: 'Idempotency keys are now persisted with the first delivery attempt and replay-safe; duplicate-invoice monitor alarms Finance Ops before customer send. Verified across two clean billing cycles.',
+      fmea: {
+        severity: 7,
+        probability: 6,
+        detectability: 4,
+        failureMode: 'Webhook retry after a gateway timeout re-executes invoice creation without the original idempotency key',
+        effect: 'Duplicate enterprise invoices, credit-note rework, and month-end close delay',
+        controls: 'Manual duplicate spot-check during month-end close',
+        residualSeverity: 7,
+        residualProbability: 2,
+        residualDetectability: 2,
+      },
+      financial: {
+        currency: 'USD',
+        optimistic: 8000,
+        mostLikely: 15000,
+        pessimistic: 30000,
+        mitigationCost: 4000,
+        capacityDaysOptimistic: 3,
+        capacityDaysMostLikely: 6,
+        capacityDaysPessimistic: 10,
+        opportunityCost: 'Pause self-serve dunning emails for one sprint to harden webhook delivery.',
+      },
+      forecastSnapshot: {
+        frozenOn: at(75),
+        currency: 'USD',
+        costOptimistic: 8000,
+        costMostLikely: 15000,
+        costPessimistic: 30000,
+        costExpected: 16333.33,
+        costStdDev: 3666.67,
+        costP10: 11634.31,
+        costP90: 21032.36,
+        capacityDaysOptimistic: 3,
+        capacityDaysMostLikely: 6,
+        capacityDaysPessimistic: 10,
+        capacityDaysExpected: 6.17,
+        mitigationCost: 4000,
+        fmeaProbability: 6,
+      },
+      actuals: {
+        materialised: true,
+        realisedExposure: 19500,
+        mitigationSpend: 4600,
+        divertedDays: 8,
+        settledOn: at(58),
+        note: 'Finance close rollup: 14 credit notes plus expedited support credits; mitigation spend from the idempotency hardening sprint actuals.',
+      },
+      rca: {
+        problemStatement: '14 of 1,180 enterprise invoices were issued twice after gateway timeouts during the April billing run.',
+        whys: [
+          'The retry worker rebuilt the webhook payload and generated a fresh idempotency key.',
+          'The delivery contract treated the key as transport metadata rather than a persisted business invariant.',
+          'No automated duplicate-invoice check ran before customer send.',
+        ],
+        rootCause: 'Idempotency keys were not persisted with the first delivery attempt, so retries were indistinguishable from new invoices.',
+        systemicBarrier: 'Persisted idempotency store plus a pre-send duplicate-invoice circuit breaker owned by Finance Ops.',
+        preventiveAction: 'Persist idempotency keys at first attempt and block batch send on any duplicate detection.',
+      },
+      stakeholders: [],
+      autoPropagate: true,
+      createdAt: new Date(ts(75)).toISOString(),
+      updatedAt: new Date(ts(58)).toISOString(),
+    },
+  ];
+
+
+  // ---------------------------------------------------------------- portfolio
+  // The operating plan. Effort and value are three-point PERT estimates; the
+  // capacity model derives utilisation, queue delay and the funding boundary
+  // from these records live, so these numbers are inputs, not conclusions.
+  const billingGoalId = state.goals[1].id;
+  const activationGoalId = state.goals[0].id;
+  const metricsGoalId = state.goals[3].id;
+
+  const pf = (overrides) => ({
+    id: id('pf'),
+    title: '',
+    kind: 'project',
+    horizon: null,
+    status: 'open',
+    sourceType: 'manual',
+    sourceId: null,
+    ownerId: null,
+    effortDays: { optimistic: 0, mostLikely: 0, pessimistic: 0 },
+    value: { optimistic: 0, mostLikely: 0, pessimistic: 0 },
+    currency: 'USD',
+    decision: 'undecided',
+    decisionOn: null,
+    rationale: '',
+    targetOn: null,
+    createdOn: at(30),
+    completedOn: null,
+    releasedOn: null,
+    createdAt: new Date(ts(30)).toISOString(),
+    updatedAt: new Date(ts(2)).toISOString(),
+    ...overrides,
+  });
+
+  state.portfolio = [
+    pf({
+      title: 'Billing reconciliation automation',
+      sourceType: 'goal',
+      sourceId: billingGoalId,
+      ownerId: mei,
+      effortDays: { optimistic: 6, mostLikely: 8, pessimistic: 12 },
+      value: { optimistic: 30000, mostLikely: 45000, pessimistic: 60000 },
+      decision: 'funded',
+      decisionOn: at(28),
+      rationale: 'Removes the manual reconciliation that blocks month-end close.',
+      targetOn: at(-12),
+      createdOn: at(30),
+      createdAt: new Date(ts(30)).toISOString(),
+    }),
+    pf({
+      title: 'Warehouse metrics migration',
+      sourceType: 'goal',
+      sourceId: metricsGoalId,
+      ownerId: freya,
+      effortDays: { optimistic: 7, mostLikely: 9, pessimistic: 14 },
+      value: { optimistic: 18000, mostLikely: 30000, pessimistic: 38000 },
+      decision: 'funded',
+      decisionOn: at(24),
+      rationale: 'Two dashboards disagree today; the goal is not measurable until they do not.',
+      targetOn: at(-21),
+      createdOn: at(26),
+      createdAt: new Date(ts(26)).toISOString(),
+    }),
+    pf({
+      title: 'Activation funnel instrumentation',
+      sourceType: 'goal',
+      sourceId: activationGoalId,
+      ownerId: jordan,
+      effortDays: { optimistic: 5, mostLikely: 7, pessimistic: 10 },
+      value: { optimistic: 24000, mostLikely: 36000, pessimistic: 48000 },
+      decision: 'funded',
+      decisionOn: at(20),
+      rationale: 'The activation goal cannot be trusted without event coverage on the funnel.',
+      targetOn: at(-10),
+      createdOn: at(22),
+      createdAt: new Date(ts(22)).toISOString(),
+    }),
+    pf({
+      title: 'On-call tooling v1 (paging + runbooks)',
+      ownerId: priya,
+      effortDays: { optimistic: 3, mostLikely: 5, pessimistic: 8 },
+      value: { optimistic: 12000, mostLikely: 20000, pessimistic: 26000 },
+      decision: 'funded',
+      decisionOn: at(16),
+      rationale: 'On-call load is the team’s biggest retention risk; this is the cheapest lever.',
+      targetOn: at(-14),
+      createdOn: at(18),
+      createdAt: new Date(ts(18)).toISOString(),
+    }),
+    pf({
+      title: 'Self-serve invoice export v2',
+      ownerId: priya,
+      effortDays: { optimistic: 5, mostLikely: 8, pessimistic: 12 },
+      value: { optimistic: 18000, mostLikely: 26000, pessimistic: 34000 },
+      decision: 'undecided',
+      rationale: '',
+      targetOn: at(-35),
+      createdOn: at(12),
+      createdAt: new Date(ts(12)).toISOString(),
+    }),
+    pf({
+      title: 'Legacy VAT rule clean-up',
+      ownerId: mei,
+      effortDays: { optimistic: 3, mostLikely: 5, pessimistic: 8 },
+      value: { optimistic: 4000, mostLikely: 8000, pessimistic: 12000 },
+      decision: 'undecided',
+      rationale: '',
+      targetOn: at(-40),
+      createdOn: at(9),
+      createdAt: new Date(ts(9)).toISOString(),
+    }),
+    pf({
+      title: 'Support tooling clean-up',
+      ownerId: samuel,
+      effortDays: { optimistic: 4, mostLikely: 6, pessimistic: 9 },
+      value: { optimistic: 2000, mostLikely: 4000, pessimistic: 6000 },
+      decision: 'deferred',
+      decisionOn: at(11),
+      rationale: 'No customer-visible impact this quarter; the capacity is better spent on the escalation rota.',
+      createdOn: at(15),
+      createdAt: new Date(ts(15)).toISOString(),
+    }),
+    pf({
+      title: 'Incident review automation',
+      ownerId: priya,
+      effortDays: { optimistic: 4, mostLikely: 5, pessimistic: 8 },
+      value: { optimistic: 6000, mostLikely: 9000, pessimistic: 12000 },
+      decision: 'funded',
+      decisionOn: at(70),
+      status: 'done',
+      completedOn: at(44),
+      // Recorded at delivery: 7d actual vs 5.33d frozen expectation (1.31×) —
+      // the demo's first planning-fallacy data point.
+      actualEffortDays: 7,
+      actualValue: 8000,
+      createdOn: at(78),
+      createdAt: new Date(ts(78)).toISOString(),
+      updatedAt: new Date(ts(44)).toISOString(),
+    }),
+    pf({
+      title: 'Query cost guardrails',
+      ownerId: freya,
+      effortDays: { optimistic: 6, mostLikely: 8, pessimistic: 12 },
+      value: { optimistic: 5000, mostLikely: 7000, pessimistic: 9000 },
+      decision: 'funded',
+      decisionOn: at(60),
+      status: 'done',
+      completedOn: at(20),
+      actualEffortDays: 9,
+      actualValue: 6500,
+      createdOn: at(66),
+      createdAt: new Date(ts(66)).toISOString(),
+      updatedAt: new Date(ts(20)).toISOString(),
+    }),
+    // Schema v33 (Allocation Governor): a settled past the arms can learn
+    // from, plus one exploratory candidate still waiting for a funding call.
+    // Every settled row carries recorded actuals; the dates place the funding
+    // decisions inside the 180-day policy window except the exploratory bet,
+    // which is exactly the starvation pattern RULE-ALLOC-01 exists to catch.
+    pf({
+      title: 'Invoice PDF rendering upgrade',
+      horizon: 'core',
+      ownerId: priya,
+      effortDays: { optimistic: 4, mostLikely: 5, pessimistic: 8 },
+      value: { optimistic: 15000, mostLikely: 20000, pessimistic: 26000 },
+      decision: 'funded',
+      decisionOn: at(140),
+      status: 'done',
+      completedOn: at(120),
+      actualEffortDays: 6,
+      actualValue: 21000,
+      createdOn: at(150),
+      createdAt: new Date(ts(150)).toISOString(),
+      updatedAt: new Date(ts(120)).toISOString(),
+    }),
+    pf({
+      title: 'Audit-log retention tooling',
+      horizon: 'core',
+      ownerId: freya,
+      effortDays: { optimistic: 3, mostLikely: 4, pessimistic: 6 },
+      value: { optimistic: 7000, mostLikely: 9000, pessimistic: 12000 },
+      decision: 'funded',
+      decisionOn: at(110),
+      status: 'done',
+      completedOn: at(95),
+      actualEffortDays: 4,
+      actualValue: 9600,
+      createdOn: at(118),
+      createdAt: new Date(ts(118)).toISOString(),
+      updatedAt: new Date(ts(95)).toISOString(),
+    }),
+    pf({
+      title: 'Customer health-score pilot',
+      horizon: 'adjacent',
+      ownerId: jordan,
+      effortDays: { optimistic: 5, mostLikely: 7, pessimistic: 11 },
+      value: { optimistic: 24000, mostLikely: 34000, pessimistic: 46000 },
+      decision: 'funded',
+      decisionOn: at(100),
+      status: 'done',
+      completedOn: at(80),
+      actualEffortDays: 8,
+      actualValue: 38400,
+      createdOn: at(108),
+      createdAt: new Date(ts(108)).toISOString(),
+      updatedAt: new Date(ts(80)).toISOString(),
+    }),
+    pf({
+      title: 'Partner API beta',
+      horizon: 'adjacent',
+      ownerId: mei,
+      effortDays: { optimistic: 6, mostLikely: 9, pessimistic: 14 },
+      value: { optimistic: 26000, mostLikely: 38000, pessimistic: 52000 },
+      decision: 'funded',
+      decisionOn: at(85),
+      status: 'done',
+      completedOn: at(65),
+      actualEffortDays: 10,
+      actualValue: 41000,
+      createdOn: at(92),
+      createdAt: new Date(ts(92)).toISOString(),
+      updatedAt: new Date(ts(65)).toISOString(),
+    }),
+    pf({
+      title: 'Usage-based pricing experiment',
+      horizon: 'exploratory',
+      ownerId: samuel,
+      effortDays: { optimistic: 3, mostLikely: 5, pessimistic: 9 },
+      value: { optimistic: 10000, mostLikely: 24000, pessimistic: 60000 },
+      decision: 'funded',
+      decisionOn: at(200),
+      status: 'done',
+      completedOn: at(185),
+      actualEffortDays: 5,
+      actualValue: 30000,
+      createdOn: at(210),
+      createdAt: new Date(ts(210)).toISOString(),
+      updatedAt: new Date(ts(185)).toISOString(),
+    }),
+    pf({
+      title: 'AI-assisted support triage prototype',
+      horizon: 'exploratory',
+      ownerId: priya,
+      effortDays: { optimistic: 4, mostLikely: 6, pessimistic: 10 },
+      value: { optimistic: 20000, mostLikely: 45000, pessimistic: 90000 },
+      decision: 'undecided',
+      rationale: '',
+      targetOn: at(-30),
+      createdOn: at(8),
+      createdAt: new Date(ts(8)).toISOString(),
+      updatedAt: new Date(ts(2)).toISOString(),
+    }),
+    // Capacity reserves that RULE-CAP-01 created from the two open cases. They
+    // are stored records (not live inference) so the plan is auditable.
+    pf({
+      title: 'Capacity reserve: Billing ledger cutover reconciliation drift',
+      kind: 'capacity-reserve',
+      sourceType: 'case',
+      sourceId: billingCaseId,
+      ownerId: mei,
+      effortDays: { optimistic: 4, mostLikely: 8, pessimistic: 14 },
+      value: { optimistic: 0, mostLikely: 0, pessimistic: 0 },
+      decision: 'funded',
+      decisionOn: at(14),
+      rationale: 'Reserved automatically because the operational case diverts team capacity (RULE-CAP-01).',
+      targetOn: at(5),
+      createdOn: at(14),
+      createdAt: new Date(ts(14)).toISOString(),
+      updatedAt: new Date(ts(2)).toISOString(),
+    }),
+    pf({
+      title: 'Capacity reserve: Weekend P1 escalation gap across support pods',
+      kind: 'capacity-reserve',
+      sourceType: 'case',
+      sourceId: escalationCaseId,
+      ownerId: samuel,
+      effortDays: { optimistic: 3, mostLikely: 6, pessimistic: 10 },
+      value: { optimistic: 0, mostLikely: 0, pessimistic: 0 },
+      decision: 'funded',
+      decisionOn: at(9),
+      rationale: 'Reserved automatically because the operational case diverts team capacity (RULE-CAP-01).',
+      targetOn: at(3),
+      createdOn: at(9),
+      createdAt: new Date(ts(9)).toISOString(),
+      updatedAt: new Date(ts(2)).toISOString(),
+    }),
+  ];
+
+  // Schema v21: every funded item carries the forecast RULE-FCT-01 froze when
+  // it was funded (decisionOn), computed here with the same pure function the
+  // rules engine uses — including the two delivered items, whose recorded
+  // actuals are scored against these snapshots. Capacity reserves are
+  // excluded by buildForecastSnapshot's caller contract, exactly as live.
+  for (const item of state.portfolio) {
+    if (item.decision === 'funded' && item.kind !== 'capacity-reserve') {
+      item.forecastSnapshot = buildForecastSnapshot(item, item.decisionOn || item.createdOn);
+    }
+  }
+
+  // Schema v33: ambition horizons for the pre-existing demo plan items.
+  // Capacity reserves stay unclassified on purpose — they are obligations,
+  // and the Governor reports them as unmeasured rather than guessing.
+  const DEMO_HORIZONS = {
+    'Billing reconciliation automation': 'core',
+    'Warehouse metrics migration': 'core',
+    'Activation funnel instrumentation': 'adjacent',
+    'On-call tooling v1 (paging + runbooks)': 'core',
+    'Self-serve invoice export v2': 'adjacent',
+    'Legacy VAT rule clean-up': 'core',
+    'Support tooling clean-up': 'core',
+    'Incident review automation': 'core',
+    'Query cost guardrails': 'core',
+  };
+  for (const item of state.portfolio) {
+    if (DEMO_HORIZONS[item.title]) item.horizon = DEMO_HORIZONS[item.title];
+  }
+
+  // ---------------------------------------------------------------- hiring
+  // Two live roles and one filled role. The first carries a recorded interview
+  // effort so the capacity plan can reserve it; the second deliberately has no
+  // estimate, which is what HIRE-05 reports — the app never invents one.
+  const seniorReqId = id('req');
+  const analyticsReqId = id('req');
+  const filledReqId = id('req');
+
+  const competency = (cid, name, weight, required = true) => ({ id: cid, name, weight, required });
+
+  state.requisitions = [
+    {
+      id: seniorReqId,
+      title: 'Senior platform engineer',
+      team: 'Platform',
+      level: 'senior',
+      reason: 'growth',
+      status: 'open',
+      openedOn: at(46),
+      targetStartOn: at(-5),
+      closedOn: null,
+      filledPersonId: null,
+      interviewers: [mei, freya],
+      competencies: [
+        competency('cmp-demo-1', 'Designs resilient service boundaries', 4),
+        competency('cmp-demo-2', 'Runs incident response calmly', 3),
+        competency('cmp-demo-3', 'Explains tradeoffs to non-engineers', 2, false),
+      ],
+      effortDays: { optimistic: 4, mostLikely: 6, pessimistic: 9 },
+      dailyVacancyCost: 700,
+      currency: 'USD',
+      notes: 'On-call load is the reason the role exists; the loop must test incident judgement, not trivia.',
+      autoEscalated: false,
+      escalatedCaseId: null,
+      createdAt: new Date(ts(46)).toISOString(),
+      updatedAt: new Date(ts(4)).toISOString(),
+    },
+    {
+      id: analyticsReqId,
+      title: 'Analytics engineer',
+      team: 'Platform',
+      level: 'ic',
+      reason: 'capability',
+      status: 'open',
+      openedOn: at(12),
+      targetStartOn: at(26),
+      closedOn: null,
+      filledPersonId: null,
+      interviewers: [freya],
+      competencies: [
+        competency('cmp-demo-4', 'Models event data accurately', 4),
+        competency('cmp-demo-5', 'Writes tests for pipelines', 3),
+      ],
+      effortDays: { optimistic: 0, mostLikely: 0, pessimistic: 0 },
+      dailyVacancyCost: null,
+      currency: 'USD',
+      notes: '',
+      autoEscalated: false,
+      escalatedCaseId: null,
+      createdAt: new Date(ts(12)).toISOString(),
+      updatedAt: new Date(ts(5)).toISOString(),
+    },
+    {
+      id: filledReqId,
+      title: 'Billing operations analyst',
+      team: 'Platform',
+      level: 'ic',
+      reason: 'backfill',
+      status: 'filled',
+      openedOn: at(96),
+      targetStartOn: at(30),
+      closedOn: at(22),
+      filledPersonId: null,
+      interviewers: [mei],
+      competencies: [competency('cmp-demo-6', 'Reconciles ledgers without supervision', 4)],
+      effortDays: { optimistic: 2, mostLikely: 3, pessimistic: 5 },
+      dailyVacancyCost: null,
+      currency: 'USD',
+      notes: '',
+      autoEscalated: false,
+      escalatedCaseId: null,
+      createdAt: new Date(ts(96)).toISOString(),
+      updatedAt: new Date(ts(22)).toISOString(),
+    },
+  ];
+
+  const signal = (sid, kind, competencyId, rating, interviewerId, daysAgo, note) => ({
+    id: sid,
+    kind,
+    competencyId,
+    rating,
+    interviewerId,
+    date: at(daysAgo),
+    note,
+  });
+
+  state.candidates = [
+    {
+      id: 'cand-demo-1',
+      reqId: seniorReqId,
+      name: 'Noor Haddad',
+      stage: 'final',
+      appliedOn: at(24),
+      lastActivityOn: at(3),
+      source: 'Referral — Priya',
+      signals: [
+        signal('sig-demo-1', 'work-sample', 'cmp-demo-1', 5, mei, 12, 'Rebuilt the retry path in the exercise and explained the idempotency tradeoff unprompted.'),
+        signal('sig-demo-2', 'structured-interview', 'cmp-demo-2', 4, freya, 9, 'Walked through a real outage: owned the comms, escalated before guessing, named what she would change.'),
+        signal('sig-demo-3', 'structured-interview', 'cmp-demo-1', 4, freya, 9, 'Explained service-boundary tradeoffs to a product audience without jargon.'),
+        signal('sig-demo-4', 'reference', 'cmp-demo-3', 4, mei, 5, 'Former manager confirmed she mentored two juniors through their first on-call rotation.'),
+      ],
+      decision: { outcome: 'pending', decidedOn: null, rationale: '', evidenceGapAcknowledged: false },
+      offerOn: null,
+      offerAcceptedOn: null,
+      hiredOn: null,
+      startOn: null,
+      personId: null,
+      keepInTouch: false,
+      createdAt: new Date(ts(24)).toISOString(),
+      updatedAt: new Date(ts(3)).toISOString(),
+    },
+    {
+      id: 'cand-demo-2',
+      reqId: seniorReqId,
+      name: 'Tomas Berg',
+      stage: 'final',
+      appliedOn: at(18),
+      lastActivityOn: at(6),
+      source: 'Outbound — careers page',
+      signals: [
+        signal('sig-demo-5', 'unstructured-interview', 'cmp-demo-1', 4, mei, 8, 'Strong systems conversation, but no scored exercise — impression only.'),
+        signal('sig-demo-6', 'unstructured-interview', 'cmp-demo-1', 3, mei, 8, 'Second chat with the same interviewer: treated as a repeat observation, not new evidence.'),
+      ],
+      decision: { outcome: 'pending', decidedOn: null, rationale: '', evidenceGapAcknowledged: false },
+      offerOn: null,
+      offerAcceptedOn: null,
+      hiredOn: null,
+      startOn: null,
+      personId: null,
+      keepInTouch: false,
+      createdAt: new Date(ts(18)).toISOString(),
+      updatedAt: new Date(ts(6)).toISOString(),
+    },
+    {
+      id: 'cand-demo-3',
+      reqId: seniorReqId,
+      name: 'Elena Rossi',
+      stage: 'rejected',
+      appliedOn: at(30),
+      lastActivityOn: at(16),
+      source: 'Agency',
+      signals: [
+        signal('sig-demo-7', 'job-knowledge', 'cmp-demo-1', 2, freya, 20, 'Technical exercise missed the concurrency requirement; partial credit on the data model.'),
+        signal('sig-demo-8', 'structured-interview', 'cmp-demo-2', 2, mei, 18, 'During the incident scenario, escalated late and could not name the rollback trigger.'),
+        signal('sig-demo-9', 'structured-interview', 'cmp-demo-3', 3, mei, 18, 'Explanations were clear but stayed at implementation detail.'),
+      ],
+      decision: {
+        outcome: 'reject',
+        decidedOn: at(16),
+        rationale: 'Below the bar on incident judgement in both the exercise and the structured interview. Told her the specific gap; she asked to be considered for the mid-level opening instead.',
+        evidenceGapAcknowledged: false,
+      },
+      offerOn: null,
+      offerAcceptedOn: null,
+      hiredOn: null,
+      startOn: null,
+      personId: null,
+      keepInTouch: true,
+      createdAt: new Date(ts(30)).toISOString(),
+      updatedAt: new Date(ts(16)).toISOString(),
+    },
+    {
+      id: 'cand-demo-4',
+      reqId: analyticsReqId,
+      name: 'Priya Raman',
+      stage: 'interviewing',
+      appliedOn: at(9),
+      lastActivityOn: at(2),
+      source: 'Referral — Freya',
+      signals: [
+        signal('sig-demo-10', 'work-sample', 'cmp-demo-4', 5, freya, 4, 'Modelled the funnel events from a raw export and caught a duplicate-order bug nobody asked about.'),
+      ],
+      decision: { outcome: 'pending', decidedOn: null, rationale: '', evidenceGapAcknowledged: false },
+      offerOn: null,
+      offerAcceptedOn: null,
+      hiredOn: null,
+      startOn: null,
+      personId: null,
+      keepInTouch: false,
+      createdAt: new Date(ts(9)).toISOString(),
+      updatedAt: new Date(ts(2)).toISOString(),
+    },
+    // A record from the role that was filled two and a half months ago. It is
+    // here so the retention review has something true to point at: the demo
+    // shows the prompt, the exempt record (Elena, kept in touch on purpose) and
+    // the fact that nothing is deleted without a person choosing to.
+    {
+      id: 'cand-demo-5',
+      reqId: filledReqId,
+      name: 'Marcus Feld',
+      stage: 'rejected',
+      appliedOn: at(250),
+      lastActivityOn: at(244),
+      source: 'Job board',
+      signals: [
+        signal('sig-demo-13', 'structured-interview', 'cmp-demo-6', 2, mei, 246, 'Reconciliation walkthrough was accurate but slow; could not explain how he would catch a recurring drift.'),
+      ],
+      decision: {
+        outcome: 'reject',
+        decidedOn: at(244),
+        rationale: 'Strong on routine reconciliation, but the role needed someone who could design the control rather than operate it. Recommended a finance-ops opening instead.',
+        evidenceGapAcknowledged: false,
+      },
+      offerOn: null,
+      offerAcceptedOn: null,
+      hiredOn: null,
+      startOn: null,
+      personId: null,
+      keepInTouch: false,
+      createdAt: new Date(ts(250)).toISOString(),
+      updatedAt: new Date(ts(244)).toISOString(),
+    },
+    // The silver medallist: past the retention window, but kept on purpose
+    // because the leader wants to call her first for the next finance-ops seat.
+    // She appears in the retention card as an exemption, not as a to-do.
+    {
+      id: 'cand-demo-6',
+      reqId: filledReqId,
+      name: 'Aisha Bello',
+      stage: 'rejected',
+      appliedOn: at(246),
+      lastActivityOn: at(210),
+      source: 'Internal referral',
+      signals: [
+        signal('sig-demo-14', 'structured-interview', 'cmp-demo-6', 4, mei, 212, 'Found the control gap in the practice ledger in eleven minutes and wrote the fix-up query unaided.'),
+        signal('sig-demo-15', 'work-sample', 'cmp-demo-6', 4, freya, 211, 'Clean reconciliation workbook, defensible assumptions, flagged two things the brief had missed.'),
+      ],
+      decision: {
+        outcome: 'reject',
+        decidedOn: at(210),
+        rationale: 'Second by a narrow margin; offered the role to someone with deeper ERP migration experience. Asked to be contacted first if another finance-ops seat opens — recorded here so that promise is not lost.',
+        evidenceGapAcknowledged: false,
+      },
+      offerOn: null,
+      offerAcceptedOn: null,
+      hiredOn: null,
+      startOn: null,
+      personId: null,
+      keepInTouch: true,
+      createdAt: new Date(ts(246)).toISOString(),
+      updatedAt: new Date(ts(210)).toISOString(),
+    },
+  ];
+
+  // Mirror what RULE-HIRE-01 creates for the one role with a recorded estimate.
+  const hiringPlanItemId = id('pf');
+  state.portfolio.push({
+    id: hiringPlanItemId,
+    title: 'Hiring: Senior platform engineer',
+    kind: 'hiring',
+    status: 'open',
+    sourceType: 'requisition',
+    sourceId: seniorReqId,
+    ownerId: null,
+    effortDays: { optimistic: 4, mostLikely: 6, pessimistic: 9 },
+    value: { optimistic: 0, mostLikely: 0, pessimistic: 0 },
+    currency: 'USD',
+    decision: 'funded',
+    decisionOn: at(46),
+    rationale: 'Interview effort committed by an open requisition (RULE-HIRE-01). Value is unmeasured: hiring consumes capacity rather than producing measurable revenue.',
+    targetOn: at(-5),
+    createdOn: at(46),
+    completedOn: null,
+    releasedOn: null,
+    createdAt: new Date(ts(46)).toISOString(),
+    updatedAt: new Date(ts(4)).toISOString(),
+  });
+
+  // Organizational Design, Team Topologies & Change Execution (Schema v19)
+  const billingPodChangeId = 'chg-demo-1';
+  const triageHandoffChangeId = 'chg-demo-2';
+  state.changes = [
+    {
+      id: billingPodChangeId,
+      title: 'Extract Billing & Ledger into a stream-aligned pod',
+      kind: 'topology',
+      status: 'active',
+      summary: 'Platform currently owns both shared infra and customer billing schema changes, causing blocking cross-team handoffs and on-call context switching.',
+      vision: 'A dedicated stream-aligned Billing & Ledger pod owns invoice lifecycle end-to-end while consuming core Platform infra strictly as X-as-a-Service.',
+      nonGoals: 'Not rewriting the legacy tax engine this quarter; not merging Support tier-1 queues into Billing.',
+      reversibility: 'irreversible',
+      ownerId: mei,
+      linkedGoalId: state.goals[1].id,
+      openedOn: at(24),
+      targetOn: at(-21),
+      reviewOn: at(-4),
+      anchoredOn: null,
+      closedReason: '',
+      kotterStage: 'obstacles',
+      completedSteps: ['urgency', 'coalition', 'vision', 'communicate'],
+      shortTermWins: [
+        {
+          id: id('cwin'),
+          text: 'First decoupled ledger migration shipped without shared Platform freeze (cut wait from 4d to 35m)',
+          achievedOn: at(7),
+          verified: true,
+        },
+      ],
+      topology: {
+        teamName: 'Billing & Ledger Pod',
+        currentType: 'complicated-subsystem',
+        targetType: 'stream-aligned',
+        interactionMode: 'x-as-a-service',
+        cognitiveLoadBefore: 5,
+        cognitiveLoadTarget: 2,
+        blockingHandoffsBefore: 5,
+        blockingHandoffsTarget: 1,
+        collaboratingTeamsCount: 1,
+      },
+      star: {
+        strategy: 'Zero-incident billing ledger cutover with independent weekly release cadence.',
+        structure: '4-person stream-aligned pod led technically by Mei Lin Chen.',
+        processes: 'Self-serve deploy pipeline + async schema ADR contract; drop shared weekly change-board gate.',
+        rewards: 'Pod goals tied to ledger accuracy & deployment lead time rather than shared platform ticket count.',
+        people: 'Mei transitions into Billing Pod Technical Lead; Freya pairs on reconciliation telemetry.',
+      },
+      forces: [
+        {
+          id: id('chgf'),
+          side: 'driving',
+          label: 'Eliminate 5-way cross-team deploy queue on billing schema migrations',
+          weight: 5,
+          category: 'tooling',
+          mitigation: '',
+          mitigated: false,
+        },
+        {
+          id: id('chgf'),
+          side: 'driving',
+          label: 'Protect core Platform on-call from domain-specific invoice escalations',
+          weight: 4,
+          category: 'workload',
+          mitigation: '',
+          mitigated: false,
+        },
+        {
+          id: id('chgf'),
+          side: 'restraining',
+          label: 'Finance Ops manual dual sign-off gate on every schema migration',
+          weight: 5,
+          category: 'governance',
+          mitigation: 'Replace manual sign-off with automated reconciliation invariant checks before deploy.',
+          mitigated: false,
+        },
+        {
+          id: id('chgf'),
+          side: 'restraining',
+          label: 'Shared staging database couples Platform and Billing test runs',
+          weight: 4,
+          category: 'tooling',
+          mitigation: 'Ephemeral per-PR ledger test containers provisioned.',
+          mitigated: true,
+        },
+      ],
+      coalition: [
+        {
+          id: id('chgs'),
+          personId: mei,
+          name: 'Mei Lin Chen',
+          role: 'Staff Engineer (Pod Lead)',
+          power: 4,
+          interest: 5,
+          stance: 'champion',
+          vetoPlayer: false,
+          keyMessage: 'Full schema authority within agreed ledger invariants.',
+          lastBriefedOn: at(6),
+          nextBriefOn: at(-8),
+        },
+        {
+          id: id('chgs'),
+          personId: null,
+          name: 'Dana Kowalski',
+          role: 'Finance Ops Controller',
+          power: 5,
+          interest: 5,
+          stance: 'skeptical',
+          vetoPlayer: true,
+          keyMessage: 'Automated ledger reconciliation audit trail replaces manual spreadsheet sign-off.',
+          lastBriefedOn: at(16),
+          nextBriefOn: at(2),
+        },
+        {
+          id: id('chgs'),
+          personId: priya,
+          name: 'Priya Natarajan',
+          role: 'Engineering Lead',
+          power: 5,
+          interest: 4,
+          stance: 'supportive',
+          vetoPlayer: true,
+          keyMessage: 'Clean X-as-a-Service boundary reduces Platform interrupt load.',
+          lastBriefedOn: at(8),
+          nextBriefOn: at(-6),
+        },
+      ],
+      impacts: [
+        {
+          id: id('chgi'),
+          personId: mei,
+          impactKind: 'scope-shift',
+          newRoleLabel: 'Billing Pod Technical Lead',
+          createTransitionPlan: false,
+        },
+        {
+          id: id('chgi'),
+          personId: freya,
+          impactKind: 'topology-interface',
+          newRoleLabel: 'Embedded Billing Analytics Partner',
+          createTransitionPlan: false,
+        },
+      ],
+      metrics: [
+        {
+          id: id('cmet'),
+          name: 'Cross-team blocking handoffs per release',
+          unit: 'handoffs',
+          desirableDirection: 'lower',
+          observations: [
+            { id: id('cobs'), date: at(42), value: 5, phase: 'baseline', note: 'Pre-split baseline' },
+            { id: id('cobs'), date: at(35), value: 6, phase: 'baseline', note: 'Pre-split release' },
+            { id: id('cobs'), date: at(28), value: 5, phase: 'baseline', note: 'Pre-split release' },
+            { id: id('cobs'), date: at(18), value: 3, phase: 'post', note: 'Containerized ledger tests live' },
+            { id: id('cobs'), date: at(7), value: 2, phase: 'post', note: 'First decoupled deploy' },
+          ],
+        },
+      ],
+      effortDays: { optimistic: 1, mostLikely: 1.5, pessimistic: 2 },
+      economics: {
+        currency: 'USD',
+        transitionCost: 12000,
+        monthlyBenefit: { optimistic: 3500, mostLikely: 5000, pessimistic: 7000 },
+        horizonMonths: 12,
+      },
+      autoCreateDecision: true,
+      createdAt: new Date(ts(24)).toISOString(),
+      updatedAt: new Date(ts(6)).toISOString(),
+    },
+    {
+      id: triageHandoffChangeId,
+      title: 'Async P1 triage & handoff contract across support pods',
+      kind: 'process',
+      status: 'anchored',
+      summary: 'Ad-hoc Slack paging during P1 incidents caused duplicate debugging and unclear incident command between Support and Platform.',
+      vision: 'Single written 5-line P1 handoff packet with explicit incident commander transfer in under 15 minutes.',
+      nonGoals: 'Not changing customer SLA tiers or replacing the paging vendor.',
+      reversibility: 'reversible',
+      ownerId: samuel,
+      linkedGoalId: state.goals[2].id,
+      openedOn: at(52),
+      targetOn: at(14),
+      reviewOn: at(10),
+      anchoredOn: at(11),
+      closedReason: 'Anchored in runbooks and onboarding; XmR chart confirmed P1 handoff time shifted from ~47m baseline to ~20m.',
+      kotterStage: 'anchor',
+      completedSteps: ['urgency', 'coalition', 'vision', 'communicate', 'obstacles', 'short-wins', 'consolidate', 'anchor'],
+      shortTermWins: [
+        {
+          id: id('cwin'),
+          text: 'Three consecutive P1 drills handed off cleanly in under 20 minutes (mean dropped from 46.8m to 20.0m)',
+          achievedOn: at(22),
+          verified: true,
+        },
+      ],
+      topology: {
+        teamName: 'Support ↔ Platform Interface',
+        currentType: 'enabling',
+        targetType: 'stream-aligned',
+        interactionMode: 'facilitating',
+        cognitiveLoadBefore: 4,
+        cognitiveLoadTarget: 2,
+        blockingHandoffsBefore: 4,
+        blockingHandoffsTarget: 1,
+        collaboratingTeamsCount: 1,
+      },
+      star: {
+        strategy: 'Hit <30m P1 response SLA without burning out senior engineers.',
+        structure: 'Rotating pod triage lead hands off directly to single Platform duty engineer.',
+        processes: '5-line structured incident packet required before paging.',
+        rewards: 'Post-incident reviews recognize clean handoff packets, not heroics.',
+        people: 'Samuel coached all three support pod leads through live drills.',
+      },
+      forces: [
+        {
+          id: id('chgf'),
+          side: 'driving',
+          label: 'Cut P1 handoff latency below 20 minutes',
+          weight: 5,
+          category: 'customer',
+          mitigation: '',
+          mitigated: false,
+        },
+        {
+          id: id('chgf'),
+          side: 'restraining',
+          label: 'Habit of back-channel DM escalations to Priya',
+          weight: 4,
+          category: 'coalition',
+          mitigation: 'Priya redirects all DMs to the triage packet channel.',
+          mitigated: true,
+        },
+      ],
+      coalition: [
+        {
+          id: id('chgs'),
+          personId: samuel,
+          name: 'Samuel Okafor',
+          role: 'Support Team Lead',
+          power: 4,
+          interest: 5,
+          stance: 'champion',
+          vetoPlayer: true,
+          keyMessage: 'Support owns crisp reproduction context before escalation.',
+          lastBriefedOn: at(12),
+          nextBriefOn: null,
+        },
+      ],
+      impacts: [
+        {
+          id: id('chgi'),
+          personId: samuel,
+          impactKind: 'topology-interface',
+          newRoleLabel: 'Incident Triage Process Owner',
+          createTransitionPlan: false,
+        },
+      ],
+      metrics: [
+        {
+          id: id('cmet'),
+          name: 'Mean P1 triage handoff time',
+          unit: 'min',
+          desirableDirection: 'lower',
+          observations: [
+            { id: id('cobs'), date: at(80), value: 46, phase: 'baseline', note: 'Pre-change baseline' },
+            { id: id('cobs'), date: at(72), value: 49, phase: 'baseline', note: 'Pre-change baseline' },
+            { id: id('cobs'), date: at(64), value: 44, phase: 'baseline', note: 'Pre-change baseline' },
+            { id: id('cobs'), date: at(56), value: 48, phase: 'baseline', note: 'Pre-change baseline' },
+            { id: id('cobs'), date: at(42), value: 22, phase: 'post', note: 'Structured packet launched' },
+            { id: id('cobs'), date: at(32), value: 19, phase: 'post', note: 'Week 3 post-launch' },
+            { id: id('cobs'), date: at(22), value: 21, phase: 'post', note: 'Week 5 post-launch' },
+            { id: id('cobs'), date: at(12), value: 18, phase: 'post', note: 'Anchored check' },
+          ],
+        },
+      ],
+      effortDays: { optimistic: 2, mostLikely: 3, pessimistic: 5 },
+      economics: {
+        currency: 'USD',
+        transitionCost: 4000,
+        monthlyBenefit: { optimistic: 1500, mostLikely: 2400, pessimistic: 3500 },
+        horizonMonths: 12,
+      },
+      autoCreateDecision: false,
+      createdAt: new Date(ts(52)).toISOString(),
+      updatedAt: new Date(ts(11)).toISOString(),
+    },
+  ];
+
+  const changeReserveItemId = id('pf');
+  state.portfolio.push({
+    id: changeReserveItemId,
+    title: 'Change transition: Extract Billing & Ledger into a stream-aligned pod',
+    kind: 'capacity-reserve',
+    status: 'open',
+    sourceType: 'change',
+    sourceId: billingPodChangeId,
+    ownerId: mei,
+    effortDays: { optimistic: 1, mostLikely: 1.5, pessimistic: 2 },
+    value: { optimistic: 0, mostLikely: 0, pessimistic: 0 },
+    currency: 'USD',
+    decision: 'funded',
+    decisionOn: at(24),
+    rationale: 'Transition capacity reserved for active organizational change (RULE-CHG-01).',
+    targetOn: at(-21),
+    createdOn: at(24),
+    completedOn: null,
+    releasedOn: null,
+    createdAt: new Date(ts(24)).toISOString(),
+    updatedAt: new Date(ts(6)).toISOString(),
+  });
+
+  // Negotiation Workbench — healthy baseline: every open negotiation has a
+  // BATNA, complete Fisher & Ury prep, future session/review dates and ZOPA on
+  // every measured issue, so the demo fires no NEG-* insight rules. One closed
+  // agreement shows the term-ownership follow-through state.
+  const vendorMandateDecisionId = id('dec');
+  state.decisions.push({
+    id: vendorMandateDecisionId,
+    title: 'Negotiation mandate: Aurora Cloud platform renewal',
+    question: 'Pursue a renewed Aurora Cloud contract within the reservation envelope, or execute the BATNA and migrate the reserved workloads to Northstack? Weighted ZOPA coverage is 100% on measured issues; prep completeness 100% (Fisher & Ury/BATNA, Raiffa ZOPA).',
+    date: at(18),
+    reversibility: 'irreversible',
+    driver: 'Priya Natarajan',
+    approver: 'Head of Platform',
+    contributors: 'Mei Lin Chen, Jordan Alvarez',
+    informed: 'Platform team, Finance Ops',
+    options: [
+      { id: id('dopt'), label: 'Renew within reservation envelope', pros: 'No migration risk, SLA continuity', cons: 'Locks the vendor for another 12–24 months' },
+      { id: id('dopt'), label: 'Execute BATNA: partial migration to Northstack', pros: 'Competitive tension, lower unit cost', cons: 'Migration cost and focus during billing work' },
+    ],
+    chosen: '',
+    rationale: '',
+    reviewOn: at(-2),
+    reviewedOn: null,
+    outcome: 'pending',
+    outcomeNotes: '',
+    createdAt: new Date(ts(18)).toISOString(),
+  });
+
+  const vendorNegotiationId = id('neg');
+  const secondmentNegotiationId = id('neg');
+  const scopeNegotiationId = id('neg');
+  state.negotiations = [
+    {
+      id: vendorNegotiationId,
+      title: 'Aurora Cloud platform renewal',
+      kind: 'vendor-contract',
+      status: 'active',
+      counterparty: 'Elena Voss',
+      counterpartyRole: 'Enterprise Account Director, Aurora Cloud',
+      ownerId: priya,
+      linkedGoalId: state.goals[1].id,
+      sourceType: null,
+      sourceId: null,
+      openedOn: at(18),
+      nextSessionOn: at(-3),
+      reviewOn: at(-8),
+      closedOn: null,
+      strategic: true,
+      stakesValue: 96000,
+      stakesCurrency: 'USD',
+      ourBatnaDescription: 'Migrate the two reserved workloads to Northstack under their quoted 12-month rate; in-house cost of migration is already budgeted.',
+      ourBatnaValue: 88000,
+      ourBatnaUnit: 'USD',
+      theirBatnaEstimate: 'Aurora is behind on quarterly new-logo targets; losing a reference customer likely costs them more than holding list price (medium confidence).',
+      ourInterests: [
+        'Protect platform reliability runway during the billing migration',
+        'Cap annual commitment so headcount plans stay flexible',
+      ],
+      theirInterests: [
+        'Book a multi-year renewal before quarter end',
+        'Keep a reference logo in the platform-engineering segment',
+      ],
+      objectiveCriteria: [
+        'Northstack renewal quote at comparable SLA terms',
+        'Published regional market rate for reserved compute (benchmark report)',
+        'Last contract unit price adjusted by the CPI index clause',
+      ],
+      options: [
+        'Two-year term with a price hold and 15 included support days',
+        'One-year term at the target price with an optional second-year renewal window',
+      ],
+      issues: [
+        {
+          id: id('niss'), name: 'Annual platform fee', unit: 'USD', direction: 'minimize', weight: 5,
+          ourReservation: 100000, ourTarget: 88000, theirReservation: 84000, theirTarget: 95000, estimateConfidence: 'medium',
+        },
+        {
+          id: id('niss'), name: 'Commitment term', unit: 'months', direction: 'minimize', weight: 3,
+          ourReservation: 24, ourTarget: 12, theirReservation: 12, theirTarget: 18, estimateConfidence: 'high',
+        },
+        {
+          id: id('niss'), name: 'Implementation support days', unit: 'days', direction: 'maximize', weight: 2,
+          ourReservation: 10, ourTarget: 20, estimateConfidence: null,
+        },
+      ],
+      agreedTerms: [],
+      outcomeNotes: '',
+      notes: 'First session established both sides share an interest in renewing before Aurora’s quarter end; fee issue already overlaps, term is the trade-off variable.',
+      escalationCaseId: null,
+      autoPropagate: true,
+      createdAt: new Date(ts(18)).toISOString(),
+      updatedAt: new Date(ts(4)).toISOString(),
+    },
+    {
+      id: secondmentNegotiationId,
+      title: 'Freya’s secondment to the metrics rebuild',
+      kind: 'internal-resource',
+      status: 'preparing',
+      counterparty: 'Riley Brooks',
+      counterpartyRole: 'Marketing Director',
+      ownerId: jordan,
+      linkedGoalId: null,
+      sourceType: null,
+      sourceId: null,
+      openedOn: at(7),
+      nextSessionOn: null,
+      reviewOn: at(-9),
+      closedOn: null,
+      strategic: false,
+      stakesValue: null,
+      stakesCurrency: 'USD',
+      ourBatnaDescription: 'Re-scope the weekly reporting work to fit Freya’s current allocation; slower but no cross-team dependency.',
+      ourBatnaValue: null,
+      ourBatnaUnit: '',
+      theirBatnaEstimate: 'Marketing can delay its dashboard migration one quarter if Freya stays; they prefer sharing her to losing the rebuild slot.',
+      ourInterests: ['Trustworthy weekly numbers before the billing migration cut-over', 'A defined end date so Freya’s growth plan is not parked'],
+      theirInterests: ['Keep campaign analytics coverage through the product launch', 'Avoid recruiting a temporary analyst'],
+      objectiveCriteria: ['Team capacity model allocatable-day balance', 'Last two internal secondment agreements as precedent'],
+      options: ['60% allocation for six weeks with a named review', '50% allocation for eight weeks, handback after launch week'],
+      issues: [
+        {
+          id: id('niss'), name: 'Freya allocation', unit: '% time', direction: 'maximize', weight: 4,
+          ourReservation: 60, ourTarget: 80, theirReservation: 80, theirTarget: 100, estimateConfidence: 'medium',
+        },
+        {
+          id: id('niss'), name: 'Handback notice', unit: 'working days', direction: 'minimize', weight: 2,
+          ourReservation: 10, ourTarget: 5, theirReservation: 5, theirTarget: 10, estimateConfidence: 'high',
+        },
+      ],
+      agreedTerms: [],
+      outcomeNotes: '',
+      notes: 'Pre-read shared with Riley; objective is to trade allocation against notice period rather than argue headcount.',
+      escalationCaseId: null,
+      autoPropagate: true,
+      createdAt: new Date(ts(7)).toISOString(),
+      updatedAt: new Date(ts(2)).toISOString(),
+    },
+    {
+      id: scopeNegotiationId,
+      title: 'Launch-week support scope trade-off',
+      kind: 'scope-deadline',
+      status: 'agreed',
+      counterparty: 'Nadia Haddad',
+      counterpartyRole: 'Sales Operations Lead',
+      ownerId: samuel,
+      linkedGoalId: state.goals[0].id,
+      sourceType: null,
+      sourceId: null,
+      openedOn: at(41),
+      nextSessionOn: null,
+      reviewOn: null,
+      closedOn: at(20),
+      strategic: false,
+      stakesValue: 12000,
+      stakesCurrency: 'USD',
+      ourBatnaDescription: 'Hold the original scope and let Sales staff the launch desk from their own rota for the week.',
+      ourBatnaValue: 12000,
+      ourBatnaUnit: 'USD',
+      theirBatnaEstimate: 'Sales could borrow two people from the EMEA pod, but coverage would be thinner outside business hours.',
+      ourInterests: ['Protect the escalation rota rebuild from interruption', 'Keep launch promises realistic'],
+      theirInterests: ['Weekend launch coverage without overtime escalation', 'One named support contact for the week'],
+      objectiveCriteria: ['Incident volume from the previous two launches', 'Overtime cost rate in the support handbook'],
+      options: ['Named launch contact plus on-call backup, scope frozen for the week', 'Full rota coverage in exchange for Sales-funded backfill day'],
+      issues: [
+        {
+          id: id('niss'), name: 'Support coverage hours', unit: 'hours', direction: 'minimize', weight: 4,
+          ourReservation: 40, ourTarget: 24, theirReservation: 24, theirTarget: 32, estimateConfidence: 'high',
+        },
+        {
+          id: id('niss'), name: 'Backfill days funded by Sales', unit: 'days', direction: 'maximize', weight: 3,
+          ourReservation: 1, ourTarget: 3, theirReservation: 3, theirTarget: 2, estimateConfidence: 'medium',
+        },
+      ],
+      agreedTerms: [
+        {
+          id: id('nterm'), issueId: null, text: 'Samuel’s rota names one launch-week contact and one on-call backup; scope frozen during launch week.',
+          ownerId: samuel, dueOn: at(-12), agreedValue: 32, unit: 'hours',
+        },
+        {
+          id: id('nterm'), issueId: null, text: 'Sales funds two backfill days so the rota rebuild stays on schedule.',
+          ownerId: freya, dueOn: at(-10), agreedValue: 2, unit: 'days',
+        },
+      ],
+      outcomeNotes: 'Closed on the package option: 32 coverage hours against two funded backfill days. Both terms have owners and follow-up delegations.',
+      notes: 'Agreement recorded after two sessions; reservation envelopes overlapped on both issues throughout.',
+      escalationCaseId: null,
+      autoPropagate: true,
+      createdAt: new Date(ts(41)).toISOString(),
+      updatedAt: new Date(ts(20)).toISOString(),
+    },
+  ];
+
+
+  // Budget & Finance — healthy baseline: forecast well inside the ceiling,
+  // evidenced actuals on spent lines, one future encumbrance funding the
+  // Aurora negotiation, and nothing actuals-due or overdue, so the demo
+  // fires no FIN-* insight rules.
+  const demoBudgetId = id('bud');
+  state.budgets = [
+    {
+      id: demoBudgetId,
+      name: 'Platform team operating budget',
+      currency: 'USD',
+      limit: 120000,
+      periodLabel: 'Current quarter',
+      startsOn: at(60),
+      endsOn: at(-30),
+      status: 'active',
+      ownerId: priya,
+      note: 'Approved envelope for platform tooling, training and events. Ceiling, not a target: unspent authority returns at quarter end.',
+      lines: [
+        {
+          id: id('bline'), title: 'Team offsite venue and travel', category: 'travel-events', status: 'spent',
+          committedAmount: 8000, actualAmount: 7640, committedOn: at(45), expectedOn: at(22), spentOn: at(20),
+          releasedOn: null, releasedReason: '', actualsDueOn: null,
+          sourceType: null, sourceId: null, ownerId: jordan,
+          note: 'Final venue invoice INV-2214; under the encumbered figure after the catering reduction.',
+        },
+        {
+          id: id('bline'), title: 'Accessibility training cohort (8 seats)', category: 'training-development', status: 'spent',
+          committedAmount: 6000, actualAmount: 6000, committedOn: at(30), expectedOn: at(12), spentOn: at(10),
+          releasedOn: null, releasedReason: '', actualsDueOn: null,
+          sourceType: 'goal', sourceId: state.goals[0].id, ownerId: freya,
+          note: 'Provider invoice matched the quote exactly.',
+        },
+        {
+          id: id('bline'), title: 'Aurora Cloud renewal — first-year commitment', category: 'tools-software', status: 'committed',
+          committedAmount: 24000, actualAmount: null, committedOn: at(5), expectedOn: at(-14), spentOn: null,
+          releasedOn: null, releasedReason: '', actualsDueOn: null,
+          sourceType: 'negotiation', sourceId: vendorNegotiationId, ownerId: priya,
+          note: 'Encumbered at the target end of the reservation envelope while terms are finalised.',
+        },
+        {
+          id: id('bline'), title: 'Ergonomic equipment refresh', category: 'facilities-equipment', status: 'planned',
+          committedAmount: 9000, actualAmount: null, committedOn: null, expectedOn: at(-21), spentOn: null,
+          releasedOn: null, releasedReason: '', actualsDueOn: null,
+          sourceType: null, sourceId: null, ownerId: samuel,
+          note: 'Planned only — not yet an obligation; decide after the renewal lands.',
+        },
+      ],
+      autoPropagate: true,
+      createdAt: new Date(ts(58)).toISOString(),
+      updatedAt: new Date(ts(5)).toISOString(),
+    },
+  ];
+
+  state.links = [
+    {
+      id: id('lnk'),
+      sourceType: 'case',
+      sourceId: billingCaseId,
+      targetType: 'delegation',
+      targetId: state.delegations[0].id,
+      relation: 'mitigates',
+      ruleId: 'RULE-DEL-01',
+      summary: 'Mei owns weekly billing reconciliation review',
+      createdOn: at(14),
+      createdAt: new Date(ts(14)).toISOString(),
+    },
+    {
+      id: id('lnk'),
+      sourceType: 'case',
+      sourceId: billingCaseId,
+      targetType: 'goal',
+      targetId: state.goals[1].id,
+      relation: 'impacts-goal',
+      ruleId: 'RULE-GOAL-01',
+      summary: 'Impacts zero-incident billing ledger migration goal',
+      createdOn: at(14),
+      createdAt: new Date(ts(14)).toISOString(),
+    },
+    {
+      id: id('lnk'),
+      sourceType: 'case',
+      sourceId: billingCaseId,
+      targetType: 'person',
+      targetId: mei,
+      relation: 'coaches',
+      ruleId: 'RULE-COACH-01',
+      summary: '1:1 support & Finance Ops air-cover for Mei',
+      createdOn: at(14),
+      createdAt: new Date(ts(14)).toISOString(),
+    },
+    {
+      id: id('lnk'),
+      sourceType: 'case',
+      sourceId: escalationCaseId,
+      targetType: 'decision',
+      targetId: state.decisions[0].id,
+      relation: 'decides',
+      ruleId: 'RULE-DEC-01',
+      summary: 'Pod structure DACI decision governs weekend rota trade-off',
+      createdOn: at(9),
+      createdAt: new Date(ts(9)).toISOString(),
+    },
+    {
+      id: id('lnk'),
+      sourceType: 'case',
+      sourceId: escalationCaseId,
+      targetType: 'delegation',
+      targetId: state.delegations[1].id,
+      relation: 'mitigates',
+      ruleId: 'RULE-DEL-01',
+      summary: 'Samuel owns cross-pod P1 escalation rota agreement',
+      createdOn: at(9),
+      createdAt: new Date(ts(9)).toISOString(),
+    },
+    {
+      id: id('lnk'),
+      sourceType: 'case',
+      sourceId: escalationCaseId,
+      targetType: 'goal',
+      targetId: state.goals[2].id,
+      relation: 'impacts-goal',
+      ruleId: 'RULE-GOAL-01',
+      summary: 'Impacts P1 <30m response goal',
+      createdOn: at(9),
+      createdAt: new Date(ts(9)).toISOString(),
+    },
+    {
+      id: id('lnk'),
+      sourceType: 'case',
+      sourceId: escalationCaseId,
+      targetType: 'person',
+      targetId: samuel,
+      relation: 'coaches',
+      ruleId: 'RULE-COACH-01',
+      summary: '1:1 air-cover & staffing escalation support for Samuel',
+      createdOn: at(9),
+      createdAt: new Date(ts(9)).toISOString(),
+    },
+    ...state.portfolio
+      .filter((item) => item.sourceType === 'case')
+      .map((item) => ({
+        id: id('lnk'),
+        sourceType: 'case',
+        sourceId: item.sourceId,
+        targetType: 'portfolio',
+        targetId: item.id,
+        relation: 'consumes-capacity',
+        ruleId: 'RULE-CAP-01',
+        summary: `Reserves ${item.effortDays.mostLikely} person-days for this case`,
+        createdOn: item.createdOn,
+        createdAt: item.createdAt,
+      })),
+    {
+      id: id('lnk'),
+      sourceType: 'requisition',
+      sourceId: seniorReqId,
+      targetType: 'portfolio',
+      targetId: hiringPlanItemId,
+      relation: 'consumes-capacity',
+      ruleId: 'RULE-HIRE-01',
+      summary: 'Interview effort for the senior platform engineer role',
+      createdOn: at(46),
+      createdAt: new Date(ts(46)).toISOString(),
+    },
+    {
+      id: id('lnk'),
+      sourceType: 'candidate',
+      sourceId: 'cand-demo-1',
+      targetType: 'requisition',
+      targetId: seniorReqId,
+      relation: 'assessed-for',
+      ruleId: 'RULE-HIRE-02',
+      summary: 'Noor Haddad assessed for Senior platform engineer',
+      createdOn: at(24),
+      createdAt: new Date(ts(24)).toISOString(),
+    },
+    {
+      id: id('lnk'),
+      sourceType: 'case',
+      sourceId: billingCaseId,
+      targetType: 'change',
+      targetId: billingPodChangeId,
+      relation: 'drives-change',
+      ruleId: 'RULE-CHG-ESC',
+      summary: 'Billing migration reconciliation risk drove dedicated Billing Pod split',
+      createdOn: at(24),
+      createdAt: new Date(ts(24)).toISOString(),
+    },
+    {
+      id: id('lnk'),
+      sourceType: 'change',
+      sourceId: billingPodChangeId,
+      targetType: 'portfolio',
+      targetId: changeReserveItemId,
+      relation: 'consumes-capacity',
+      ruleId: 'RULE-CHG-01',
+      summary: '6.3d transition effort reserved for Billing Pod split',
+      createdOn: at(24),
+      createdAt: new Date(ts(24)).toISOString(),
+    },
+    {
+      id: id('lnk'),
+      sourceType: 'change',
+      sourceId: billingPodChangeId,
+      targetType: 'goal',
+      targetId: state.goals[1].id,
+      relation: 'impacts-goal',
+      ruleId: 'RULE-CHG-05',
+      summary: 'Billing Pod split backs zero-incident ledger migration goal',
+      createdOn: at(24),
+      createdAt: new Date(ts(24)).toISOString(),
+    },
+    {
+      id: id('lnk'),
+      sourceType: 'change',
+      sourceId: billingPodChangeId,
+      targetType: 'person',
+      targetId: mei,
+      relation: 'coaches',
+      ruleId: 'RULE-CHG-03',
+      summary: '1:1 transition support for Mei Lin Chen (Billing Pod Lead)',
+      createdOn: at(24),
+      createdAt: new Date(ts(24)).toISOString(),
+    },
+    {
+      id: id('lnk'),
+      sourceType: 'change',
+      sourceId: triageHandoffChangeId,
+      targetType: 'goal',
+      targetId: state.goals[2].id,
+      relation: 'impacts-goal',
+      ruleId: 'RULE-CHG-05',
+      summary: 'Anchored P1 handoff contract backs <30m response goal',
+      createdOn: at(52),
+      createdAt: new Date(ts(52)).toISOString(),
+    },
+    ...state.portfolio
+      .filter((item) => item.sourceType === 'goal')
+      .map((item) => ({
+        id: id('lnk'),
+        sourceType: 'portfolio',
+        sourceId: item.id,
+        targetType: 'goal',
+        targetId: item.sourceId,
+        relation: 'impacts-goal',
+        ruleId: 'RULE-CAP-03',
+        summary: item.decision === 'funded' ? 'Funds capacity for this goal' : 'Removes capacity from this goal',
+        createdOn: item.createdOn,
+        createdAt: item.createdAt,
+      })),
+    // Negotiation Workbench edges (the shapes RULE-NEG-01 / RULE-NEG-02 create
+    // at runtime), so the demo graph is connected on first load.
+    {
+      id: id('lnk'),
+      sourceType: 'negotiation',
+      sourceId: vendorNegotiationId,
+      targetType: 'goal',
+      targetId: state.goals[1].id,
+      relation: 'impacts-goal',
+      ruleId: 'RULE-NEG-01',
+      summary: 'Renewal terms affect the zero-incident billing ledger migration goal',
+      createdOn: at(18),
+      createdAt: new Date(ts(18)).toISOString(),
+    },
+    {
+      id: id('lnk'),
+      sourceType: 'negotiation',
+      sourceId: vendorNegotiationId,
+      targetType: 'decision',
+      targetId: vendorMandateDecisionId,
+      relation: 'decides',
+      ruleId: 'RULE-NEG-01',
+      summary: 'Mandate decision: pursue agreement or execute the BATNA',
+      createdOn: at(18),
+      createdAt: new Date(ts(18)).toISOString(),
+    },
+    {
+      id: id('lnk'),
+      sourceType: 'negotiation',
+      sourceId: vendorNegotiationId,
+      targetType: 'person',
+      targetId: priya,
+      relation: 'coaches',
+      ruleId: 'RULE-NEG-01',
+      summary: '1:1 coaching support for the high-stakes vendor negotiation',
+      createdOn: at(18),
+      createdAt: new Date(ts(18)).toISOString(),
+    },
+    {
+      id: id('lnk'),
+      sourceType: 'negotiation',
+      sourceId: scopeNegotiationId,
+      targetType: 'delegation',
+      targetId: state.delegations[2].id,
+      relation: 'tracks-followup',
+      ruleId: 'RULE-NEG-02',
+      summary: 'Delegation tracks the funded backfill-days term of the launch-week agreement',
+      createdOn: at(20),
+      createdAt: new Date(ts(20)).toISOString(),
+    },
+  ];
+
+
+  // Budget funds edges (the shape RULE-FIN-02 creates at runtime).
+  state.links.push(
+    {
+      id: id('lnk'),
+      sourceType: 'budget',
+      sourceId: demoBudgetId,
+      targetType: 'negotiation',
+      targetId: vendorNegotiationId,
+      relation: 'funds',
+      ruleId: 'RULE-FIN-02',
+      summary: 'Budget funds negotiation: Aurora Cloud renewal first-year commitment',
+      createdOn: at(5),
+      createdAt: new Date(ts(5)).toISOString(),
+    },
+    {
+      id: id('lnk'),
+      sourceType: 'budget',
+      sourceId: demoBudgetId,
+      targetType: 'goal',
+      targetId: state.goals[0].id,
+      relation: 'funds',
+      ruleId: 'RULE-FIN-02',
+      summary: 'Budget funds goal: accessibility training cohort',
+      createdOn: at(30),
+      createdAt: new Date(ts(30)).toISOString(),
+    },
+  );
+
+  // Stakeholder Influence Register (Schema v25). Every embedded case/change
+  // stub and negotiation counterparty in this demo has a strict register
+  // match, so reconciliation coverage is 100% and STK-02 stays silent. The
+  // one deliberately adverse veto player (Dana Kowalski on the pod change)
+  // demonstrates the Tsebelis detection path; contact cadences are current
+  // and veto evidence is high-confidence, so no other STK signal fires.
+  const stkDana = id('stk');
+  const stkPriya = id('stk');
+  const stkMei = id('stk');
+  const stkController = id('stk');
+  const stkHop = id('stk');
+  const stkEsl = id('stk');
+  const stkVpcs = id('stk');
+  const stkSpl = id('stk');
+  const stkElena = id('stk');
+  const stkRiley = id('stk');
+  const stkNadia = id('stk');
+  const stkSamuel = id('stk');
+
+  const stkBase = {
+    status: 'active',
+    autoPropagate: true,
+    lastContactOn: at(5),
+    nextContactOn: at(-7),
+    preferredComms: '',
+    keyMessage: '',
+    influenceNotes: '',
+    vetoBasis: '',
+    tags: [],
+    contactLog: [{ id: id('stkcontact'), on: at(5), note: 'Regular alignment check-in' }],
+  };
+
+  state.stakeholders = [
+    {
+      ...stkBase, id: stkDana, name: 'Dana Kowalski', org: 'Central Operations', role: 'Director of Operations',
+      category: 'internal-exec', power: 5, interest: 4, legitimacy: 4, urgency: 3,
+      vetoPlayer: true, vetoBasis: 'Holds the operational sign-off gate for platform reorganisation',
+      stance: 'skeptical', estimateConfidence: 'high', commsCadence: 'weekly',
+      alliances: [{ id: id('stkall'), targetId: stkController, kind: 'alliance', strength: 4 }],
+      stanceHistory: [
+        { id: id('stkhist'), on: at(30), stance: 'supportive', context: 'Backed the original pod concept', sourceType: null, sourceId: null },
+        { id: id('stkhist'), on: at(20), stance: 'skeptical', context: 'Concerned about support coverage during the split', sourceType: 'change', sourceId: billingPodChangeId },
+      ],
+    },
+    {
+      ...stkBase, id: stkPriya, name: 'Priya Natarajan', org: 'Platform', role: 'Engineering Lead',
+      personId: priya, category: 'internal-report', power: 4, interest: 5, legitimacy: 4, urgency: 4,
+      vetoPlayer: true, vetoBasis: 'Architecture approval for service boundaries',
+      stance: 'supportive', estimateConfidence: 'high', commsCadence: 'immediate',
+      alliances: [{ id: id('stkall'), targetId: stkMei, kind: 'alliance', strength: 5 }],
+      stanceHistory: [
+        { id: id('stkhist'), on: at(25), stance: 'supportive', context: 'Co-owns the target topology', sourceType: null, sourceId: null },
+      ],
+    },
+    {
+      ...stkBase, id: stkMei, name: 'Mei Lin Chen', org: 'Platform', role: 'Staff Engineer',
+      personId: mei, category: 'internal-report', power: 3, interest: 5, legitimacy: 4, urgency: 3,
+      vetoPlayer: false, stance: 'champion', estimateConfidence: 'high', commsCadence: 'weekly',
+      alliances: [],
+      stanceHistory: [
+        { id: id('stkhist'), on: at(18), stance: 'champion', context: 'Volunteered to lead the billing extraction', sourceType: 'change', sourceId: billingPodChangeId },
+      ],
+    },
+    {
+      ...stkBase, id: stkController, name: 'Controller (Finance Ops)', org: 'Finance', role: 'Group Controller',
+      category: 'internal-exec', power: 5, interest: 3, legitimacy: 5, urgency: 2,
+      vetoPlayer: false, stance: 'skeptical', estimateConfidence: 'high', commsCadence: 'milestone',
+      alliances: [], stanceHistory: [],
+    },
+    {
+      ...stkBase, id: stkHop, name: 'Head of Platform', org: 'Platform', role: 'Head of Platform',
+      category: 'internal-exec', power: 4, interest: 4, legitimacy: 4, urgency: 2,
+      vetoPlayer: false, stance: 'supportive', estimateConfidence: 'high', commsCadence: 'weekly',
+      alliances: [{ id: id('stkall'), targetId: stkDana, kind: 'influences', strength: 4 }],
+      stanceHistory: [],
+    },
+    {
+      ...stkBase, id: stkEsl, name: 'Enterprise Support Lead', org: 'Customer Support', role: 'Enterprise Support Lead',
+      category: 'internal-peer', power: 3, interest: 4, legitimacy: 4, urgency: 3,
+      vetoPlayer: false, stance: 'supportive', estimateConfidence: 'medium', commsCadence: 'weekly',
+      alliances: [], stanceHistory: [],
+    },
+    {
+      ...stkBase, id: stkVpcs, name: 'VP Customer Success', org: 'Customer Success', role: 'VP Customer Success',
+      category: 'internal-exec', power: 5, interest: 4, legitimacy: 4, urgency: 4,
+      vetoPlayer: false, stance: 'blocker', estimateConfidence: 'high', commsCadence: 'immediate',
+      alliances: [{ id: id('stkall'), targetId: stkSpl, kind: 'alliance', strength: 3 }],
+      stanceHistory: [
+        { id: id('stkhist'), on: at(12), stance: 'blocker', context: 'Escalation workload feared during handoff changes', sourceType: 'case', sourceId: escalationCaseId },
+      ],
+    },
+    {
+      ...stkBase, id: stkSpl, name: 'Support Pod Leads', org: 'Customer Support', role: 'Support pod leadership group',
+      category: 'internal-peer', power: 2, interest: 4, legitimacy: 3, urgency: 3,
+      vetoPlayer: false, stance: 'skeptical', estimateConfidence: 'medium', commsCadence: 'milestone',
+      alliances: [], stanceHistory: [],
+    },
+    {
+      ...stkBase, id: stkElena, name: 'Elena Voss', org: 'Aurora Cloud', role: 'Enterprise Account Director',
+      category: 'external-vendor', power: 3, interest: 4, legitimacy: 3, urgency: 2,
+      vetoPlayer: false, stance: 'supportive', estimateConfidence: 'medium', commsCadence: 'milestone',
+      alliances: [], stanceHistory: [],
+    },
+    {
+      ...stkBase, id: stkRiley, name: 'Riley Brooks', org: 'Growth Marketing', role: 'Marketing Director',
+      category: 'external-client', power: 2, interest: 3, legitimacy: 3, urgency: 2,
+      vetoPlayer: false, stance: 'neutral', estimateConfidence: 'medium', commsCadence: 'digest',
+      alliances: [], stanceHistory: [],
+    },
+    {
+      ...stkBase, id: stkNadia, name: 'Nadia Haddad', org: 'Sales Operations', role: 'Sales Operations Lead',
+      category: 'external-client', power: 2, interest: 3, legitimacy: 3, urgency: 2,
+      vetoPlayer: false, stance: 'neutral', estimateConfidence: 'medium', commsCadence: 'digest',
+      alliances: [], stanceHistory: [],
+    },
+    {
+      ...stkBase, id: stkSamuel, name: 'Samuel Okafor', org: 'Customer Support', role: 'Support Team Lead',
+      personId: samuel, category: 'internal-report', power: 3, interest: 4, legitimacy: 4, urgency: 3,
+      vetoPlayer: true, vetoBasis: 'Incident-command sign-off for support process changes',
+      stance: 'supportive', estimateConfidence: 'high', commsCadence: 'weekly',
+      alliances: [], stanceHistory: [],
+    },
+  ];
+
+  // Involvement edges in exactly the shape RULE-STK-01 writes at runtime.
+  const involves = (sourceType, sourceId, stakeholderId, name) => ({
+    id: id('lnk'),
+    sourceType,
+    sourceId,
+    targetType: 'stakeholder',
+    targetId: stakeholderId,
+    relation: 'involves',
+    ruleId: 'RULE-STK-01',
+    summary: `Stakeholder involvement: ${name}`,
+    createdOn: at(10),
+    createdAt: new Date(ts(10)).toISOString(),
+  });
+  state.links.push(
+    involves('case', billingCaseId, stkController, 'Controller (Finance Ops)'),
+    involves('case', billingCaseId, stkHop, 'Head of Platform'),
+    involves('case', billingCaseId, stkEsl, 'Enterprise Support Lead'),
+    involves('case', escalationCaseId, stkVpcs, 'VP Customer Success'),
+    involves('case', escalationCaseId, stkSpl, 'Support Pod Leads'),
+    involves('change', billingPodChangeId, stkMei, 'Mei Lin Chen'),
+    involves('change', billingPodChangeId, stkDana, 'Dana Kowalski'),
+    involves('change', billingPodChangeId, stkPriya, 'Priya Natarajan'),
+    involves('negotiation', vendorNegotiationId, stkElena, 'Elena Voss'),
+    involves('negotiation', secondmentNegotiationId, stkRiley, 'Riley Brooks'),
+    involves('negotiation', scopeNegotiationId, stkNadia, 'Nadia Haddad'),
+    involves('change', triageHandoffChangeId, stkSamuel, 'Samuel Okafor'),
+  );
+
+  // Schema v27 — Intake Terminal drafts, generated by the real on-device
+  // engine against the demo roster so every probability and evidence span is
+  // computed, not hand-faked. The full analyzed → confirmed → dismissed
+  // lifecycle is represented so the calibration ledger has something to show.
+  const pendingIntakeText = 'The Aurora Cloud SLA renewal is slipping again — Priya says the vendor delivery is two weeks late and the penalty exposure is around $45,000. Samuel says the support pod is overloaded and burnt out, and we may need to escalate to the VP Customer Success this week.';
+  const confirmedIntakeText = 'The billing ledger cutover is threatening the quarterly close: a defect in the reconciliation job caused an outage for two customers and the estimated exposure is about $18,000. Priya Natarajan owns the mitigation and Samuel Okafor needs a blameless support check-in.';
+  const dismissedIntakeText = 'Freya Nilsson asked about refreshed laptop hardware ahead of the analytics rollout — a routine procurement request with no delivery risk and no budget breach.';
+  const pendingAnalysis = analyzeIntakeText(pendingIntakeText, state, { now });
+  const confirmedAnalysis = analyzeIntakeText(confirmedIntakeText, state, { now });
+  const dismissedAnalysis = analyzeIntakeText(dismissedIntakeText, state, { now });
+  state.intakeDrafts = [
+    {
+      id: id('intake'),
+      createdAt: ts(4),
+      updatedAt: ts(4),
+      status: 'analyzed',
+      sourceText: pendingIntakeText,
+      engineVersion: pendingAnalysis.engineVersion,
+      analysis: pendingAnalysis,
+      confirmedCaseId: null,
+      outcomes: null,
+      dismissReason: '',
+    },
+    {
+      id: id('intake'),
+      createdAt: ts(20),
+      updatedAt: ts(18),
+      status: 'confirmed',
+      sourceText: confirmedIntakeText,
+      engineVersion: confirmedAnalysis.engineVersion,
+      analysis: confirmedAnalysis,
+      confirmedCaseId: billingCaseId,
+      outcomes: {
+        primaryCategory: confirmedAnalysis.primaryCategoryId,
+        primaryAccepted: true,
+        confidenceBand: confirmedAnalysis.confidenceBand,
+        entityOffered: 4,
+        entityAccepted: 3,
+        editedFields: ['fmea.severity'],
+        rejectedRouteIds: [],
+      },
+      dismissReason: '',
+    },
+    {
+      id: id('intake'),
+      createdAt: ts(12),
+      updatedAt: ts(11),
+      status: 'dismissed',
+      sourceText: dismissedIntakeText,
+      engineVersion: dismissedAnalysis.engineVersion,
+      analysis: dismissedAnalysis,
+      confirmedCaseId: null,
+      outcomes: null,
+      dismissReason: 'Handled through routine hardware procurement, not an operational case.',
+    },
+  ];
+
+  // Schema v28 — Decision Tempo & Timing Terminal.
+  //
+  // Two things are demonstrated here. First, the latency calibration ledger is
+  // only honest if the moment of each call was recorded: every settled demo
+  // decision carries a `decidedOn` stamp, and five delegated calls with a
+  // spread of realised latencies give the empirical band real data to work
+  // with. Second, the timebox ledger shows all four lifecycle states — armed,
+  // armed-and-overdue (RULE-DLY-02 will open one owned delegation on the next
+  // tempo scan), proposed (never auto-armed) and settled.
+  const delegatedLatencyDemo = [
+    { title: 'Choose the on-call rotation tool', logged: 30, decided: 27, driver: 'Priya Natarajan', approver: 'Head of Platform', chose: 'Keep the current pager, add a rotation calendar' },
+    { title: 'Approve the incident Slack channel split', logged: 26, decided: 21, driver: 'Samuel Okafor', approver: 'Head of Platform', chose: 'Split by severity' },
+    { title: 'Select the log-retention window', logged: 24, decided: 18, driver: 'Mei Lin Chen', approver: 'Head of Platform', chose: '90 days hot, 12 months cold' },
+    { title: 'Pick the weekly metrics review slot', logged: 20, decided: 11, driver: 'Freya Nilsson', approver: 'Head of Platform', chose: 'Tuesday 09:00' },
+    { title: 'Choose the support rota hand-off format', logged: 18, decided: 6, driver: 'Samuel Okafor', approver: 'Head of Platform', chose: 'Live hand-off note in the incident channel' },
+  ];
+  for (const row of delegatedLatencyDemo) {
+    state.decisions.push({
+      id: id('dec'),
+      title: row.title,
+      question: `${row.title}? Low-stakes and reversible: decide at the lowest level that has the information.`,
+      date: at(row.logged),
+      reversibility: 'reversible',
+      driver: row.driver,
+      approver: row.approver,
+      contributors: '',
+      informed: '',
+      options: [
+        { id: id('dopt'), label: row.chose, pros: 'Cheapest option that removes the ambiguity', cons: 'Can be revisited without penalty' },
+        { id: id('dopt'), label: 'Keep the current arrangement', pros: 'No change cost', cons: 'The question keeps resurfacing' },
+      ],
+      chosen: row.chose,
+      rationale: 'Reversible operational choice; the cost of deciding was lower than the cost of the discussion.',
+      forecastProbability: null,
+      decidedOn: at(row.decided),
+      reviewOn: at(row.decided - 14) > at(0) ? null : at(row.decided - 14),
+      reviewedOn: null,
+      outcome: 'pending',
+      outcomeNotes: '',
+      createdAt: new Date(ts(row.logged)).toISOString(),
+    });
+  }
+
+  // An overdue timebox: logged 35 days ago, decide-by 9 days ago, still open.
+  const vendorDecision = {
+    id: id('dec'),
+    title: 'Choose the warehouse vendor for the analytics migration',
+    question: 'Two vendor proposals are on the table. The commercial terms lock for 30 days and the team is already blocked on the schema decision. Decide now with the evidence available, or run one reference call first?',
+    date: at(35),
+    reversibility: 'reversible',
+    driver: 'Freya Nilsson',
+    approver: 'Priya Natarajan',
+    contributors: 'Jordan Alvarez',
+    informed: 'Platform, Finance',
+    options: [
+      { id: id('dopt'), label: 'Vendor A — cheaper per terabyte, weaker SLA', pros: '18% lower run rate', cons: 'Two-hour response window misses the nightly load' },
+      { id: id('dopt'), label: 'Vendor B — stronger SLA, higher run rate', pros: 'Matches the incident-response commitment', cons: 'Consumes the remaining quarterly headroom' },
+    ],
+    chosen: '',
+    rationale: '',
+    forecastProbability: null,
+    decidedOn: null,
+    reviewOn: null,
+    reviewedOn: null,
+    outcome: 'pending',
+    outcomeNotes: '',
+    createdAt: new Date(ts(35)).toISOString(),
+  };
+  state.decisions.push(vendorDecision);
+
+  const podsDecision = state.decisions.find((d) => d.title === 'Restructure support into pods');
+  if (podsDecision) {
+    // Link the open restructuring decision to the real billing case so the
+    // engine derives its value at stake from a record instead of a guess.
+    state.links.push({
+      id: id('lnk'),
+      sourceType: 'case',
+      sourceId: billingCaseId,
+      targetType: 'decision',
+      targetId: podsDecision.id,
+      relation: 'decides',
+      ruleId: 'DEMO',
+      summary: 'The restructuring call governs how the billing incident is handled',
+      createdOn: at(19),
+      createdAt: new Date(ts(19)).toISOString(),
+    });
+  }
+
+  state.tempoSchedules = [
+    {
+      id: id('tempo'),
+      decisionId: podsDecision ? podsDecision.id : state.decisions[0].id,
+      status: 'armed',
+      profile: 'linear',
+      currency: 'USD',
+      valueAtStakeOverride: null,
+      derivedAmount: 42000,
+      derivedAt: at(19),
+      derivedTermCount: 1,
+      delayCostPerWeek: null,
+      windowWeeks: 12,
+      deadlineDays: 21,
+      advantageAmount: 18000,
+      uncertaintyPct: 85,
+      halfLifeDays: 6,
+      infoWeeks: 1,
+      infoCostAmount: 900,
+      infoCostNote: 'Two support-agent interviews and one half-day rota simulation',
+      decideBy: at(-3),
+      plannedTempoDays: 22,
+      decisionType: 'cross-cutting',
+      notes: 'Pod design is reversible, but the support rota cannot be rebuilt twice in a quarter.',
+      createdOn: at(19),
+      createdAt: new Date(ts(19)).toISOString(),
+      updatedAt: new Date(ts(19)).toISOString(),
+      armedOn: at(19),
+      settledOn: null,
+      abandonedOn: null,
+      abandonReason: '',
+      realizedLatencyDays: null,
+      resolvedChoice: '',
+      history: [
+        { on: at(19), action: 'armed', note: 'linear profile · decide by ' + at(-3) + ' · edge 18000', plannedWaitDays: 22, realizedLatencyDays: null },
+      ],
+    },
+    {
+      id: id('tempo'),
+      decisionId: vendorDecision.id,
+      status: 'armed',
+      profile: 'fixed-date',
+      currency: 'USD',
+      valueAtStakeOverride: 65000,
+      derivedAmount: null,
+      derivedAt: at(30),
+      derivedTermCount: 0,
+      delayCostPerWeek: null,
+      windowWeeks: 8,
+      // The commercial lock date has already passed: every further week is paid
+      // at the fixed-date multiplier, which is why this one reads "decide now".
+      deadlineDays: 0,
+      advantageAmount: 14000,
+      uncertaintyPct: 45,
+      halfLifeDays: 7,
+      infoWeeks: 1,
+      infoCostAmount: 800,
+      infoCostNote: 'One reference call with the Vendor B account team',
+      decideBy: at(9),
+      plannedTempoDays: 26,
+      decisionType: 'cross-cutting',
+      notes: 'Commercial terms lock at the end of the month; after that the fixed-date profile applies.',
+      createdOn: at(35),
+      createdAt: new Date(ts(35)).toISOString(),
+      updatedAt: new Date(ts(9)).toISOString(),
+      armedOn: at(35),
+      settledOn: null,
+      abandonedOn: null,
+      abandonReason: '',
+      realizedLatencyDays: null,
+      resolvedChoice: '',
+      history: [
+        { on: at(35), action: 'armed', note: 'fixed-date profile · decide by ' + at(9) + ' · edge 14000', plannedWaitDays: 26, realizedLatencyDays: null },
+        { on: at(12), action: 'edited', note: 'windowWeeks, deadlineDays' },
+      ],
+    },
+    {
+      id: id('tempo'),
+      decisionId: state.decisions.find((d) => d.title === 'Standardise weekly metrics on warehouse tables')?.id || state.decisions[0].id,
+      status: 'settled',
+      profile: 'linear',
+      currency: 'USD',
+      valueAtStakeOverride: null,
+      derivedAmount: null,
+      derivedAt: at(24),
+      derivedTermCount: 0,
+      delayCostPerWeek: null,
+      windowWeeks: 12,
+      deadlineDays: 21,
+      advantageAmount: 6000,
+      uncertaintyPct: 40,
+      halfLifeDays: 14,
+      infoWeeks: 1,
+      infoCostAmount: 0,
+      infoCostNote: '',
+      decideBy: at(4),
+      plannedTempoDays: 20,
+      decisionType: 'cross-cutting',
+      notes: 'Decided faster than the plan because Freya already had the definitions drafted.',
+      createdOn: at(24),
+      createdAt: new Date(ts(24)).toISOString(),
+      updatedAt: new Date(ts(9)).toISOString(),
+      armedOn: at(24),
+      settledOn: at(9),
+      abandonedOn: null,
+      abandonReason: '',
+      realizedLatencyDays: 15,
+      resolvedChoice: 'Single warehouse source of truth',
+      history: [
+        { on: at(24), action: 'armed', note: 'linear profile · decide by ' + at(4) + ' · edge 6000', plannedWaitDays: 20, realizedLatencyDays: null },
+        { on: at(9), action: 'settled', note: 'Decision made 15 days after it was logged', plannedWaitDays: 20, realizedLatencyDays: 15 },
+      ],
+    },
+  ];
+
+  // A proposal is never armed by automation: RULE-DLY-03 derives the value and
+  // the guardrail date, and the leader supplies the believed edge. This one is
+  // left unarmed on purpose so the terminal shows the difference.
+  const mandateDecision = state.decisions.find((d) => String(d.title || '').startsWith('Negotiation mandate'));
+  if (mandateDecision) {
+    state.tempoSchedules.push({
+      id: id('tempo'),
+      decisionId: mandateDecision.id,
+      status: 'proposed',
+      profile: 'linear',
+      currency: 'USD',
+      valueAtStakeOverride: null,
+      derivedAmount: 96000,
+      derivedAt: at(2),
+      derivedTermCount: 1,
+      delayCostPerWeek: null,
+      windowWeeks: 12,
+      deadlineDays: 21,
+      advantageAmount: null,
+      uncertaintyPct: null,
+      halfLifeDays: 14,
+      infoWeeks: null,
+      infoCostAmount: 0,
+      infoCostNote: '',
+      decideBy: at(-21),
+      plannedTempoDays: 28,
+      decisionType: 'cross-cutting',
+      notes: '',
+      createdOn: at(2),
+      createdAt: new Date(ts(2)).toISOString(),
+      updatedAt: new Date(ts(2)).toISOString(),
+      armedOn: null,
+      settledOn: null,
+      abandonedOn: null,
+      abandonReason: '',
+      realizedLatencyDays: null,
+      resolvedChoice: '',
+      history: [
+        { on: at(2), action: 'proposed', note: 'Auto-proposed from 1 linked record; USD 96,000 at stake', plannedWaitDays: null, realizedLatencyDays: null },
+      ],
+    });
+  }
+
+  /* ======================================================================
+   * Retention ledger (Schema v29)
+   *
+   * Deliberately thin history: five archived people and four observed
+   * voluntary departures, which is *below* the evidence floor of ten. The demo
+   * therefore shows the model abstaining — every multiplier labelled "prior" —
+   * because that is the honest state of a real five-person team and the
+   * terminal's most distinctive behaviour is saying so rather than inventing a
+   * percentage.
+   * ==================================================================== */
+  const departed = [
+    { name: 'Tomas Berg', role: 'Backend Engineer', level: 'senior', startDate: at(1180), leftOn: at(240), type: 'voluntary', reasonClass: 'growth', regrettable: true, note: 'Left for a staff role elsewhere; no path here was on record.', comp: { annualCost: 78000, bandMin: 82000, bandMax: 104000 } },
+    { name: 'Aisha Rahman', role: 'QA Engineer', level: 'ic', startDate: at(900), leftOn: at(410), type: 'voluntary', reasonClass: 'compensation', regrettable: true, note: 'Below band for two cycles; the correction arrived after the notice.', comp: { annualCost: 61000, bandMin: 68000, bandMax: 86000 } },
+    { name: 'Lars Mikkelsen', role: 'Support Specialist', level: 'ic', startDate: at(760), leftOn: at(520), type: 'involuntary', reasonClass: 'performance', regrettable: false, note: 'Managed exit after two documented improvement cycles.', comp: { annualCost: 54000, bandMin: 50000, bandMax: 64000 } },
+    { name: 'Hannah Weiss', role: 'Data Engineer', level: 'senior', startDate: at(640), leftOn: at(620), type: 'voluntary', reasonClass: 'manager', regrettable: true, note: 'Relationship with the previous lead broke down before the handover.', comp: { annualCost: 74000, bandMin: 76000, bandMax: 96000 } },
+    { name: 'Diego Ferreira', role: 'Platform Engineer', level: 'senior', startDate: at(1500), leftOn: at(60), type: 'voluntary', reasonClass: 'workload', regrettable: true, note: 'On-call load was raised three times and never reduced.', comp: { annualCost: 86000, bandMin: 84000, bandMax: 106000 } },
+  ];
+  departed.forEach((entry, index) => {
+    const personId = `person-demo-${state.people.length + 1}`;
+    state.people.push({
+      id: personId,
+      name: entry.name,
+      role: entry.role,
+      level: entry.level,
+      team: 'Platform',
+      managerId: null,
+      startDate: entry.startDate,
+      lastPromotionOn: null,
+      compensation: { currency: 'USD', ...entry.comp, bandMin: entry.comp.bandMin, bandMax: entry.comp.bandMax, annualCost: entry.comp.annualCost },
+      focus: '',
+      talkingPoints: [],
+      status: 'archived',
+      createdAt: new Date(ts(360)).toISOString(),
+      archivedAt: `${entry.leftOn}T00:00:00.000Z`,
+    });
+    state.departures.push({
+      id: id('departure'),
+      personId,
+      lastDay: entry.leftOn,
+      type: entry.type,
+      reasonClass: entry.reasonClass,
+      regrettable: entry.regrettable,
+      exitNote: entry.note,
+      replacementCostOverride: null,
+      currency: 'USD',
+      knowledgeTransferOn: entry.leftOn,
+      continuityCaseId: null,
+      continuityHandled: true,
+      recordedAt: new Date(ts(Math.max(1, 240 - index * 20))).toISOString(),
+    });
+  });
+
+  // Pay data for the people still here. Priya sits below band and has not had a
+  // level change on record; Jordan is inside band; Samuel is new to the role.
+  const pay = {
+    [priya]: { annualCost: 96000, bandMin: 104000, bandMax: 128000, lastPromotionOn: at(1180) },
+    [jordan]: { annualCost: 104000, bandMin: 98000, bandMax: 122000, lastPromotionOn: at(300) },
+    [mei]: { annualCost: 132000, bandMin: 128000, bandMax: 158000, lastPromotionOn: at(210) },
+    [samuel]: { annualCost: 92000, bandMin: 88000, bandMax: 112000, lastPromotionOn: null },
+    [freya]: { annualCost: 71000, bandMin: 68000, bandMax: 88000, lastPromotionOn: null },
+  };
+  for (const person of state.people) {
+    const figure = pay[person.id];
+    if (!figure) continue;
+    person.compensation = {
+      currency: 'USD',
+      annualCost: figure.annualCost,
+      bandMin: figure.bandMin,
+      bandMax: figure.bandMax,
+      effectiveOn: at(30),
+    };
+    person.lastPromotionOn = figure.lastPromotionOn;
+  }
+
+  // One committed plan with a real check-in, and one proposal the engine would
+  // make on its own. The proposal carries no cost; the commitment carries one.
+  state.retentionPlans.push({
+    id: id('retention'),
+    personId: priya,
+    status: 'committed',
+    source: 'manual',
+    proposedOn: at(24),
+    committedOn: at(21),
+    reviewOn: addDays(today, 16),
+    horizonDays: 90,
+    predictedRisk: 21.4,
+    predictedBand: 'elevated',
+    mode: 'prior',
+    rationale: 'On-call load plus a below-band position on a succession-ready lead.',
+    interventions: [
+      { id: 'pay-adjust', label: 'Close the pay gap to the band', hours: 2, moneyCost: 8000, currency: 'USD', hazardReduction: 0.29, blockedReason: '', doneOn: null },
+      { id: 'cadence-reset', label: 'Reset the 1:1 rhythm for 8 weeks', hours: 8, moneyCost: 0, currency: 'USD', hazardReduction: 0.23, blockedReason: '', doneOn: at(18) },
+    ],
+    committedCost: 8000,
+    currency: 'USD',
+    budgetId: null,
+    decisionId: null,
+    caseId: null,
+    closedOn: null,
+    closeReason: '',
+    createdAt: new Date(ts(24)).toISOString(),
+    updatedAt: new Date(ts(3)).toISOString(),
+    history: [
+      { on: at(24), action: 'proposed', note: 'Proposed with 2 intervention(s)' },
+      { on: at(21), action: 'committed', note: 'Committed 2 intervention(s): USD 8,000 and 10 leader-hour(s)' },
+      { on: at(3), action: 'checkin', note: 'Pay correction approved in the cycle; on-call load reduced by moving the billing migration owner.' },
+    ],
+  });
+  state.retentionPlans.push({
+    id: id('retention'),
+    personId: mei,
+    status: 'proposed',
+    source: 'RULE-RET-01',
+    proposedOn: at(4),
+    committedOn: null,
+    reviewOn: addDays(today, 26),
+    horizonDays: 90,
+    predictedRisk: 9.8,
+    predictedBand: 'watch',
+    mode: 'prior',
+    rationale: 'No level change on record for over two years and no active development plan.',
+    interventions: [
+      { id: 'level-review', label: 'Run a level review / promotion case', hours: 6, moneyCost: 10560, currency: 'USD', hazardReduction: 0.35, blockedReason: '', doneOn: null },
+    ],
+    committedCost: 0,
+    currency: 'USD',
+    budgetId: null,
+    decisionId: null,
+    caseId: null,
+    closedOn: null,
+    closeReason: '',
+    createdAt: new Date(ts(4)).toISOString(),
+    updatedAt: new Date(ts(4)).toISOString(),
+    history: [{ on: at(4), action: 'proposed', note: 'Rule proposal from a watch risk band' }],
+  });
+
+  state.settings.leaderName = 'Alex Rivera';
+  state.settings.teamName = 'Platform';
+  state.settings.orgName = 'Northwind';
+  // Schema v64: the demo declares weekly delay prices for three classes of
+  // work, so the Cost of Waiting terminal is populated on first open. The
+  // prices are the demo leader's own declarations — nothing is priced by
+  // default anywhere else. No exposure certificate is frozen here: freezing
+  // one on the leader's behalf would be a record made after the fact; the
+  // first scan freezes the current week.
+  state.waitPrices = [
+    {
+      id: 'wprice-demo-1',
+      classKey: 'case',
+      weeklyAmount: 800,
+      currency: 'USD',
+      declaredOn: at(30),
+      note: 'An open escalation blocks the support queue and the month-end close.',
+      createdAt: new Date(ts(30)).toISOString(),
+    },
+    {
+      id: 'wprice-demo-2',
+      classKey: 'work',
+      weeklyAmount: 1500,
+      currency: 'USD',
+      declaredOn: at(30),
+      note: 'Funded platform work delayed a week pushes the reliability bet.',
+      createdAt: new Date(ts(30)).toISOString(),
+    },
+    {
+      id: 'wprice-demo-3',
+      classKey: 'hiring',
+      weeklyAmount: 400,
+      currency: 'USD',
+      declaredOn: at(20),
+      note: 'An open requisition leaves the rota uncovered.',
+      createdAt: new Date(ts(20)).toISOString(),
+    },
+  ];
+  // Schema v65: one frozen parity & standard-consistency audit whose review
+  // date has arrived so the leader can experience both live LMX/Theil/Wilson/
+  // Kendall diagnostics and out-of-sample grading on first open without
+  // mutating any existing demo person, delegation or decision counts.
+  state.parityAudits = [
+    {
+      id: 'paud-demo-1',
+      schemaVersion: 1,
+      status: 'frozen',
+      label: 'Q3 LMX & promise-reliability self-audit',
+      commitment: 'Restore regular 1:1 & SBI cadence across post-ramp ICs and close carried leader commitments before opening new stretch asks.',
+      frozenOn: at(35),
+      reviewOn: at(7),
+      windowDays: 90,
+      eligibleTeamCount: 6,
+      rampProtectedCount: 1,
+      withinTheilMean: 0.24,
+      fringeCount: 1,
+      promiseFulfillmentPct: 62.5,
+      promiseGapPp: 37.5,
+      overdueLeaderPromises: 3,
+      inversionsCount: 1,
+      predictedImprovementPct: 70,
+      channels: [
+        { key: 'coaching', available: true, eligibleCount: 6, giniPct: 34, atkinsonPct: 11, theil: 0.22, withinTheil: 0.16, betweenTheil: 0.06, withinSharePct: 72.7, zeroCount: 1 },
+        { key: 'feedback', available: true, eligibleCount: 6, giniPct: 48, atkinsonPct: 24, theil: 0.38, withinTheil: 0.29, betweenTheil: 0.09, withinSharePct: 76.3, zeroCount: 2 },
+        { key: 'authority', available: true, eligibleCount: 6, giniPct: 44, atkinsonPct: 21, theil: 0.33, withinTheil: 0.24, betweenTheil: 0.09, withinSharePct: 72.7, zeroCount: 2 },
+        { key: 'sponsorship', available: true, eligibleCount: 6, giniPct: 46, atkinsonPct: 23, theil: 0.36, withinTheil: 0.27, betweenTheil: 0.09, withinSharePct: 75.0, zeroCount: 2 },
+      ],
+      grade: null,
+      notes: 'Frozen ahead of sprint boundary to verify coaching & promise parity follow-through.',
+      createdAt: new Date(ts(35)).toISOString(),
+    },
+  ];
+  // Schema v34: the demo team is deliberately at the edge of capacity, so the
+  // demo workspace sets its own (visible, editable) saturation threshold at
+  // 70 instead of the 80 default. The Load Governor then demonstrates the
+  // saturated band on the staff engineer's existing recorded load without
+  // adding effort that would tip the knife-edge Capacity plan over ρ = 1.
+  state.settings.loadSaturationPct = 70;
+
+  // Schema v29 — Operational Resilience, Dependency & Continuity topology:
+  // a 3-tier service/vendor/system/process graph showing a hidden sub-tier
+  // choke point, a sole-steward critical service (Bus Factor = 1 with an
+  // unverified trainee shadow), Williamson vendor hold-up on Aurora Cloud, and
+  // 3 recorded drills (intentionally < 5 so conformal bands stay counts-only).
+  const depSubTierId = id('dep');
+  const depAuroraVendorId = id('dep');
+  const depTaxVendorId = id('dep');
+  const depBillingSvcId = id('dep');
+  const depCloseRunbookId = id('dep');
+
+  state.dependencies = [
+    {
+      id: depSubTierId,
+      name: 'Signing Key Vault & Webhook Auth (KMS)',
+      kind: 'system',
+      criticality: 'critical',
+      status: 'active',
+      summary: 'Shared cryptographic key-signing and webhook token verification layer underneath queue workers and settlement jobs.',
+      ttsDays: 0.5,
+      ttrDays: 3,
+      substitutability: 'none',
+      warmSwitchDays: null,
+      exitPlanSummary: 'Secondary region key replica planned next quarter; manual rotation runbook requires security sign-off.',
+      currency: 'USD',
+      dailyImpactOverride: 3200,
+      derivedDailyImpact: null,
+      derivedCurrency: '',
+      annualSpend: null,
+      annualFailureProb: 10,
+      mitigationCost: 9000,
+      upstreamIds: [],
+      stewards: [
+        { personId: priya, role: 'primary', verifiedOn: at(45), notes: 'Authored KMS rotation scripts' },
+        { personId: freya, role: 'backup', verifiedOn: at(20), notes: 'Ran independent staging key failover' },
+      ],
+      linkedGoalIds: [],
+      linkedBudgetId: demoBudgetId,
+      linkedNegotiationId: null,
+      linkedStakeholderId: null,
+      linkedPortfolioId: null,
+      drills: [
+        {
+          id: id('drl'),
+          date: at(25),
+          kind: 'failover-drill',
+          scenario: 'Simulated primary KMS signing-key revocation in staging',
+          estimatedTtrDays: 2,
+          realizedTtrDays: 3,
+          outcome: 'breached-tolerance',
+          gapNote: 'Downstream webhook workers lacked cached public keys past 12 hours (0.5d TTS).',
+          linkedCaseId: null,
+          recordedAt: new Date(ts(25)).toISOString(),
+        },
+      ],
+      history: [{ on: at(50), action: 'created', note: 'Mapped shared sub-tier signing infrastructure' }],
+      autoPropagate: true,
+      createdOn: at(50),
+      reviewOn: at(-14),
+      retiredOn: null,
+      retiredReason: '',
+      createdAt: new Date(ts(50)).toISOString(),
+      updatedAt: new Date(ts(25)).toISOString(),
+    },
+    {
+      id: depAuroraVendorId,
+      name: 'Aurora Cloud Compute & Managed Queue',
+      kind: 'vendor',
+      criticality: 'critical',
+      status: 'active',
+      summary: 'Primary cloud runtime and managed event queue hosting billing and analytics pipelines.',
+      ttsDays: 2,
+      ttrDays: 14,
+      substitutability: 'untested-alt',
+      warmSwitchDays: null,
+      exitPlanSummary: '',
+      currency: 'USD',
+      dailyImpactOverride: null,
+      derivedDailyImpact: 263.01,
+      derivedCurrency: 'USD',
+      annualSpend: 96000,
+      annualFailureProb: 15,
+      mitigationCost: 18000,
+      upstreamIds: [depSubTierId],
+      stewards: [
+        { personId: priya, role: 'primary', verifiedOn: at(60), notes: 'Technical vendor owner & escalation lead' },
+        { personId: jordan, role: 'backup', verifiedOn: at(30), notes: 'Has production console & support escalation access' },
+      ],
+      linkedGoalIds: [metricsGoalId],
+      linkedBudgetId: demoBudgetId,
+      linkedNegotiationId: vendorNegotiationId,
+      linkedStakeholderId: state.stakeholders?.[0]?.id || null,
+      linkedPortfolioId: null,
+      drills: [
+        {
+          id: id('drl'),
+          date: at(40),
+          kind: 'tabletop',
+          scenario: 'Regional Aurora queue outage & contract non-renewal walkthrough',
+          estimatedTtrDays: 10,
+          realizedTtrDays: 14,
+          outcome: 'breached-tolerance',
+          gapNote: 'Terraform modules use proprietary queue semantics; Northstack migration takes ~14 days.',
+          linkedCaseId: null,
+          recordedAt: new Date(ts(40)).toISOString(),
+        },
+      ],
+      history: [{ on: at(60), action: 'created', note: 'Registered Tier-2 strategic cloud supplier' }],
+      autoPropagate: true,
+      createdOn: at(60),
+      reviewOn: at(-10),
+      retiredOn: null,
+      retiredReason: '',
+      createdAt: new Date(ts(60)).toISOString(),
+      updatedAt: new Date(ts(40)).toISOString(),
+    },
+    {
+      id: depTaxVendorId,
+      name: 'LedgerTax VAT Rules Engine',
+      kind: 'vendor',
+      criticality: 'important',
+      status: 'active',
+      summary: 'External tax-rate lookup API called during invoice generation.',
+      ttsDays: 5,
+      ttrDays: 3,
+      substitutability: 'warm-standby',
+      warmSwitchDays: 1,
+      exitPlanSummary: 'Cached static VAT schedule covers 5 days offline; warm-standby adapter switches in 1 day.',
+      currency: 'USD',
+      dailyImpactOverride: null,
+      derivedDailyImpact: 49.32,
+      derivedCurrency: 'USD',
+      annualSpend: 18000,
+      annualFailureProb: 8,
+      mitigationCost: 2500,
+      upstreamIds: [],
+      stewards: [
+        { personId: mei, role: 'primary', verifiedOn: at(55), notes: 'Maintains tax-rate cache sync' },
+        { personId: samuel, role: 'backup', verifiedOn: at(18), notes: 'Verified warm-standby feature flag switchover' },
+      ],
+      linkedGoalIds: [billingGoalId],
+      linkedBudgetId: demoBudgetId,
+      linkedNegotiationId: null,
+      linkedStakeholderId: null,
+      linkedPortfolioId: null,
+      drills: [
+        {
+          id: id('drl'),
+          date: at(18),
+          kind: 'failover-drill',
+          scenario: 'Switched invoice staging to cached VAT table + secondary adapter',
+          estimatedTtrDays: 1,
+          realizedTtrDays: 0.8,
+          outcome: 'within-tolerance',
+          gapNote: '',
+          linkedCaseId: null,
+          recordedAt: new Date(ts(18)).toISOString(),
+        },
+      ],
+      history: [{ on: at(55), action: 'created', note: 'Registered VAT rules vendor with warm-standby cache' }],
+      autoPropagate: true,
+      createdOn: at(55),
+      reviewOn: at(-30),
+      retiredOn: null,
+      retiredReason: '',
+      createdAt: new Date(ts(55)).toISOString(),
+      updatedAt: new Date(ts(18)).toISOString(),
+    },
+    {
+      id: depBillingSvcId,
+      name: 'Customer Billing & Invoice Settlement',
+      kind: 'service',
+      criticality: 'critical',
+      status: 'active',
+      summary: 'Core customer invoicing, ledger settlement and payment-retry pipeline underpinning Q4 billing SLAs.',
+      ttsDays: 1,
+      ttrDays: 4,
+      substitutability: 'none',
+      warmSwitchDays: null,
+      exitPlanSummary: 'Manual CSV invoice batch holds for 24h (TTS = 1d), after which customer SLA credits trigger.',
+      currency: 'USD',
+      dailyImpactOverride: 4500,
+      derivedDailyImpact: null,
+      derivedCurrency: '',
+      annualSpend: null,
+      annualFailureProb: 18,
+      mitigationCost: 12000,
+      upstreamIds: [depAuroraVendorId, depTaxVendorId],
+      stewards: [
+        { personId: mei, role: 'primary', verifiedOn: at(60), notes: 'Sole operator who has run production billing recovery' },
+        { personId: jordan, role: 'trainee', verifiedOn: null, notes: 'Shadowing next month-end settlement run' },
+      ],
+      linkedGoalIds: [billingGoalId],
+      linkedBudgetId: null,
+      linkedNegotiationId: null,
+      linkedStakeholderId: null,
+      linkedPortfolioId: state.portfolio[0]?.id || null,
+      drills: [],
+      history: [{ on: at(45), action: 'created', note: 'Registered Tier-1 billing capability; Mei sole verified steward' }],
+      autoPropagate: true,
+      createdOn: at(45),
+      reviewOn: at(-7),
+      retiredOn: null,
+      retiredReason: '',
+      createdAt: new Date(ts(45)).toISOString(),
+      updatedAt: new Date(ts(10)).toISOString(),
+    },
+    {
+      id: depCloseRunbookId,
+      name: 'Month-End Webhook Reconciliation Runbook',
+      kind: 'process',
+      criticality: 'important',
+      status: 'active',
+      summary: 'Recurring finance-close reconciliation verifying signed webhook ledger events against warehouse totals.',
+      ttsDays: 2,
+      ttrDays: 2,
+      substitutability: 'warm-standby',
+      warmSwitchDays: 1,
+      exitPlanSummary: 'Documented SQL verification checklist allows manual close within 24 hours.',
+      currency: 'USD',
+      dailyImpactOverride: 1800,
+      derivedDailyImpact: null,
+      derivedCurrency: '',
+      annualSpend: null,
+      annualFailureProb: 10,
+      mitigationCost: 3000,
+      upstreamIds: [depSubTierId],
+      stewards: [
+        { personId: mei, role: 'primary', verifiedOn: at(40), notes: 'Runs monthly close reconciliation' },
+        { personId: priya, role: 'backup', verifiedOn: at(15), notes: 'Completed independent shadow close last month' },
+      ],
+      linkedGoalIds: [metricsGoalId],
+      linkedBudgetId: null,
+      linkedNegotiationId: null,
+      linkedStakeholderId: null,
+      linkedPortfolioId: null,
+      drills: [],
+      history: [{ on: at(40), action: 'created', note: 'Registered month-end close process' }],
+      autoPropagate: true,
+      createdOn: at(40),
+      reviewOn: at(-21),
+      retiredOn: null,
+      retiredReason: '',
+      createdAt: new Date(ts(40)).toISOString(),
+      updatedAt: new Date(ts(15)).toISOString(),
+    },
+  ];
+
+  // Schema v30 — Coalition & Incentive War Room. Three situations exercise the
+  // full verdict range: a blocked coalition with an opposed veto player, an
+  // incentive-misaligned but winnable game, and a settled, stable coordination
+  // game. Players are inline, human-editable copies (never auto-overwritten);
+  // linked records turn the built-in propagation into a live demo.
+  const pwrPerson = state.people[1] ? state.people[1].id : (state.people[0] ? state.people[0].id : null);
+  const pwrStakeholders = (state.stakeholders || []).slice(0, 3).map((s) => s.id);
+  const pwrCase = (state.cases || [])[0] ? state.cases[0].id : null;
+  const pwrDecision = (state.decisions || [])[0] ? state.decisions[0].id : null;
+  state.powerGames = [
+    {
+      id: id('power'),
+      title: 'Platform migration sign-off',
+      context: 'The cutover needs a go/no-go from a steering group. The Head of Platform controls the release window and currently opposes the timing; the target is a coordinated "propose + support" outcome.',
+      status: 'committed',
+      players: [
+        { id: 'hop', name: 'Head of Platform', weight: 6, stance: 'opposed', stakeholderId: pwrStakeholders[0] || null },
+        { id: 'priya', name: 'Priya (Eng Lead)', weight: 3, stance: 'ally', personId: state.people[0] ? state.people[0].id : null },
+        { id: 'jordan', name: 'Jordan (PM)', weight: 2, stance: 'ally' },
+        { id: 'controller', name: 'Finance Controller', weight: 1, stance: 'neutral' },
+      ],
+      quotaPct: 50,
+      counterpartyId: 'hop',
+      strategies: { leader: ['Propose cutover', 'Defer a quarter'], rival: ['Support timing', 'Block timing'] },
+      cells: { '00': [8, 4], '01': [-2, 6], '10': [2, 1], '11': [0, 0] },
+      targetCell: '00',
+      estimateConfidence: 'medium',
+      linkedStakeholderIds: pwrStakeholders,
+      linkedCaseId: pwrCase,
+      linkedDecisionId: pwrDecision,
+      linkedNegotiationId: null,
+      linkedGoalIds: [],
+      ownerId: pwrPerson,
+      realizedCell: null,
+      notes: 'Opposed veto player controls the release window; a concession of ≈2 utility units makes the target a Nash equilibrium.',
+      derived: {
+        verdict: 'coalition-blocked', verdictLabel: 'Coalition blocked', confidenceBand: 'medium',
+        alignmentCost: 2, robustness: 0.2, coalitionFeasible: false, targetIsNE: false,
+        issues: ['coalition-blocked', 'misaligned', 'coordination-risk'],
+        engineVersion: 'power-2026.10-v1',
+      },
+      history: [{ on: at(6), action: 'created', note: 'Modeled the migration steering-group game' }],
+      autoPropagate: true,
+      createdOn: at(6), createdAt: new Date(ts(6)).toISOString(), updatedAt: new Date(ts(2)).toISOString(),
+    },
+    {
+      id: id('power'),
+      title: 'Q4 vendor renegotiation',
+      context: 'Renegotiating the Aurora cloud contract. The counterparty would rather we concede on term length; our target (hold firm on price, they concede on notice) is not self-enforcing without a side-payment.',
+      status: 'modeling',
+      players: [
+        { id: 'vpcs', name: 'VP Customer Success', weight: 4, stance: 'ally' },
+        { id: 'controller', name: 'Finance Controller', weight: 3, stance: 'neutral', stakeholderId: pwrStakeholders[1] || null },
+        { id: 'esl', name: 'Enterprise Support Lead', weight: 3, stance: 'ally' },
+      ],
+      quotaPct: 50,
+      counterpartyId: 'controller',
+      strategies: { leader: ['Hold price firm', 'Trade on price'], rival: ['Yield on notice', 'Hold the line'] },
+      cells: { '00': [5, 1], '01': [0, 5], '10': [1, 0], '11': [3, 3] },
+      targetCell: '00',
+      estimateConfidence: 'high',
+      linkedStakeholderIds: pwrStakeholders.slice(1, 3),
+      linkedCaseId: null,
+      linkedDecisionId: null,
+      linkedNegotiationId: (state.negotiations || [])[0] ? state.negotiations[0].id : null,
+      linkedGoalIds: [],
+      ownerId: pwrPerson,
+      realizedCell: null,
+      notes: 'Unique pure Nash at (Trade, Hold); the ambitious target needs an incentive-compatible concession of ≈4 units.',
+      derived: {
+        verdict: 'misaligned', verdictLabel: 'Incentives misaligned', confidenceBand: 'medium',
+        alignmentCost: 4, robustness: 0.2, coalitionFeasible: true, targetIsNE: false,
+        issues: ['misaligned'],
+        engineVersion: 'power-2026.10-v1',
+      },
+      history: [{ on: at(3), action: 'created', note: 'Framed the vendor negotiation as a 2x2 game' }],
+      autoPropagate: true,
+      createdOn: at(3), createdAt: new Date(ts(3)).toISOString(), updatedAt: new Date(ts(1)).toISOString(),
+    },
+    {
+      id: id('power'),
+      title: 'Cross-team on-call rotation',
+      context: 'A joint support/platform on-call rota. Both sides prefer to agree on the same operating model; the target (weekly handover, shared runbook) is already a stable equilibrium and has been settled.',
+      status: 'settled',
+      players: [
+        { id: 'spl', name: 'Support Pod Leads', weight: 4, stance: 'ally' },
+        { id: 'samuel', name: 'Samuel (Support Lead)', weight: 3, stance: 'ally' },
+        { id: 'freya', name: 'Freya (Data)', weight: 3, stance: 'neutral' },
+      ],
+      quotaPct: 50,
+      counterpartyId: 'spl',
+      strategies: { leader: ['Weekly handover', 'Ad-hoc paging'], rival: ['Shared runbook', 'Team-local rota'] },
+      cells: { '00': [8, 8], '01': [0, 1], '10': [1, 0], '11': [4, 4] },
+      targetCell: '00',
+      estimateConfidence: 'high',
+      linkedStakeholderIds: [],
+      linkedCaseId: null,
+      linkedDecisionId: null,
+      linkedNegotiationId: null,
+      linkedGoalIds: [],
+      ownerId: pwrPerson,
+      realizedCell: '00',
+      settledOn: at(4),
+      notes: 'Two pure Nash equilibria; the ambitious one is Pareto-superior and was reached via a public commitment.',
+      derived: {
+        verdict: 'stable', verdictLabel: 'Stable & aligned', confidenceBand: 'high',
+        alignmentCost: 0, robustness: 0.5, coalitionFeasible: true, targetIsNE: true,
+        issues: [],
+        engineVersion: 'power-2026.10-v1',
+      },
+      history: [
+        { on: at(9), action: 'created', note: 'Modeled the rota coordination game' },
+        { on: at(4), action: 'settled', note: 'Realised outcome 00 — weekly handover adopted' },
+      ],
+      autoPropagate: true,
+      createdOn: at(9), createdAt: new Date(ts(9)).toISOString(), updatedAt: new Date(ts(4)).toISOString(),
+    },
+  ];
+
+  // ---- longitudinal history -------------------------------------------------
+  //
+  // The vitals engine reconstructs every metric from the dates already on the
+  // records, which means a demo seeded only with this week's work would show
+  // eight empty charts and one honest sentence about not having enough history.
+  // So the demo carries a real past: ordinary feedback and recognition spread
+  // across twenty-two weeks, written with a fixed seed so every load produces
+  // exactly the same history. Nothing here is a fabricated measurement — these
+  // are records of things that (in the fiction) happened, dated when they
+  // happened, and the engine derives the series from them like any other.
+  seedHistoricalRecords(state, now);
+  state.impactStudies = seedImpactStudies(state, now);
+  // Schema v50: two declared implementation plans over the demo's own dated
+  // records. One is deliberately under-delivered so the delivery-repair path can
+  // be exercised without inventing a failure, and one carries a contested
+  // attestation so the attestation-versus-records comparison has something real
+  // to compare. Nothing here fabricates a delivery: the observations are derived
+  // from the feedback and 1:1 records seeded above.
+  state.fidelityPlans = seedFidelityPlans(state, now);
+  // Schema v51: bands and two merit cycles over the demo roster — one finalized
+  // a year ago with its predictions resolved, one mid-flight and unallocated.
+  const meritSeed = seedMerit(state, now);
+  state.compBands = meritSeed.bands;
+  state.meritCycles = meritSeed.cycles;
+  // Schema v52: one finalized transition programme with a frozen snapshot and a
+  // closed horizon, plus one live one-role plan over the same roster.
+  state.transitionPrograms = seedTransition(state, now);
+  state.commsDrafts = seedCommsDrafts(state, now);
+  seedAllocation(state, now);
+  seedLoad(state, now);
+  seedDynamics(state, now);
+  // Schema v35: anchor assumptions to the real metrics decision and two real
+  // continuity dependencies, then run the real sensor rule over them.
+  const premiseDecision = (state.decisions || []).find((d) => d && d.title === 'Standardise weekly metrics on warehouse tables');
+  seedPremises(state, now, {
+    decisionId: premiseDecision?.id || (state.decisions || [])[0]?.id || null,
+    ownerA: priya,
+    ownerB: mei,
+    dependencyA: depSubTierId,
+    dependencyB: depCloseRunbookId,
+  });
+
+  // Run it through the same normalizer every import uses, so the demo can
+  // never produce a state the real app would reject.
+  const normalized = normalizeState(state, { now }).state;
+  seedDynamicsScan(normalized, now);
+  // Schema v38: the capital ledger is seeded after the scan so its frozen
+  // prediction uses the same derived baseline the real adoption path freezes.
+  seedCapital(normalized, now);
+  // Schema v39: run the real early-warning scan over the demo's own dated
+  // records. Nothing is invented here: the scan reads the same series the app
+  // reads, applies the same Benjamini–Hochberg step-up, records whatever it
+  // finds (including suppressions) and freezes whatever it predicts.
+  seedWatch(normalized, now);
+  // Schema v42: declare the demo strategy against the demo's own goals, plan
+  // items and cases — three bets of deliberately different quality, so the
+  // terminal shows a graded bet, an unfalsifiable one and an overdue stop rule.
+  seedStrategy(normalized, now);
+  // Schema v57: commit two attention plans over the demo's own dated records —
+  // one already reviewed so the terminal shows a graded prediction beside its
+  // result, and one live so the review path is reachable. The plans are built by
+  // the real solver and frozen by the real freeze function; the demo does not
+  // hand-write a plan, because a hand-written plan could disagree with the
+  // market the screen derives from the same records.
+  seedAttention(normalized, now);
+  // Schema v43: three reviews over the demo's own settled case, anchored change
+  // and completed work — two closed loops and one that was never closed, so the
+  // Recurrence tab has a genuine finding rather than a demonstration of nothing.
+  seedLearning(normalized, now);
+  // Schema v47: declare the demo scorecard and freeze its prediction through the
+  // same engine the commit action uses.
+  seedMeasurement(normalized, now);
+  // Schema v54: two priced decision frames over the demo's own assumption
+  // ledger, one investigation that has not reported and one that has. The
+  // settled one is run through the real rule, so the demo can never contain a
+  // state the app itself would not produce.
+  seedInformationValue(normalized, now);
+  // Schema v58: two draft operating agreements over the demo's own records —
+  // one narrow policy the billing case already matches (rehearse it to see a
+  // live preview), and the full five-action delay template. Drafts only: the
+  // demo never activates an agreement on the leader's behalf.
+  seedAutopilot(normalized, now);
+  // Schema v59: the Signal Path over the demo's own roster, with a committed
+  // channel whose declared reach its own probe ledger contradicts. Built through
+  // the real reader and the real freeze function, so the demo cannot contain a
+  // figure the live screen would disagree with.
+  seedSignalPath(normalized, now);
+  // Schema v62: three performance concerns over the demo's own roster — one
+  // with no recorded expectation, one with a passed review date and no outcome,
+  // and one closed loop whose frozen prediction was scored. Every delegation,
+  // decision and 1:1 prompt is produced by the real rule.
+  seedPerformance(normalized, now);
+  // Schema v66: score the demo's own intervention studies through the real
+  // estimator and freeze one evidence review through the real builder. Nothing
+  // on the Evidence terminal is hand-written, including its pooled estimates.
+  seedEvidence(normalized, now);
+  // Schema v69: couple the two largest open priced calls through the demo's
+  // own premise ledger and declare one correlation, so the Portfolio panel
+  // opens on a live coupled book. No reading is pre-frozen — a frozen forecast
+  // is written on demand, never seeded.
+  seedDeferralPortfolio(normalized, now);
+  // Schema v70: thirty cross-family verdicts, seven recorded looks and two
+  // programme reviews (one already graded from the verdicts that followed it).
+  // Nothing here is invented after its own outcome: the older review is frozen
+  // from a truncated copy of the state, so its prediction predates its grade.
+  seedIntegrity(normalized, now);
+  // Schema v71: borrowing frames over the demo's own verdict history. The
+  // graded frames are frozen from a copy of the state truncated to 30 days ago
+  // — so each prediction predates its outcomes — and graded from the verdicts
+  // that followed. One live frame is frozen today. No exchangeability ruling is
+  // seeded: that is the leader's judgement to make.
+  seedCredibility(normalized, now);
+  // Schema v72: the leader's own decision journal, and two calibration
+  // certificates over it — one graded from a truncated copy of the state so its
+  // prediction predates its outcome, one frozen today. Nothing on the terminal is
+  // hand-written: every Brier score, band and map is recomputed on read.
+  seedConfidence(normalized, now);
+  // Schema v75: freeze one prospective closure forecast and settle one closed
+  // or due demo control loop using the real settlement engine.
+  seedSettlements(normalized, now);
+  // Schema v76: the Counterfactual Policy Terminal reads decision points out of
+  // ordinary records — assumptions and their human-assessed outcomes, decisions
+  // and their outcome reviews, delegations and their delivery dates. The demo
+  // generator never simulated deliberation (every demo decision is decided the
+  // day it is opened), so the terminal would have nothing to compare. What is
+  // seeded here is therefore WORKSPACE HISTORY, not engine output: ten dated
+  // assumptions with recorded verdicts, ten decided calls (some of them late),
+  // and eight closed delegations (some of them checked in on). Every value,
+  // bound, propensity and Gamma on the terminal is then computed from these
+  // records by the same engine that reads a real workspace — nothing on that
+  // screen is hand-written.
+  seedCounterfactualDecisionPoints(normalized, now);
+  // Schema v77: the Measurement Reliability Terminal audits the leader's own
+  // rating instrument, so it needs what almost no demo workspace has — a real
+  // rating history. Four quarterly cycles across the demo roster are seeded as
+  // ordinary completed reviews, and every coefficient on the screen is then
+  // derived from them by the engine that reads a real workspace. One reading is
+  // frozen from a copy of the state truncated to the third cycle and graded
+  // against the fourth, so the ledger shows a genuine out-of-sample receipt
+  // rather than a hand-written number.
+  seedReliability(normalized, now);
+  // Schema v78: the Coupling Ledger audits the leader's own declared ρ against
+  // the realised joint timing of the calls it couples, so it needs what a fresh
+  // demo workspace never has — coupled calls that have actually RESOLVED, with
+  // dates. Twenty dated decisions in ten premise-coupled pairs, and the
+  // declarations for them, are seeded as ordinary history; every coincidence
+  // count, lift, rotation p-value and band verdict on the screen is then
+  // computed from those dates by the same engine that reads a real workspace.
+  // One review is frozen from a copy of the state truncated to 60 days ago
+  // (when six of the pairs had not yet resolved) and graded today, so the
+  // ledger shows a genuine out-of-sample receipt rather than a hand-written
+  // number.
+  seedCouplingLedger(normalized, now);
+  // Schema v79: the Evidence Supply Chain reads production out of records the
+  // workspace already keeps, so the demo needs no fabricated throughput — only a
+  // frozen plan with a closed window. The plan is built from a copy of the state
+  // truncated to 75 days ago (when the lines were thinner), then graded today by
+  // the same engine that grades a real plan, so the ledger shows a genuine
+  // out-of-sample receipt rather than a hand-written Brier number.
+  seedSupply(normalized, now);
+  // Schema v80 — one frozen promise reading, graded out of sample, plus the record
+  // of a date that has already moved twice. The book itself is never fabricated:
+  // every promise is a dated record the demo already holds, so this seeds only the
+  // frozen claim and the move history that a real workspace would have.
+  seedSolvency(normalized, now);
+  // Schema v81 — the Cross-Examination Terminal is measured entirely from human
+  // verdicts, which no demo workspace has. What is seeded here is WORKSPACE
+  // HISTORY, not engine output: a short verdict ledger with reasons, dated before
+  // a round was frozen 45 days ago, plus the verdicts recorded after that freeze.
+  // Every rate, probability, Brier loss and sampling bound on the screen is then
+  // computed from those rows by the same engine that reads a real workspace.
+  seedSceptic(normalized, now);
+  seedCatchball(normalized, now);
+  // Normalize once more so the records the rule just wrote are held to exactly
+  // the same contract as any other write.
+  return normalizeState(normalized, { now }).state;
+}
+
+/**
+ * Schema v69 — the Deferral Portfolio over the demo's own open calls.
+ *
+ * The book itself is derived: every priced open call in a currency is a
+ * member, exactly as the live terminal derives it. What the demo adds is the
+ * one thing derivation cannot supply:
+ *
+ *   - two of the open priced calls are typed as TESTING the same recorded
+ *     premise (the reconciliation-window premise), so the graph proposes a
+ *     real premise-sharing pair rather than a demonstration of nothing;
+ *   - one declared ρ = 0.45 for that pair — labelled as the leader's
+ *     declaration, never derived, exactly as the action layer would store it.
+ *
+ * No reading is frozen: a frozen reading is a prediction, and back-filling
+ * one would be a prediction made after the answer was known. The panel shows
+ * the live book; the leader freezes it.
+ */
+
+/**
+ * Schema v70: the Signal Integrity Board over the demo's own recent history.
+ *
+ * Three things are seeded, and each one exists to keep the Board from opening
+ * on a dead end:
+ *   - thirty verdicts across five families, spread over two months, with a
+ *     deliberate mix: one family measurably over-claiming, one calibrated, one
+ *     unresolved and two below the verdict floor;
+ *   - seven recorded looks at the plan the demo declares, so the error budget
+ *     has a real spend curve and the bar for the next look is a number rather
+ *     than a promise;
+ *   - one graded review and one pending review, both produced by the real
+ *     builder and the real grader from the verdicts that existed at the time.
+ *     The older review is frozen BEFORE the verdicts that grade it were
+ *     recorded — computed from a truncated copy of the state, not from the
+ *     finished one — because a "prediction" written after its own outcome is
+ *     the exact failure this module exists to catch.
+ *
+ * Nothing here is a person's score: verdicts are keyed by a de-identified
+ * digest of the finding and a rule id.
+ */
+function seedIntegrity(state, now) {
+  const today = dayKey(now);
+  const at = (daysAgo) => addDays(today, -daysAgo);
+  const ts = (daysAgo) => new Date(`${at(daysAgo)}T09:00:00.000Z`).toISOString();
+
+  const verdict = (daysAgo, domain, ruleId, value) => ({
+    id: `sverdict-demo-${daysAgo}-${ruleId}-${value}`,
+    instanceKey: signalInstanceKey({ ruleId, day: at(daysAgo), title: `${domain} demo finding`, personId: 'demo' }),
+    domain,
+    ruleId,
+    verdict: value,
+    day: at(daysAgo),
+    recordedAt: ts(daysAgo),
+    severityAtVerdict: 3,
+    note: '',
+    source: 'board',
+  });
+
+  // [daysAgo, family, rule, verdict]. Everything at or before 25 days ago
+  // existed when the older review was frozen; everything inside 18 days is
+  // what grades it.
+  const history = [
+    [60, 'Conversations', 'CONV-01', 'confirmed'],
+    [57, 'Goals', 'GOAL-01', 'false-alarm'],
+    [54, 'Feedback', 'FB-01', 'confirmed'],
+    [51, 'Goals', 'GOAL-02', 'explained'],
+    [48, 'Conversations', 'CONV-02', 'confirmed'],
+    [45, 'Feedback', 'FB-02', 'confirmed'],
+    [42, 'Goals', 'GOAL-03', 'false-alarm'],
+    [39, 'Conversations', 'CONV-03', 'explained'],
+    [36, 'Goals', 'GOAL-01', 'confirmed'],
+    [33, 'Feedback', 'FB-01', 'explained'],
+    [30, 'Goals', 'GOAL-02', 'false-alarm'],
+    [28, 'Conversations', 'CONV-01', 'false-alarm'],
+    [26, 'Goals', 'GOAL-03', 'false-alarm'],
+    [25, 'Feedback', 'FB-03', 'confirmed'],
+    [18, 'Goals', 'GOAL-01', 'false-alarm'],
+    [16, 'Conversations', 'CONV-05', 'confirmed'],
+    [14, 'Feedback', 'FB-01', 'confirmed'],
+    [12, 'Goals', 'GOAL-02', 'explained'],
+    [11, 'Premise sentinel', 'PREM-02', 'false-alarm'],
+    [9, 'Feedback', 'FB-02', 'confirmed'],
+    [8, 'Goals', 'GOAL-03', 'false-alarm'],
+    [7, 'Conversations', 'CONV-02', 'false-alarm'],
+    [6, 'Decision tempo', 'DLY-03', 'dismissed'],
+    [5, 'Goals', 'GOAL-01', 'confirmed'],
+    [4, 'Feedback', 'FB-03', 'confirmed'],
+    [3, 'Premise sentinel', 'PREM-01', 'confirmed'],
+    [2, 'Goals', 'GOAL-02', 'false-alarm'],
+  ].map(([daysAgo, domain, ruleId, value]) => verdict(daysAgo, domain, ruleId, value));
+
+  // Seven looks at the declared plan: one weekly cadence, twelve series each,
+  // and the p values the scans produced. A look with no candidate is recorded
+  // as a look that found nothing — that is the difference between "clean" and
+  // "unmeasured".
+  const look = (daysAgo, pValues) => ({
+    id: `ilook-demo-${daysAgo}`,
+    lookOn: at(daysAgo),
+    recordedAt: ts(daysAgo),
+    source: 'scan',
+    seriesTested: 12,
+    candidates: pValues.length,
+    promoted: pValues.filter((p) => p <= 0.02).length,
+    pValues,
+    alphaPctAtLook: 10,
+    plannedLooksAtLook: 12,
+    spendingAtLook: 'pocock',
+    note: '',
+  });
+  const looks = [
+    look(42, [0.008]),
+    look(35, [0.0041, 0.019]),
+    look(28, [0.021, 0.037]),
+    look(21, [0.011]),
+    look(14, []),
+    look(7, [0.0062]),
+  ];
+
+  // Today's look comes from the alerts the demo's own watch scan just wrote.
+  const todayAlerts = (state.watchAlerts || []).filter((a) => a && a.detectedOn === today);
+  if (todayAlerts.length) {
+    looks.push({
+      id: `ilook-demo-0`,
+      lookOn: today,
+      recordedAt: new Date(`${today}T09:00:00.000Z`).toISOString(),
+      source: 'scan',
+      seriesTested: todayAlerts.reduce((n, a) => Math.max(n, Number(a.m) || 0), 0) || 12,
+      candidates: todayAlerts.length,
+      promoted: todayAlerts.filter((a) => a.status !== 'suppressed').length,
+      pValues: todayAlerts.map((a) => Math.round(Number(a.pValue) * 1e6) / 1e6).filter((p) => Number.isFinite(p)),
+      alphaPctAtLook: 10,
+      plannedLooksAtLook: 12,
+      spendingAtLook: 'pocock',
+      note: '',
+    });
+  }
+  state.integrityLooks = looks;
+
+  // The older review is frozen from the state as it stood 24 days ago.
+  const freezeAt = new Date(ts(24));
+  const past = {
+    ...state,
+    signalVerdicts: history.filter((row) => row.day <= at(24)),
+    integrityLooks: looks.filter((row) => row.lookOn <= at(24)),
+    integrityReviews: [],
+  };
+  const pastReport = integrityReport(past, freezeAt, state.settings);
+  const first = buildIntegrityReview(pastReport, {
+    id: 'irev-demo-1',
+    label: 'Signal review — does the suite cry wolf?',
+    reviewOn: at(10),
+    horizonAlerts: 5,
+    nowIso: ts(24),
+  });
+  const reviews = [];
+  if (first.ok) {
+    // Grade it from what was actually recorded in the window it claimed.
+    const withOutcome = { ...state, signalVerdicts: history };
+    const grade = gradeIntegrityReview(first.record, withOutcome, new Date(ts(10)));
+    if (grade) first.record.graded = grade;
+    reviews.push(first.record);
+  }
+
+  // The live review: frozen today, opened against the next four weeks.
+  state.signalVerdicts = history;
+  const liveReport = integrityReport({ ...state, integrityReviews: [] }, new Date(ts(0)), state.settings);
+  const live = buildIntegrityReview(liveReport, {
+    id: 'irev-demo-2',
+    label: 'Signal review — the next four weeks',
+    reviewOn: at(-28),
+    horizonAlerts: 6,
+    nowIso: ts(0),
+  });
+  if (live.ok) reviews.push(live.record);
+  state.integrityReviews = reviews;
+}
+
+function seedCredibility(state, now) {
+  const today = dayKey(now);
+  const at = (daysAgo) => addDays(today, -daysAgo);
+  const ts = (daysAgo) => new Date(`${at(daysAgo)}T09:00:00.000Z`).toISOString();
+  const freezeDay = at(30);
+  const past = {
+    ...state,
+    signalVerdicts: (state.signalVerdicts || []).filter((row) => row && row.day && row.day <= freezeDay),
+    watchAlerts: (state.watchAlerts || []).filter((row) => row && (row.detectedOn || '') <= freezeDay),
+    credibilityFrames: [],
+    credibilityDeclarations: [],
+  };
+  const pastReport = credibilityReport(past, new Date(ts(30)), state.settings);
+  const detectors = pastReport.groups.find((g) => g.id === 'detectors');
+  const frames = [];
+  if (detectors && detectors.borrowing) {
+    for (const unit of detectors.units.filter((u) => u.n > 0)) {
+      const built = buildCredibilityFrame(pastReport, {
+        groupId: 'detectors',
+        unitId: unit.id,
+        nowIso: ts(30),
+        reviewOn: at(2),
+        id: `cframe-demo-${frames.length + 1}`,
+        label: `Signal families: ${unit.label} — does the pool beat its own record?`,
+      });
+      if (!built.ok) continue;
+      const grade = gradeCredibilityFrame(built.record, state, new Date(ts(2)));
+      if (grade) built.record.graded = grade;
+      frames.push(built.record);
+    }
+  }
+  const liveReport = credibilityReport({ ...state, credibilityFrames: [] }, now, state.settings);
+  const live = buildCredibilityFrame(liveReport, {
+    groupId: 'detectors',
+    unitId: 'Premise sentinel',
+    nowIso: now.toISOString(),
+    id: 'cframe-demo-live',
+    label: 'Signal families: Premise sentinel — two verdicts, borrowed',
+  });
+  if (live.ok) frames.unshift(live.record);
+  state.credibilityFrames = frames;
+}
+
+/**
+ * Schema v72 — the decision journal behind the Confidence Transport terminal.
+ *
+ * A calibration terminal on an empty record is a refusal with a heading, which is
+ * correct and useless as a first impression. So the demo carries the thing the
+ * module actually reads: a year of settled calls, each with the probability
+ * written BEFORE the outcome was known, and outcomes that land below those
+ * declarations — the ordinary shape of managerial overconfidence, not a
+ * flattering one.
+ *
+ * Both certificates are built through the real engine. The older one is frozen
+ * from a copy of the state truncated to 78 days ago and graded from what resolved
+ * inside its window, so its prediction predates its grade; the newer one is
+ * frozen today and left open. No declared probability is ever rewritten, here or
+ * on the live screen.
+ */
+const DEMO_CALL_TITLES = Object.freeze([
+  'Adopt the vendor default SLAs instead of negotiating custom terms',
+  'Ship the migration as one cutover rather than a staged rollout',
+  'Keep the on-call rota at four engineers through the quarter',
+  'Fund the tooling spend out of the training budget',
+  'Pilot the new intake form with one squad before rolling it out',
+  'Hold the release until the flaky test is fixed',
+  'Promote from within rather than hire externally',
+  'Move the weekly review to a written async update',
+  'Extend the contractor by one quarter',
+  'Cut the low-value report from the weekly pack',
+  'Take the smaller conference speaking slot',
+  'Standardise on one cloud region',
+  'Let each team choose its own incident owner',
+  'Introduce a 24-hour response SLA for escalations',
+  'Merge the two staging environments',
+  'Keep the vendor on a rolling monthly term',
+  'Replace the legacy importer with a scheduled job',
+  'Run the retrospective fortnightly instead of weekly',
+  'Buy the managed service rather than self-host',
+  'Close the office on the last Friday of the month',
+  'Move the roadmap review to the first Tuesday',
+  'Accept the lower-tier support contract',
+  'Backfill the analyst role in this quarter',
+  'Freeze scope on the reporting rebuild',
+  'Run two interviews per candidate rather than four',
+  'Settle the contract dispute without arbitration',
+  'Let the platform team own the release train',
+  'Retire the internal wiki in favour of the handbook',
+  'Keep the second data centre for another year',
+  'Move the budget review earlier by two weeks',
+  'Approve the accessibility audit this quarter',
+  'Take the integration work in-house',
+  'Publish the incident postmortems internally',
+  'Reduce the sprint length to one week',
+  'Give the new lead the hiring decision',
+  'Defer the office refit to next year',
+  'Switch the support handover to a 30-minute overlap',
+  'Keep the legacy API for another release',
+  'Fund the second observability tool',
+  'Close the two open contractor requisitions',
+  'Keep the paging rotation offshore overnight',
+  'Retire the duplicate analytics licence',
+  'Split the monolith before the next funding round',
+  'Give the incident review a standing chair',
+  'Buy the cheaper storage tier for cold data',
+  'Run the quarterly planning as one session',
+  'Bring the security review forward a month',
+  'Decline the cross-team dependency for now',
+  'Keep the design system in the platform team',
+  'Approve the second on-call shadow',
+  'Move the customer escalation call to Thursday',
+  'Drop the weekly status email',
+  'Fund the training budget increase',
+  'Keep the second supplier for resilience',
+  'Approve the partial automation of the invoice flow',
+  'Defer the data warehouse migration',
+  'Take the lower-margin renewal',
+  'Keep the support tier at standard',
+]);
+
+function seedConfidence(state, now) {
+  const today = dayKey(now);
+  const at = (daysAgo) => addDays(today, -daysAgo);
+  const ts = (daysAgo) => new Date(`${at(daysAgo)}T09:00:00.000Z`).toISOString();
+  const declared = [65, 70, 75, 80, 85, 90, 95];
+  const rows = [];
+  for (let i = 0; i < DEMO_CALL_TITLES.length; i += 1) {
+    const decidedDaysAgo = 215 - i * 3;
+    const reviewedDaysAgo = decidedDaysAgo - 21;
+    const declaration = declared[i % declared.length];
+    // Higher declarations do land slightly more often — and every band still
+    // lands far below what was declared. That is the pattern the terminal exists
+    // to expose: a real slope, and a real bias. The demo does not flatter itself:
+    // its own verdict is whatever these fifty-eight dated calls support.
+    const threshold = 28 + (i % declared.length) * 2;
+    const hit = ((i * 37) % 100) < threshold;
+    rows.push({
+      id: `dec-demo-cal-${i + 1}`,
+      title: DEMO_CALL_TITLES[i],
+      question: 'Recorded in the decision journal with the probability written before the outcome was known.',
+      date: at(decidedDaysAgo),
+      reversibility: i % 3 === 0 ? 'irreversible' : 'reversible',
+      driver: state.people?.[0]?.name || '',
+      approver: state.people?.[0]?.name || '',
+      contributors: '',
+      informed: '',
+      options: [],
+      chosen: 'The option on the table at the time',
+      rationale: 'Journal entry — the probability was recorded before the outcome arrived, which is the only reason it can be scored.',
+      reviewOn: at(reviewedDaysAgo),
+      reviewedOn: at(reviewedDaysAgo),
+      outcome: hit ? 'good' : 'bad',
+      outcomeNotes: hit ? 'It worked out.' : 'It did not work out.',
+      forecastProbability: declaration,
+      decidedOn: at(decidedDaysAgo),
+      createdAt: `${at(decidedDaysAgo)}T09:00:00.000Z`,
+    });
+  }
+  state.decisions = [...(state.decisions || []), ...rows];
+
+  // 1. A certificate frozen from the state as it stood 78 days ago, then graded
+  //    once from the calls that resolved inside its window.
+  const freezeDay = at(78);
+  const past = {
+    ...state,
+    decisions: rows.filter((row) => row.reviewedOn <= freezeDay),
+    integrityReviews: [],
+    confidenceCertificates: [],
+    confidenceMarkers: [],
+  };
+  const pastReport = confidenceReport(past, new Date(ts(78)), state.settings || {});
+  const certificates = [];
+  if (pastReport.verdict === 'supported') {
+    const built = buildConfidenceCertificate(pastReport, {
+      id: 'ccert-demo-graded',
+      nowIso: ts(78),
+      reviewOn: at(26),
+      label: 'Your probability words — certified from the record as it stood 78 days ago',
+    });
+    if (built.ok) {
+      const grade = gradeConfidenceCertificate(built.record, state, new Date(ts(26)));
+      if (grade) built.record.graded = grade;
+      certificates.push(built.record);
+    }
+  }
+
+  // 2. A certificate frozen today and left open, so the terminal opens on a live
+  //    claim rather than only on its own history.
+  const liveReport = confidenceReport({ ...state, confidenceCertificates: [] }, now, state.settings || {});
+  if (liveReport.verdict === 'supported') {
+    const live = buildConfidenceCertificate(liveReport, {
+      id: 'ccert-demo-live',
+      nowIso: now.toISOString(),
+      label: 'Your probability words — certified today, graded on what resolves next',
+    });
+    if (live.ok) certificates.unshift(live.record);
+  }
+  state.confidenceCertificates = certificates;
+}
+
+function seedDeferralPortfolio(state, now) {
+  const candidates = deferralCandidates(state, now, state.settings || {});
+  if (candidates.length < 2) return;
+  const premise = (state.premises || []).find((p) => p && p.decisionId) || (state.premises || [])[0];
+  if (!premise) return;
+  const a = candidates[0];
+  const b = candidates[1];
+  const today = dayKey(now);
+  let seq = 0;
+  const nextId = (prefix) => `${prefix}-demo-dpo-${++seq}`;
+  state.links = Array.isArray(state.links) ? state.links : [];
+  for (const decision of [a, b]) {
+    state.links.push({
+      id: nextId('lnk'),
+      sourceType: 'decision',
+      sourceId: decision.id,
+      targetType: 'premise',
+      targetId: premise.id,
+      relation: 'tests',
+      ruleId: 'demo-seed',
+      summary: 'Demo call typed as testing the shared premise the deferral portfolio prices',
+      createdAt: new Date(`${today}T09:00:00.000Z`).toISOString(),
+      updatedAt: new Date(`${today}T09:00:00.000Z`).toISOString(),
+    });
+  }
+  state.correlationDeclarations = [
+    {
+      id: nextId('corr'),
+      aId: a.id,
+      bId: b.id,
+      rho: 0.45,
+      declaredAt: new Date(`${today}T09:00:00.000Z`).toISOString(),
+    },
+  ];
+}
+
+
+/**
+ * Schema v66 — the Evidence Terminal over the demo's own records.
+ *
+ * The lesson the workspace keeps re-learning is applied directly: the flagship
+ * page must never open on a dead end, and a dead end filled with invented
+ * numbers is worse than an empty one. So every study this demo adds is scored by
+ * the REAL interrupted-time-series engine over the demo's own dated records, and
+ * the review is built by the REAL review builder. Not one pooled estimate,
+ * interval, τ² or EVSI figure in the demo is written by hand.
+ *
+ * What that produces, on purpose:
+ *
+ *   - `feedback` on feedback cadence: three pre-registered studies. The cell
+ *     pools, so the terminal has a real finding to show.
+ *   - `delegation` on 1:1 mood: three pre-registered studies. A second pooled
+ *     cell, so the recommendation panel has something to rank between.
+ *   - `feedback` on feedback latency: two studies. Below the pooling floor, so
+ *     the terminal shows counts and the refusal rather than a confident guess.
+ *   - `change` on 1:1 mood: one study. A single unreplicated result is a
+ *     hypothesis, and the replication rule has something to say.
+ *
+ * Honest compromise, recorded rather than hidden: several of these windows
+ * overlap in calendar time and therefore share observations on the same metric,
+ * which means their estimates are not fully independent. The terminal detects
+ * and reports that per cell instead of pretending the assumption held.
+ */
+function seedEvidence(state, now) {
+  const today = dayKey(now);
+  const at = (daysAgo) => addDays(today, -daysAgo);
+  const stampFor = (day, hour = 9) => new Date(`${day}T${String(hour).padStart(2, '0')}:00:00.000Z`).toISOString();
+
+  // Deliberately NOT duplicating the three studies `seedImpactStudies` already
+  // writes: a second record with the same lever, metric and window would be a
+  // fabricated replication, and replication is exactly what this terminal is
+  // meant to earn. These extend that base to the counts the pooling floor and
+  // the replication rule both need.
+  const studies = [
+    // feedback → feedback cadence: two more, so the cell has three
+    { vitalId: 'feedback-cadence', interventionType: 'feedback', windowStart: at(88), declaredOn: at(94), expectedEffect: 0.25, expectedConfidence: 65, title: 'Friday feedback pass (second window)', hypothesis: 'A protected Friday pass raises cadence again in a later window.' },
+    { vitalId: 'feedback-cadence', interventionType: 'feedback', windowStart: at(104), declaredOn: at(112), expectedEffect: 0.2, expectedConfidence: 60, title: 'Feedback paired with the 1:1 agenda', hypothesis: 'Putting the week\u2019s feedback on the 1:1 agenda raises cadence.' },
+    // feedback → feedback latency: one more, so the cell has two — below the
+    // pooling floor of three, which is the refusal the terminal must show
+    { vitalId: 'feedback-latency', interventionType: 'feedback', windowStart: at(96), declaredOn: at(104), expectedEffect: 0.8, expectedConfidence: 55, title: 'In-the-moment capture', hypothesis: 'Capturing feedback in the moment shortens the observation-to-record gap.' },
+    // delegation → 1:1 mood: three, a second pooled cell so the recommendation
+    // has something to rank between
+    { vitalId: 'oneoneone-mood', interventionType: 'delegation', windowStart: at(68), declaredOn: at(74), expectedEffect: 0.2, expectedConfidence: 65, title: 'Delegation reset with written outcomes', hypothesis: 'Re-issuing delegations with a written outcome raises recorded mood.' },
+    { vitalId: 'oneoneone-mood', interventionType: 'delegation', windowStart: at(86), declaredOn: at(92), expectedEffect: 0.15, expectedConfidence: 60, title: 'Authority levels made explicit', hypothesis: 'Naming the authority level on each delegation raises recorded mood.' },
+    { vitalId: 'oneoneone-mood', interventionType: 'delegation', windowStart: at(102), declaredOn: at(110), expectedEffect: 0.1, expectedConfidence: 55, title: 'Check-in cadence on open delegations', hypothesis: 'A weekly check-in on open delegations raises recorded mood.' },
+    // change → 1:1 mood: one scored result beside the live one, so a single
+    // unreplicated finding is shown as a hypothesis rather than as a finding
+    { vitalId: 'oneoneone-mood', interventionType: 'change', windowStart: at(120), declaredOn: at(128), expectedEffect: 0.25, expectedConfidence: 65, title: 'Support pod restructure', hypothesis: 'Moving support into product-aligned pods raises recorded mood.' },
+  ];
+
+  const rows = (Array.isArray(state.impactStudies) ? state.impactStudies : []).slice();
+  const baseIndex = rows.length;
+  studies.forEach((study, index) => {
+    const id = `impact-demo-${baseIndex + index + 1}`;
+    rows.push({
+      id,
+      title: study.title,
+      hypothesis: study.hypothesis,
+      vitalId: study.vitalId,
+      interventionType: study.interventionType,
+      interventionId: null,
+      interventionLabel: study.title,
+      windowStart: study.windowStart,
+      baselineWeeks: 8,
+      windowWeeks: 4,
+      alpha: 0.1,
+      expectedEffect: study.expectedEffect,
+      expectedConfidence: study.expectedConfidence,
+      declaredOn: study.declaredOn,
+      status: 'running',
+      lockedOn: null,
+      verdict: null,
+      evaluation: null,
+      outcomeNotes: '',
+      notes: '',
+      autoPropagate: true,
+      replicationOfId: null,
+      executionSnapshot: null,
+      implementationSnapshot: null,
+      history: [{ at: stampFor(study.declaredOn), type: 'declared', summary: 'Declared before scoring. Grade: confirmatory.' }],
+      createdAt: stampFor(study.declaredOn),
+      updatedAt: stampFor(study.declaredOn),
+    });
+  });
+  state.impactStudies = rows;
+
+  // Score every study whose window has actually closed, through the real
+  // estimator. A study the engine cannot evaluate stays running — the demo does
+  // not promote a record it cannot support.
+  const lockedAt = stampFor(today, 11);
+  for (const study of state.impactStudies) {
+    if (study.status !== 'running') continue;
+    if (windowEndDay(study) >= today) continue;
+    const evaluation = evaluateStudy(study, state, { now });
+    study.status = 'scored';
+    study.lockedOn = today;
+    study.verdict = evaluation.verdict;
+    study.evaluation = evaluation.ok ? { ...evaluation, lockedAt, lockedEarly: false } : null;
+    study.updatedAt = lockedAt;
+    study.history = [...(study.history || []), {
+      at: lockedAt,
+      type: 'scored',
+      summary: evaluation.ok
+        ? `Scored: ${evaluation.verdict}. Estimate ${evaluation.estimate}.`
+        : `Window closed unevaluated: ${evaluation.reason || 'not measurable'}`,
+    }].slice(-60);
+  }
+
+  // One frozen review, built by the real builder and pushed through the real
+  // normalizer, so the Reviews panel and the `recommends-for` rule both have a
+  // durable source to work from.
+  const report = evidenceReport(state, now, state.settings || {});
+  if (report.effects.eligibleCells.length) {
+    const review = buildEvidenceReview(report, {
+      id: 'evidence-demo-1',
+      label: 'What has worked here, as of the demo',
+      reviewOn: addDays(today, 30),
+      nowIso: new Date(`${today}T09:00:00.000Z`).toISOString(),
+      focusOutcomeId: report.effects.focusOutcomeId,
+    });
+    const [normalized] = normalizeEvidenceReviews([review], new Date(`${today}T09:00:00.000Z`).toISOString(), []);
+    if (normalized) {
+      state.evidenceReviews = [normalized, ...(Array.isArray(state.evidenceReviews) ? state.evidenceReviews : [])];
+    }
+  }
+  state.evidenceMarkers = Array.isArray(state.evidenceMarkers) ? state.evidenceMarkers : [];
+}
+
+function windowEndDay(study) {
+  const start = study.windowStart;
+  if (!start) return '9999-12-31';
+  return addDays(String(start).slice(0, 10), 7 * (Number(study.windowWeeks) || 4));
+}
+
+/**
+ * Schema v54 — the Information Value Terminal over the demo's own records.
+ *
+ * The lesson Session 76 recorded is applied directly: the flagship page must
+ * never open on a dead end. So the demo carries
+ *
+ *   - one frame whose EVPI clears its own declared threshold, so the
+ *     buy-information path has something real to open;
+ *   - one investigation that has not reported yet, with a positive net value;
+ *   - one settled investigation whose answer is written into the premise
+ *     ledger by the real rule;
+ *   - a second frame resting on the SAME premise as the first, so the portfolio
+ *     tab shows a shared assumption rather than a demonstration of nothing.
+ *
+ * Every payoff is a declared figure in the fiction, not a computed one, and the
+ * consequences (expected values, EVPI, EVSI, posteriors, regret) are all derived
+ * on load. The numbers are chosen so the arithmetic is legible: a 65/35 split,
+ * three plainly different options, and one test that pays for itself.
+ */
+function seedInformationValue(state, now) {
+  const today = dayKey(now);
+  const createdAt = (daysAgo) => new Date(new Date(`${addDays(today, -daysAgo)}T09:00:00.000Z`).getTime()).toISOString();
+  const personId = (match) => (state.people || []).find((p) => p && p.status !== 'archived' && p.name.includes(match))?.id || null;
+  const owner = personId('Priya') || (state.people || []).find((p) => p && p.status !== 'archived')?.id || null;
+  const premise = (state.premises || [])[0] || null;
+  const premiseId = premise?.id || null;
+
+  const states = [
+    { id: 'vs-demo-1', label: 'The migration lands before the freeze', probability: 65, premiseId },
+    { id: 'vs-demo-2', label: 'It slips past the freeze', probability: 35, premiseId },
+  ];
+
+  state.voiDecisions = [
+    {
+      id: 'voi-demo-1',
+      label: 'Commit the warehouse migration before the freeze',
+      question: 'Do we commit the full migration now, stage it behind a flag, or wait for the next window — and what would it be worth to know first whether the date holds?',
+      ownerId: owner,
+      decisionId: (state.decisions || []).find((d) => d && d.title === 'Standardise weekly metrics on warehouse tables')?.id || null,
+      currency: 'USD',
+      status: 'open',
+      states,
+      options: [
+        { id: 'vo-demo-1', label: 'Commit the full migration now', isStatusQuo: false },
+        { id: 'vo-demo-2', label: 'Stage it behind a feature flag', isStatusQuo: false },
+        { id: 'vo-demo-3', label: 'Wait for the next window', isStatusQuo: true },
+      ],
+      payoffs: [
+        { optionId: 'vo-demo-1', stateId: 'vs-demo-1', value: 420000 },
+        { optionId: 'vo-demo-2', stateId: 'vs-demo-1', value: 260000 },
+        { optionId: 'vo-demo-3', stateId: 'vs-demo-1', value: 60000 },
+        { optionId: 'vo-demo-1', stateId: 'vs-demo-2', value: -180000 },
+        { optionId: 'vo-demo-2', stateId: 'vs-demo-2', value: -40000 },
+        { optionId: 'vo-demo-3', stateId: 'vs-demo-2', value: 20000 },
+      ],
+      chosenOptionId: null,
+      declaredOn: addDays(today, -9),
+      decidedOn: null,
+      reviewOn: null,
+      settledOn: null,
+      snapshot: null,
+      outcomes: [],
+      history: [{ at: createdAt(9), type: 'declared', summary: 'Declared 2 states summing to 100% and 3 options, with 6 of 6 payoff cells entered.' }],
+      createdAt: createdAt(9),
+      updatedAt: createdAt(9),
+    },
+    {
+      id: 'voi-demo-2',
+      label: 'Extend the warehouse vendor contract another year',
+      question: 'Do we extend now at the negotiated rate, or stay month-to-month and pay for the exit if the migration slips?',
+      ownerId: owner,
+      decisionId: null,
+      currency: 'USD',
+      status: 'open',
+      states: states.map((row) => ({ ...row })),
+      options: [
+        { id: 'vo-demo-4', label: 'Extend for twelve months now', isStatusQuo: false },
+        { id: 'vo-demo-5', label: 'Stay month-to-month', isStatusQuo: true },
+      ],
+      payoffs: [
+        { optionId: 'vo-demo-4', stateId: 'vs-demo-1', value: 90000 },
+        { optionId: 'vo-demo-5', stateId: 'vs-demo-1', value: 40000 },
+        { optionId: 'vo-demo-4', stateId: 'vs-demo-2', value: -60000 },
+        { optionId: 'vo-demo-5', stateId: 'vs-demo-2', value: -15000 },
+      ],
+      chosenOptionId: null,
+      declaredOn: addDays(today, -7),
+      decidedOn: null,
+      reviewOn: null,
+      settledOn: null,
+      snapshot: null,
+      outcomes: [],
+      history: [{ at: createdAt(7), type: 'declared', summary: 'Declared 2 states summing to 100% and 2 options, with 4 of 4 payoff cells entered.' }],
+      createdAt: createdAt(7),
+      updatedAt: createdAt(7),
+    },
+  ];
+
+  state.voiStudies = [
+    {
+      id: 'inquiry-demo-1',
+      frameId: 'voi-demo-1',
+      label: 'Two-week load test on the staging warehouse',
+      method: 'Run the real cutover against a shadow copy at production volume for two weeks and measure whether the freeze window is met with the six-hour margin the plan assumes.',
+      targetStateIds: ['vs-demo-1'],
+      premiseEquivalent: true,
+      equivalentPremiseId: premiseId,
+      sensitivityPct: 85,
+      specificityPct: 80,
+      cost: 18000,
+      // The two weeks are not free: the cutover slips by the length of the test,
+      // which is exactly the deduction a fee-only calculation hides.
+      delayCost: 9000,
+      currency: 'USD',
+      dueOn: addDays(today, 14),
+      status: 'planned',
+      result: null,
+      history: [{ at: createdAt(6), type: 'declared', summary: 'Declared at 85% sensitivity and 80% specificity for a fee of 18000 plus 9000 in waiting.' }],
+      createdAt: createdAt(6),
+      updatedAt: createdAt(6),
+    },
+    {
+      id: 'inquiry-demo-2',
+      frameId: 'voi-demo-2',
+      label: 'Ask the vendor’s delivery lead for the freeze date in writing',
+      method: 'One written question to the delivery lead, escalating to the account director only if it is not answered within five working days.',
+      targetStateIds: ['vs-demo-1'],
+      premiseEquivalent: true,
+      equivalentPremiseId: premiseId,
+      // A written answer is specific and insensitive: when it comes back dated it
+      // is rarely wrong, and when it does not come back that is exactly what a
+      // weak-but-honest test looks like. The demo deliberately does NOT let this
+      // test rescue the premise — the honest result is that it weakened.
+      sensitivityPct: 55,
+      specificityPct: 95,
+      cost: 1200,
+      delayCost: 400,
+      currency: 'USD',
+      dueOn: addDays(today, -4),
+      status: 'settled',
+      result: {
+        signal: 'negative',
+        on: addDays(today, -5),
+        lr: 0.47,
+        evsi: 0,
+        netValue: 0,
+        note: 'The delivery lead would not put the freeze date in writing, and escalated to the account director instead. That is an answer, and it is not the answer the plan wanted.',
+        probabilities: [],
+      },
+      history: [{ at: createdAt(6), type: 'declared', summary: 'Declared at 55% sensitivity and 95% specificity for a fee of 1200 plus 400 in waiting.' }],
+      createdAt: createdAt(6),
+      updatedAt: createdAt(5),
+    },
+  ];
+
+  // Run the real rule for the settled investigation so the demo's premise ledger
+  // carries the observation the app would have written at the moment of settling.
+  let seq = 0;
+  valueOfInformationRule(state, {
+    event: { type: 'inquiry.settled', entity: 'voistudy', entityId: 'inquiry-demo-2' },
+    now,
+    idFactory: (prefix) => `${prefix}-demo-voi-${++seq}`,
+  });
+}
+
+/**
+ * Schema v52 — the workforce transition terminal over the demo's own records.
+ *
+ * Two programmes, and neither of them is a decoration:
+ *
+ *  - a **finalized past programme** whose snapshot was frozen by the same
+ *    function the finalize action calls, taken from a reading of the demo's own
+ *    dependency graph and recorded pay. Its outcome horizon has passed, so the
+ *    resolved outcomes are seeded the way the rule would resolve them: the
+ *    remaining cohort is still here. The calibration card therefore reports one
+ *    resolved prediction and refuses to score anything on it, which is the
+ *    honest small-sample case rather than a flattering one.
+ *  - a **live draft**: a one-role reduction effective sixty days out, every
+ *    salary known, one name marked and locked as kept. Deciding it is the
+ *    demonstration — the hand-over obligation, the survivor prompt and the
+ *    continuity reading all appear in the same transaction.
+ *
+ * The demo's five-person roster is deliberately too small for the four-fifths
+ * screen: no dimension produces two groups of five, and the page says so instead
+ * of printing a ratio computed on one-versus-one. `tests/app/workforce-
+ * transition.test.mjs` builds a sixteen-person fixture to prove the screen and
+ * the compliance repair, because a demo that lied about its own sample size
+ * would be teaching the wrong lesson.
+ */
+function seedTransition(state, now) {
+  const today = dayKey(now);
+  const stampFor = (day, hour = 9) => new Date(`${day}T${String(hour).padStart(2, '0')}:00:00.000Z`).toISOString();
+  const people = (state.people || []).filter((person) => person && person.status !== 'archived');
+  if (!people.length) return [];
+  const byName = (name) => people.find((person) => person.name === name) || null;
+  const priya = byName('Priya Natarajan');
+  const jordan = byName('Jordan Alvarez');
+  const mei = byName('Mei Lin Chen');
+  const samuel = byName('Samuel Okafor');
+  const freya = byName('Freya Nilsson');
+  const pool = people.map((person) => person.id);
+  const row = (personId, extra = {}) => ({
+    personId,
+    selected: false,
+    locked: false,
+    group: '',
+    mobility: null,
+    workloadUnits: null,
+    note: '',
+    ...extra,
+  });
+  const weights = { performance: 30, capability: 25, cost: 20, tenure: 10, futureFit: 15 };
+
+  // ---- the past programme: frozen, and its horizon has closed.
+  const pastEffective = addDays(today, -400);
+  const pastAsOf = new Date(`${pastEffective}T12:00:00.000Z`);
+  const pastDraft = {
+    id: 'transition-demo-1',
+    label: 'FY25 support consolidation',
+    currency: 'USD',
+    kind: 'reduction',
+    status: 'draft',
+    declaredOn: addDays(pastEffective, -120),
+    effectiveOn: pastEffective,
+    dimension: 'level',
+    target: { headcount: 1, costCeiling: null },
+    weights,
+    ownerId: priya ? priya.id : null,
+    rows: [
+      row(samuel ? samuel.id : pool[0], { selected: true, locked: true, mobility: 55 }),
+      ...pool.filter((id) => id !== (samuel ? samuel.id : pool[0])).map((id) => row(id, { locked: true, mobility: 40 })),
+    ],
+    gates: [
+      { key: 'decision', done: true, blocked: false, on: addDays(pastEffective, -120), recordedAt: stampFor(addDays(pastEffective, -120)), note: 'Criteria agreed with the platform lead and HR.' },
+      { key: 'consultation', done: true, blocked: false, on: addDays(pastEffective, -90), recordedAt: stampFor(addDays(pastEffective, -88)), note: 'Representatives briefed; no objection recorded.' },
+      { key: 'criteria-locked', done: true, blocked: false, on: addDays(pastEffective, -60), recordedAt: stampFor(addDays(pastEffective, -60)), note: 'Scoring grid circulated before any name was proposed.' },
+      { key: 'notification', done: true, blocked: false, on: addDays(pastEffective, -30), recordedAt: stampFor(addDays(pastEffective, -30)), note: 'Conversation held in person, support and notice terms confirmed in writing.' },
+      { key: 'handover', done: true, blocked: false, on: addDays(pastEffective, -14), recordedAt: stampFor(addDays(pastEffective, -13)), note: 'Escalation rota and vendor contacts confirmed by the successor.' },
+      { key: 'last-day', done: true, blocked: false, on: pastEffective, recordedAt: stampFor(pastEffective), note: '' },
+      { key: 'survivor-checkin', done: true, blocked: false, on: addDays(pastEffective, 30), recordedAt: stampFor(addDays(pastEffective, 31)), note: 'Two conversations; on-call redesign agreed as a result.' },
+      { key: 'outcome-review', done: false, blocked: false, on: addDays(pastEffective, 365), recordedAt: null, note: 'Review decision is on the decisions page; the cost came in under the frozen figure.' },
+    ],
+    snapshot: null,
+    outcomes: [],
+    notes: 'One role removed after the support team was consolidated into the platform group. The hand-over was the expensive part, not the severance.',
+    createdAt: stampFor(addDays(pastEffective, -120)),
+    updatedAt: stampFor(pastEffective),
+    history: [
+      { at: stampFor(addDays(pastEffective, -120)), type: 'declared', summary: 'Declared a one-role reduction effective four hundred days ago, compared by job level.' },
+      { at: stampFor(addDays(pastEffective, -120)), type: 'decided', summary: 'Criteria locked and one name agreed before any individual conversation.' },
+      { at: stampFor(pastEffective), type: 'finalized', summary: 'Froze the plan and its prediction before the change.' },
+    ],
+  };
+  const pastState = { ...state, transitionPrograms: [pastDraft] };
+  const pastReading = transitionReading(pastState, pastDraft, pastAsOf, { depth: 'full' });
+  pastDraft.snapshot = buildTransitionSnapshot(pastReading, {
+    capturedAt: stampFor(pastEffective, 8),
+    byId: priya ? priya.id : null,
+    currency: 'USD',
+  });
+  pastDraft.status = 'finalized';
+  // The horizon has closed and every named person the snapshot froze is still in
+  // the roster, so the resolved outcome is a negative. That is the record the
+  // rule would have written on its own scan; seeding it keeps the demo readable
+  // without running automation against a half-built workspace.
+  pastDraft.outcomes = (pastDraft.snapshot.predictions || [])
+    .filter((prediction) => Number.isFinite(Number(prediction.departurePct)))
+    .map((prediction) => ({
+      personId: prediction.personId,
+      on: addDays(pastEffective, 365),
+      departed: false,
+      selected: prediction.selected === true,
+      departurePct: prediction.departurePct,
+      horizonOn: addDays(pastEffective, 365),
+    }));
+
+  // ---- the live programme: one named exit, one locked retention.
+  const liveEffective = addDays(today, 60);
+  const named = mei ? mei.id : pool[0];
+  const draft = {
+    id: 'transition-demo-2',
+    label: 'FY26 billing scope consolidation',
+    currency: 'USD',
+    kind: 'reduction',
+    status: 'draft',
+    declaredOn: addDays(today, -9),
+    effectiveOn: liveEffective,
+    dimension: 'level',
+    target: { headcount: 1, costCeiling: null },
+    weights,
+    ownerId: priya ? priya.id : null,
+    rows: pool.map((personId) => row(personId, {
+      selected: personId === named,
+      locked: personId === named || personId === (priya ? priya.id : ''),
+      mobility: personId === named ? 72 : personId === (jordan ? jordan.id : '') ? 81 : 45,
+      note: personId === named
+        ? 'The billing migration has an owner on the vendor side; the technical direction is the part that has to move first.'
+        : '',
+    })),
+    gates: [
+      { key: 'decision', done: true, blocked: false, on: addDays(today, -9), recordedAt: stampFor(addDays(today, -9)), note: 'Scope agreed with finance; the migration direction is the exposed capability.' },
+      { key: 'consultation', done: false, blocked: false, on: addDays(liveEffective, -90), recordedAt: null, note: '' },
+      { key: 'criteria-locked', done: false, blocked: false, on: addDays(liveEffective, -60), recordedAt: null, note: '' },
+      { key: 'notification', done: false, blocked: false, on: addDays(liveEffective, -30), recordedAt: null, note: '' },
+      { key: 'handover', done: false, blocked: false, on: addDays(liveEffective, -14), recordedAt: null, note: '' },
+      { key: 'last-day', done: false, blocked: false, on: liveEffective, recordedAt: null, note: '' },
+      { key: 'survivor-checkin', done: false, blocked: false, on: addDays(liveEffective, 30), recordedAt: null, note: '' },
+      { key: 'outcome-review', done: false, blocked: false, on: addDays(liveEffective, 365), recordedAt: null, note: '' },
+    ],
+    snapshot: null,
+    outcomes: [],
+    notes: 'The screen cannot run on five people. The demo says so rather than printing a ratio computed on one group of one.',
+    createdAt: stampFor(addDays(today, -9)),
+    updatedAt: stampFor(addDays(today, -9)),
+    history: [
+      { at: stampFor(addDays(today, -9)), type: 'declared', summary: 'Declared one role effective in sixty days, compared by job level, with the printed default weights.' },
+      { at: stampFor(addDays(today, -8)), type: 'row', summary: 'Named one exit and locked one retention. The other rows stay open for the optimizer to fill around.' },
+    ],
+  };
+
+  return [pastDraft, draft];
+}
+
+function seedCounterfactualDecisionPoints(state, now) {
+  const today = dayKey(now);
+  const stampFor = (day) => new Date(`${day}T09:00:00.000Z`).toISOString();
+  const people = (state.people || []).filter((p) => p && p.status !== 'archived');
+  const pick = (i) => (people.length ? people[i % people.length].id : null);
+
+  // 1. Assumptions: ten dated premises, each with one human-assessed outcome.
+  //    Six were tested before they settled (a dated observation exists on or
+  //    before the settlement day); four were accepted as written.
+  const testedVerdicts = ['held', 'held', 'held', 'held', 'failed', 'failed'];
+  const acceptedVerdicts = ['held', 'held', 'failed', 'failed'];
+  const premiseRows = [
+    ...testedVerdicts.map((v, i) => ({ verdict: v, tested: true, i })),
+    ...acceptedVerdicts.map((v, i) => ({ verdict: v, tested: false, i: i + 6 })),
+  ];
+  const premises = [];
+  const outcomes = [];
+  for (const row of premiseRows) {
+    const id = `cfp-demo-premise-${row.i + 1}`;
+    const createdOn = addDays(today, -(150 - row.i * 9));
+    const settledOn = addDays(createdOn, 34 + (row.i % 3) * 7);
+    premises.push({
+      id,
+      title: row.tested
+        ? `Verified assumption ${row.i + 1}`
+        : `Accepted assumption ${row.i + 1}`,
+      statement: row.tested
+        ? 'A dated observation was recorded against this assumption before it settled.'
+        : 'This assumption was carried into the work without a dated observation.',
+      signpost: row.tested ? 'Sensor reading on file' : 'No sensor reading recorded',
+      decisionId: null,
+      ownerId: pick(row.i),
+      criticality: row.i % 3 === 0 ? 'load-bearing' : 'supporting',
+      priorPct: [55, 65, 70, 80, 85][row.i % 5],
+      watchPct: 55,
+      breachPct: 30,
+      halfLifeDays: 90,
+      // Review dates follow the demo's convention of a FORWARD-looking date:
+      // a settled historical assumption seeded with a review date already in
+      // the past would manufacture overdue signpost nudges (RULE-PREM-04) for
+      // modules that have nothing to do with this terminal.
+      reviewBy: addDays(today, 14 + (row.i % 4) * 7),
+      lastReviewedOn: null,
+      acknowledgedOn: null,
+      acknowledgedAt: null,
+      humanDisposition: null,
+      sourceRefs: [],
+      observations: row.tested
+        ? [{
+          id: `${id}-obs`,
+          key: `${id}-obs`,
+          sensorId: 'manual',
+          sensorLabel: 'Manual check',
+          sourceType: '',
+          sourceId: '',
+          sourceRoute: '',
+          title: 'Recorded check before settlement',
+          summary: 'Observed against the declared signpost before the outcome was assessed.',
+          direction: row.verdict === 'held' ? 'for' : 'against',
+          likelihoodRatio: row.verdict === 'held' ? 2.4 : 3.1,
+          observedOn: addDays(createdOn, 12),
+          createdAt: stampFor(addDays(createdOn, 12)),
+        }]
+        : [],
+      history: [],
+      createdAt: stampFor(createdOn),
+      updatedAt: stampFor(settledOn),
+      provenance: { kind: 'demo' },
+    });
+    outcomes.push({
+      id: `cfp-demo-outcome-${row.i + 1}`,
+      premiseId: id,
+      verdict: row.verdict,
+      settledOn,
+      note: '',
+      createdAt: stampFor(settledOn),
+      provenance: { kind: 'demo' },
+    });
+  }
+
+  // 2. Decisions: ten decided calls. Five were decided inside the declared
+  //    review window; five slipped past it.
+  const decisions = [];
+  const lateOutcomes = ['good', 'good', 'mixed', 'bad', 'bad'];
+  const onTimeOutcomes = ['good', 'good', 'good', 'good', 'bad'];
+  for (let i = 0; i < 10; i += 1) {
+    const late = i >= 5;
+    const openedOn = addDays(today, -(180 - i * 8));
+    const reviewOn = addDays(openedOn, [21, 30, 21, 45, 30][i % 5]);
+    const decidedOn = late ? addDays(reviewOn, 5 + (i % 4)) : addDays(openedOn, 2 + (i % 6));
+    const reviewedOn = addDays(decidedOn, 14);
+    const outcome = late ? lateOutcomes[i - 5] : onTimeOutcomes[i];
+    decisions.push({
+      id: `cfp-demo-decision-${i + 1}`,
+      title: late ? `Call that slipped its timebox ${i - 4}` : `Call made inside its timebox ${i + 1}`,
+      question: late
+        ? 'Decided after the declared review date — what did the delay cost?'
+        : 'Decided inside the declared review window — did the discipline pay?',
+      date: openedOn,
+      reversibility: i % 3 === 0 ? 'irreversible' : 'reversible',
+      driver: state.settings?.leaderName || 'Workspace leader',
+      approver: '',
+      contributors: '',
+      informed: '',
+      options: [
+        { id: `cfp-demo-opt-${i + 1}a`, label: 'Proceed as proposed', pros: '', cons: '' },
+        { id: `cfp-demo-opt-${i + 1}b`, label: 'Hold and re-scope', pros: '', cons: '' },
+      ],
+      chosen: 'Proceed as proposed',
+      rationale: '',
+      reviewOn,
+      reviewedOn,
+      outcome,
+      outcomeNotes: '',
+      forecastProbability: outcome === 'good' ? [70, 65, 80, 60, 75][i % 5] : [45, 40, 50, 35, 55][i % 5],
+      decidedOn,
+      createdAt: stampFor(openedOn),
+      portfolioNotes: [],
+      provenance: { kind: 'demo' },
+    });
+  }
+
+  // 3. Delegations: eight closed commitments. Four carry a dated checkpoint
+  //    recorded before the due date; four carry none.
+  const delegations = [];
+  for (let i = 0; i < 8; i += 1) {
+    const checked = i < 4;
+    const delegatedOn = addDays(today, -(90 - i * 7));
+    const dueOn = addDays(delegatedOn, [14, 21, 30, 21][i % 4]);
+    const onTime = checked ? i !== 2 : i === 5;
+    const terminalOn = onTime ? addDays(dueOn, -2) : addDays(dueOn, 6 + (i % 3));
+    delegations.push({
+      id: `cfp-demo-delegation-${i + 1}`,
+      personId: pick(i + 1),
+      title: checked ? `Checked-in commitment ${i + 1}` : `Un-checked commitment ${i + 1}`,
+      expectedOutcome: 'Delivered as agreed by the due date.',
+      authority: ['recommend', 'agree', 'act-inform', 'own'][i % 4],
+      support: checked ? 'A mid-flight checkpoint was recorded before the due date.' : 'No checkpoint was recorded before the due date.',
+      delegatedOn,
+      dueOn,
+      status: onTime ? 'done' : 'returned',
+      checkins: checked
+        ? [{
+          id: `cfp-demo-checkin-${i + 1}`,
+          date: addDays(delegatedOn, 9),
+          progress: 'on-track',
+          note: 'Mid-flight check recorded against the declared outcome.',
+          createdAt: stampFor(addDays(delegatedOn, 9)),
+        }]
+        : [],
+      completedOn: onTime ? terminalOn : null,
+      completionNote: onTime ? 'Delivered on or before the due date.' : '',
+      sourceNegotiationId: null,
+      sourceTermId: null,
+      priorDelegationId: null,
+      supersededByDelegationId: null,
+      recoveredOn: null,
+      recoveryNote: '',
+      returnedOn: onTime ? null : terminalOn,
+      returnReason: onTime ? '' : 'Returned after the due date; recorded as delivered late.',
+      createdAt: stampFor(delegatedOn),
+      updatedAt: stampFor(terminalOn),
+      provenance: { kind: 'demo' },
+    });
+  }
+
+  state.premises = [...(state.premises || []), ...premises];
+  state.premiseOutcomes = [...(state.premiseOutcomes || []), ...outcomes];
+  state.decisions = [...(state.decisions || []), ...decisions];
+  state.delegations = [...(state.delegations || []), ...delegations];
+}
+
+function seedSettlements(state, now) {
+  const today = dayKey(now);
+  const stampFor = (day) => new Date(`${day}T09:00:00.000Z`).toISOString();
+  const report = settlementReport(state, now, state.settings);
+  const out = [];
+
+  const openLoop = report.loops.find((l) => !l.closedOutcome);
+  if (openLoop) {
+    const frozenOn = openLoop.openedOn <= addDays(today, -3) ? addDays(today, -3) : openLoop.openedOn;
+    const reviewOn = openLoop.reviewOn && openLoop.reviewOn >= today ? openLoop.reviewOn : addDays(today, 14);
+    out.push({
+      id: 'stl-demo-1',
+      loopKey: openLoop.loopKey,
+      loopKind: openLoop.loopKind,
+      sourceId: openLoop.sourceId,
+      caseId: openLoop.caseId || null,
+      label: openLoop.title.slice(0, 140),
+      status: 'frozen',
+      openedOn: openLoop.openedOn,
+      reviewOn,
+      frozenAt: stampFor(frozenOn),
+      predictedCleanClosurePct: Math.min(90, Math.max(25, Math.round(openLoop.jointClearancePct || 65))),
+      settledAt: null,
+      settledOn: null,
+      verdict: null,
+      notes: 'Prospective clean-closure forecast anchored to sequential gate clearance.',
+      provenance: { kind: 'demo' },
+      markers: [],
+      history: [{
+        at: stampFor(frozenOn),
+        type: 'frozen',
+        summary: `Froze prospective closure forecast over ${openLoop.counts.total} clearance gate(s).`,
+      }],
+      createdAt: stampFor(frozenOn),
+      updatedAt: stampFor(frozenOn),
+    });
+  }
+
+  const closedLoop = report.loops.find((l) => l.closedOutcome && l.loopKey !== openLoop?.loopKey);
+  if (closedLoop) {
+    const frozenOn = closedLoop.openedOn;
+    const settledOn = closedLoop.closedOn && closedLoop.closedOn >= frozenOn ? closedLoop.closedOn : today;
+    const predictedPct = 70;
+    const verdict = buildSettlementVerdict(closedLoop, {
+      predictedCleanClosurePct: predictedPct,
+      frozenAt: stampFor(frozenOn),
+      settledAt: stampFor(settledOn),
+    });
+    out.push({
+      id: 'stl-demo-2',
+      loopKey: closedLoop.loopKey,
+      loopKind: closedLoop.loopKind,
+      sourceId: closedLoop.sourceId,
+      caseId: closedLoop.caseId || null,
+      label: closedLoop.title.slice(0, 140),
+      status: 'settled',
+      openedOn: closedLoop.openedOn,
+      reviewOn: closedLoop.reviewOn || settledOn,
+      frozenAt: stampFor(frozenOn),
+      predictedCleanClosurePct: predictedPct,
+      settledAt: stampFor(settledOn),
+      settledOn,
+      verdict,
+      notes: 'Settled from demo case history to illustrate Earned Schedule and attribution receipts.',
+      provenance: { kind: 'demo' },
+      markers: [],
+      history: [
+        { at: stampFor(frozenOn), type: 'frozen', summary: `Froze ${predictedPct}% clean-closure forecast at loop opening.` },
+        { at: stampFor(settledOn), type: 'settled', summary: `Settled as ${verdict.regime} (Brier ${verdict.brier}).` },
+      ],
+      createdAt: stampFor(frozenOn),
+      updatedAt: stampFor(settledOn),
+    });
+  }
+
+  state.settlements = out;
+}
+
+
+/**
+ * Schema v77 — demo rating history for the Measurement Reliability Terminal.
+ *
+ * Nothing on that terminal is hand-written. The demo carries four quarterly
+ * review cycles across the roster — ratings that are messy on purpose, because
+ * a demo whose every rating lines up perfectly would teach the opposite of what
+ * the module exists to show — and every variance component, coefficient,
+ * credibility weight and tier is derived from them on read.
+ *
+ * The frozen reading is built the same way the real freeze action builds one,
+ * from a copy of the state truncated to the reviews that existed on its freeze
+ * date. That is the only honest way to show a graded prediction: freeze from the
+ * truncated past, grade against what followed.
+ */
+function seedReliability(state, now) {
+  const today = dayKey(now);
+  const at = (daysAgo) => addDays(today, -daysAgo);
+  const stamp = (day) => new Date(`${day}T09:00:00.000Z`).toISOString();
+  const roster = (state.people || []).filter((p) => p && p.status !== 'archived');
+  if (roster.length < 4) return;
+  const ratings = ['needs-development', 'meets-expectations', 'often-exceeds', 'sets-standard'];
+  // One rating per person per quarter. Deliberately noisy: the top reading moves,
+  // one person has a bad quarter in the middle, and no two people are separated
+  // by a full point on every cycle — which is what real review data looks like.
+  const cycles = [
+    { end: at(370), start: at(460), pattern: [2, 1, 3, 1, 2] },
+    { end: at(280), start: at(370), pattern: [1, 2, 3, 0, 1] },
+    { end: at(190), start: at(280), pattern: [3, 1, 2, 1, 2] },
+    { end: at(100), start: at(190), pattern: [2, 2, 3, 1, 1] },
+  ];
+  state.reviews = Array.isArray(state.reviews) ? state.reviews : [];
+  let seq = 0;
+  for (const cycle of cycles) {
+    cycle.pattern.forEach((ratingIndex, personIndex) => {
+      const person = roster[personIndex];
+      if (!person) return;
+      seq += 1;
+      const completedOn = addDays(cycle.end, 4);
+      state.reviews.push({
+        id: `review-reliability-demo-${seq}`,
+        personId: person.id,
+        periodStart: cycle.start,
+        periodEnd: cycle.end,
+        status: 'complete',
+        selfReflection: { achievements: '', challenges: '', growth: '', support: '' },
+        selfReflectionRecordedAt: null,
+        manager: {
+          achievements: '',
+          development: '',
+          nextSteps: '',
+          rating: ratings[ratingIndex],
+        },
+        instrumentNotes: [],
+        evidence: [],
+        evidenceCapturedAt: stamp(completedOn),
+        createdAt: stamp(cycle.start),
+        updatedAt: stamp(completedOn),
+        completedAt: stamp(completedOn),
+      });
+    });
+  }
+
+  // Convergence needs a second instrument that carries enough items per person
+  // to rank. The goal ledger is the natural one, so each person gets a quarterly
+  // commitment set whose key-result progress tracks their rating record with a
+  // deliberate few-point wobble. A real workspace never agrees this neatly, and
+  // the convergence test is free to say so when it does not.
+  // Read the same instrument the convergence test reads: every completed review
+  // in the workspace, not only the cycles seeded above. Comparing against a
+  // narrower set here would make the demo's two instruments disagree for a
+  // reason that exists only inside this seeder.
+  const seededHarvest = harvestReviewObservations(state);
+  const ratingMeans = new Map();
+  for (const [personId, rows] of seededHarvest.byPerson) {
+    ratingMeans.set(personId, rows.map((row) => row.value));
+  }
+  const wobble = [0.03, -0.02, 0.012, -0.03, 0.02];
+  state.goals = Array.isArray(state.goals) ? state.goals : [];
+  roster.forEach((person, personIndex) => {
+    const rows = ratingMeans.get(person.id);
+    if (!rows || !rows.length) return;
+    const meanRating = rows.reduce((a, b) => a + b, 0) / rows.length;
+    const level = Math.max(0.08, Math.min(0.95, 0.08 + 0.82 * meanRating + wobble[personIndex % wobble.length]));
+    state.goals.push({
+      id: `goal-reliability-demo-${personIndex + 1}`,
+      title: `Quarter commitments · ${person.name}`,
+      description: 'Commitments agreed at the start of the cycle, recorded beside the review. Fabricated demo data.',
+      ownerId: person.id,
+      scope: 'person',
+      coAuthored: false,
+      dueDate: at(-30),
+      keyResults: [0, 1, 2].map((j) => ({
+        id: `kr-reliability-demo-${personIndex + 1}-${j + 1}`,
+        title: `Commitment ${j + 1}`,
+        start: 0,
+        target: 100,
+        current: Math.round(Math.max(0, Math.min(100, (level + (j - 1) * 0.02) * 100))),
+        initialCurrent: 0,
+        unit: '%',
+      })),
+      confidence: 'on-track',
+      initialConfidence: 'on-track',
+      status: 'active',
+      completedOn: null,
+      krUpdatedOn: null,
+      checkins: [],
+      createdAt: stamp(at(120)),
+    });
+  });
+
+  // Build the frozen reading from the state as it stood before the last cycle.
+  const freezeOn = at(185);
+  const truncated = {
+    ...state,
+    reviews: state.reviews.filter((r) => r.completedAt && r.completedAt.slice(0, 10) < freezeOn),
+  };
+  const then = reliabilityReport(truncated, new Date(stamp(freezeOn)));
+  if (!then.observable) return;
+  const current = reliabilityReport(state, new Date(stamp(today)));
+  const thresholdPct = 50;
+  const seThen = then.components.iccCi
+    ? Math.max(1e-9, (then.components.iccCi.high - then.components.iccCi.low) / (2 * 1.959963984540054))
+    : null;
+  const predictedExceed = seThen === null
+    ? null
+    : Math.round((1 - normalCdf((thresholdPct / 100 - then.components.icc) / seThen)) * 10000) / 10000;
+  const exceeded = current.observable ? current.components.icc >= thresholdPct / 100 : null;
+  state.reliabilityReadings = [
+    {
+      id: 'rel-demo-1',
+      label: 'Quarterly rating instrument · frozen before the last cycle',
+      instrument: 'review',
+      frozenAt: stamp(freezeOn),
+      frozenOn: freezeOn,
+      horizonDays: 95,
+      status: 'graded',
+      design: {
+        persons: then.design.persons,
+        occasions: then.design.occasions,
+        observations: then.design.observations,
+        medianObsPerPerson: then.design.medianObsPerPerson,
+        balanceRatio: then.design.balanceRatio,
+      },
+      icc: then.components.icc,
+      tau: then.components.tau2,
+      sigma: then.components.occasionError,
+      occasionShare: then.components.occasionShare,
+      verdict: then.verdict,
+      thresholdPct,
+      predictedExceed,
+      tierCount: then.separation?.tierCount ?? null,
+      pairCount: then.separation?.pairCount ?? null,
+      indistinguishablePairs: then.separation?.indistinguishablePairs ?? null,
+      topTierSize: then.separation?.topTierSize ?? null,
+      grade: {
+        gradedAt: stamp(at(8)),
+        icc: current.observable ? current.components.icc : null,
+        tiers: current.separation?.tierCount ?? null,
+        pairs: current.separation?.pairCount ?? null,
+        indistinguishablePairs: current.separation?.indistinguishablePairs ?? null,
+        newObservations: Math.max(0, (current.counts?.observations || 0) - then.design.observations),
+        exceeded,
+        brier: predictedExceed === null || exceeded === null
+          ? null
+          : Math.round(((predictedExceed - (exceeded ? 1 : 0)) ** 2) * 10000) / 10000,
+        note: '',
+      },
+      history: [
+        { at: stamp(freezeOn), type: 'frozen', summary: `Froze the instrument reading at ${Math.round((then.components.icc ?? 0) * 100)}% reliability against a ${thresholdPct}% floor.` },
+        { at: stamp(at(8)), type: 'graded', summary: `Graded against the fourth cycle: ${exceeded ? 'the floor was cleared' : 'the floor was not cleared'}.` },
+      ],
+      updatedAt: stamp(at(8)),
+    },
+  ];
+  // A second reading, frozen today and still open, so the ledger shows both a
+  // graded receipt and a live claim. Nothing about it is hand-written: it is the
+  // same arithmetic the freeze action runs.
+  const currentSe = current.components.iccCi
+    ? Math.max(1e-9, (current.components.iccCi.high - current.components.iccCi.low) / (2 * 1.959963984540054))
+    : null;
+  state.reliabilityReadings.push({
+    id: 'rel-demo-2',
+    label: 'Quarterly rating instrument · frozen today',
+    instrument: 'review',
+    frozenAt: stamp(today),
+    frozenOn: today,
+    horizonDays: 90,
+    status: 'frozen',
+    grade: null,
+    design: {
+      persons: current.design.persons,
+      occasions: current.design.occasions,
+      observations: current.design.observations,
+      medianObsPerPerson: current.design.medianObsPerPerson,
+      balanceRatio: current.design.balanceRatio,
+    },
+    icc: current.components.icc,
+    tau: current.components.tau2,
+    sigma: current.components.occasionError,
+    occasionShare: current.components.occasionShare,
+    verdict: current.verdict,
+    thresholdPct,
+    predictedExceed: currentSe === null
+      ? null
+      : Math.round((1 - normalCdf((thresholdPct / 100 - current.components.icc) / currentSe)) * 10000) / 10000,
+    tierCount: current.separation?.tierCount ?? null,
+    pairCount: current.separation?.pairCount ?? null,
+    indistinguishablePairs: current.separation?.indistinguishablePairs ?? null,
+    topTierSize: current.separation?.topTierSize ?? null,
+    history: [{
+      at: stamp(today),
+      type: 'frozen',
+      summary: `Froze the instrument reading at ${Math.round((current.components.icc ?? 0) * 100)}% reliability against a ${thresholdPct}% floor.`,
+    }],
+    updatedAt: stamp(today),
+  });
+  state.reliabilityMarkers = state.reviews.map((review) => ({
+    key: `obs:${review.id}:${review.periodEnd}`,
+    kind: 'observation',
+    reviewId: review.id,
+    note: '',
+    day: review.completedAt.slice(0, 10),
+    createdAt: review.completedAt,
+  }));
+}
+
+/**
+ * Schema v78 — the Coupling Ledger.
+ *
+ * The ledger's whole point is that a declaration can be read back against the
+ * record, and a record of resolved coupled calls is exactly what a demo
+ * workspace lacks: every demo decision is decided the day it is opened, so
+ * nothing ever resolves together or apart. What is seeded here is therefore
+ * WORKSPACE HISTORY — twenty dated decisions in ten premise-coupled pairs, the
+ * premises that couple them, and the leader's declared ρ — and nothing else.
+ * Every coincidence count, analytic expectation, lift, rotation p-value, band
+ * verdict, model reference and implied ρ on the screen is computed from those
+ * dates by the same engine that reads a real workspace.
+ *
+ * Two bands are deliberately on show, because a demo that only shows its own
+ * virtue teaches nothing:
+ *
+ *   - five pairs declared ρ 0.05 that all resolved inside the same 30-day
+ *     block: the record contradicts the declaration (under-declared), which is
+ *     the finding this terminal exists to make visible;
+ *   - six pairs declared ρ 0.05 that all resolved together: the record
+ *     contradicts the declaration (under-declared), which is the finding this
+ *     terminal exists to make visible;
+ *   - one bridge pair alone in a band: below the pair floor, so the screen
+ *     prints NO assessment rather than a false one;
+ *   - five pairs declared ρ 0.75 that mostly resolved together: the direction
+ *     is confirmed and the magnitude is not, which is what five pairs can
+ *     actually buy.
+ *
+ * The frozen review is built from a truncated copy of the state at day −60,
+ * when the second band had not resolved, then graded today by the real grading
+ * function. Its prediction therefore predates its outcome.
+ */
+function seedCouplingLedger(state, now) {
+  const today = dayKey(now);
+  const at = (daysAgo) => addDays(today, -daysAgo);
+  const stamp = (daysAgo) => new Date(`${at(daysAgo)}T09:00:00.000Z`).toISOString();
+  const owner = state.people?.[0]?.name || '';
+  const roster = state.people || [];
+  const driverFor = (index) => (roster.length ? roster[(index + 1) % roster.length].id : null);
+  const rows = [];
+  const premises = [];
+  const declarations = [];
+  const links = [];
+
+  const band = [
+    // Declared near-independent and resolved together — the contradiction this
+    // terminal exists to surface. Resolved long enough ago that a review frozen
+    // 95 days ago could see them.
+    {
+      key: 'weak',
+      rho: 0.05,
+      declaredDaysAgo: 300,
+      resolvedDaysAgo: [200, 196, 190, 186, 180, 176],
+      declaredAt: 296,
+      coincidenceOffset: 2,
+    },
+    // Declared strongly coupled and resolved together — the direction confirmed.
+    // Declared only 20 days ago, so a review frozen 95 days ago cannot see them.
+    {
+      key: 'strong',
+      rho: 0.75,
+      declaredDaysAgo: 20,
+      resolvedDaysAgo: [30, 26, 22, 18, 14, 10],
+      declaredAt: 20,
+      coincidenceOffset: 2,
+    },
+  ];
+  const topicOf = (pair) => ['supplier', 'platform', 'pricing', 'partner', 'packaging', 'renewal'][pair % 6];
+  // A premise carries a contract, not just a statement. Seeding two dozen of
+  // them with only `statement`/`decisionId` made RULE-PREM-04 read each as an
+  // overdue, never-reviewed signpost and push a nudge into every 1:1 agenda in
+  // the workspace. These are registered, reviewed-ahead premises that exist to
+  // couple two dated calls — so they say exactly that, and their review date is
+  // FORWARD-looking like every other demo premise.
+  const premiseFor = (id, topic, decisionId, createdAtIso, ownerId) => ({
+    id,
+    title: `The ${topic} commitment holds under a single shared driver`,
+    statement: `The ${topic} commitment holds under a single shared driver, so two calls that rest on it cannot be treated as independent bets.`,
+    signpost: 'A dated resolution on one half of the pair that arrives more than a block away from its partner is the first warning that the shared driver is weaker than declared.',
+    topic: 'commercial',
+    decisionId,
+    ownerId,
+    criticality: 'supporting',
+    priorPct: 60,
+    watchPct: 45,
+    breachPct: 25,
+    halfLifeDays: 120,
+    reviewBy: at(-45),
+    lastReviewedOn: at(120),
+    acknowledgedOn: null,
+    acknowledgedAt: null,
+    humanDisposition: null,
+    sourceRefs: [],
+    observations: [],
+    history: [{ at: createdAtIso, type: 'registered', summary: 'Registered as the shared premise that couples two calls' }],
+    status: 'unobserved',
+    reviewCycle: 1,
+    posteriorPct: 60,
+    logBayesFactor: 0,
+    autoPropagate: false,
+    createdAt: createdAtIso,
+    updatedAt: createdAtIso,
+  });
+  let index = 0;
+  for (const group of band) {
+    for (let pair = 0; pair < group.resolvedDaysAgo.length; pair += 1) {
+      const resolved = group.resolvedDaysAgo[pair];
+      // The last pair of each band resolves a block-and-a-half later, so each
+      // band shows a real non-coincidence rather than a perfect run.
+      const partnerResolved = pair < group.resolvedDaysAgo.length - 1
+        ? resolved - group.coincidenceOffset
+        : resolved - 47;
+      const started = resolved + 96 + (pair % 3) * 4;
+      const a = `dec-demo-cpl-${index}-a`;
+      const b = `dec-demo-cpl-${index}-b`;
+      index += 1;
+      rows.push(
+        {
+          id: a,
+          title: `Settle the ${topicOf(pair)} commitment (${group.key} band)`,
+          question: 'Recorded with a dated decision, so its resolution timing can be read years later.',
+          date: at(started),
+          reversibility: 'reversible',
+          driver: owner,
+          approver: owner,
+          contributors: '',
+          informed: '',
+          options: [],
+          chosen: 'The option on the table at the time',
+          rationale: 'Recorded history seeded for the Coupling Ledger demo.',
+          reviewOn: null,
+          reviewedOn: null,
+          outcome: 'pending',
+          outcomeNotes: '',
+          forecastProbability: null,
+          decidedOn: at(resolved),
+          createdAt: stamp(started),
+        },
+        {
+          id: b,
+          title: `Settle the paired ${topicOf(pair)} commitment (${group.key} band)`,
+          question: 'The other half of a premise-coupled pair, recorded with its own dated decision.',
+          date: at(started),
+          reversibility: 'reversible',
+          driver: owner,
+          approver: owner,
+          contributors: '',
+          informed: '',
+          options: [],
+          chosen: 'The option on the table at the time',
+          rationale: 'Recorded history seeded for the Coupling Ledger demo.',
+          reviewOn: null,
+          reviewedOn: null,
+          outcome: 'pending',
+          outcomeNotes: '',
+          forecastProbability: null,
+          decidedOn: at(partnerResolved),
+          createdAt: stamp(started),
+        },
+      );
+      const premiseId = `prem-demo-cpl-${index}`;
+      premises.push(premiseFor(premiseId, topicOf(pair), a, stamp(started), driverFor(pair)));
+      declarations.push({
+        id: `corr-demo-cpl-${index}`,
+        aId: a,
+        bId: b,
+        rho: group.rho,
+        declaredAt: stamp(group.declaredAt),
+      });
+      links.push({
+        id: `lnk-demo-cpl-${index}`,
+        sourceType: 'decision',
+        sourceId: b,
+        targetType: 'premise',
+        targetId: premiseId,
+        relation: 'rests-on',
+        ruleId: 'demo-seed',
+        summary: 'Demo call typed as resting on the premise that couples it to its declared partner',
+        createdAt: stamp(started),
+        updatedAt: stamp(started),
+      });
+    }
+  }
+
+  // One bridge pair: declared 100 days ago, still open when a review was frozen
+  // 95 days ago, resolved before today. Without it a frozen review has no
+  // arrival left to forecast and would (correctly) refuse to exist.
+  {
+    const start = 130;
+    const a = 'dec-demo-cpl-bridge-a';
+    const b = 'dec-demo-cpl-bridge-b';
+    rows.push(
+      {
+        id: a,
+        title: 'Settle the logistics commitment (bridge pair)',
+        question: 'A coupled call that was still open when the ledger first froze a review.',
+        date: at(start),
+        reversibility: 'reversible',
+        driver: owner,
+        approver: owner,
+        contributors: '',
+        informed: '',
+        options: [],
+        chosen: 'The option on the table at the time',
+        rationale: 'Recorded history seeded for the Coupling Ledger demo.',
+        reviewOn: null,
+        reviewedOn: null,
+        outcome: 'pending',
+        outcomeNotes: '',
+        forecastProbability: null,
+        decidedOn: at(40),
+        createdAt: stamp(start),
+      },
+      {
+        id: b,
+        title: 'Settle the paired logistics commitment (bridge pair)',
+        question: 'The other half of the bridge pair.',
+        date: at(start),
+        reversibility: 'reversible',
+        driver: owner,
+        approver: owner,
+        contributors: '',
+        informed: '',
+        options: [],
+        chosen: 'The option on the table at the time',
+        rationale: 'Recorded history seeded for the Coupling Ledger demo.',
+        reviewOn: null,
+        reviewedOn: null,
+        outcome: 'pending',
+        outcomeNotes: '',
+        forecastProbability: null,
+        decidedOn: at(38),
+        createdAt: stamp(start),
+      },
+    );
+    const premiseId = 'prem-demo-cpl-bridge';
+    premises.push(premiseFor(premiseId, 'logistics', a, stamp(start), state.people?.[0]?.id || null));
+    declarations.push({ id: 'corr-demo-cpl-bridge', aId: a, bId: b, rho: 0.4, declaredAt: stamp(100) });
+    links.push({
+      id: 'lnk-demo-cpl-bridge',
+      sourceType: 'decision',
+      sourceId: b,
+      targetType: 'premise',
+      targetId: premiseId,
+      relation: 'rests-on',
+      ruleId: 'demo-seed',
+      summary: 'Demo call typed as resting on the premise that couples it to its declared partner',
+      createdAt: stamp(start),
+      updatedAt: stamp(start),
+    });
+  }
+
+  state.decisions = [...(state.decisions || []), ...rows];
+  state.premises = [...(state.premises || []), ...premises];
+  state.correlationDeclarations = [...(state.correlationDeclarations || []), ...declarations];
+  state.links = [...(state.links || []), ...links];
+
+  // A frozen review from day −95, when only the weak band and the bridge pair
+  // were declared: five-plus testable pairs, one live prospective claim about
+  // the bridge pair's two open calls, and a window that has since closed.
+  const freezeDay = at(95);
+  const past = {
+    ...state,
+    decisions: state.decisions.map((d) => (d.decidedOn && d.decidedOn > freezeDay
+      ? { ...d, chosen: '', decidedOn: null, status: 'open' }
+      : d)),
+    correlationDeclarations: state.correlationDeclarations.filter((row) => String(row.declaredAt || '').slice(0, 10) <= freezeDay),
+    couplingReviews: [],
+    couplingMarkers: [],
+  };
+  try {
+    const pastNow = new Date(`${freezeDay}T09:00:00.000Z`);
+    const pastReport = couplingLedgerReport(past, pastNow, state.settings || {});
+    const built = buildCouplingReview(pastReport, past, pastNow, 'cpl-demo-1');
+    if (built.ok) {
+      const graded = gradeCouplingReview(built.record, state, new Date(`${today}T09:00:00.000Z`));
+      state.couplingReviews = [{
+        ...built.record,
+        stressedPremiseIds: [...new Set((pastReport.observations.pairs || [])
+          .flatMap((pair) => pair.premiseIds || []))].slice(0, 40),
+        graded: graded.ok ? graded.grade : null,
+      }];
+    }
+  } catch {
+    // A demo that cannot freeze its own review simply ships no frozen review —
+    // an empty ledger is honest, a hand-written one is not.
+    state.couplingReviews = [];
+  }
+
+}
+
+
+/**
+ * Schema v79 — one frozen evidence-supply plan, graded out of sample.
+ *
+ * The supply chain derives every count from dated records, so the only thing a
+ * demo needs is a plan whose window has already closed. Nothing here writes a
+ * unit of evidence: if the truncated state has nothing worth planning, no plan
+ * is seeded and the terminal says so — an empty ledger is honest, a hand-written
+ * one is not.
+ */
+function seedSupply(state, now) {
+  const today = dayKey(now);
+  const freezeDay = addDays(today, -75);
+  const stamped = (iso) => (typeof iso === 'string' && iso.slice(0, 10) > freezeDay ? freezeDay : iso);
+  const past = {
+    ...state,
+    decisions: (state.decisions || []).map((d) => (d.decidedOn && d.decidedOn > freezeDay
+      ? { ...d, chosen: '', decidedOn: null }
+      : d)),
+    delegations: (state.delegations || []).map((g) => (g.completedOn && g.completedOn > freezeDay
+      ? { ...g, status: 'active', completedOn: null }
+      : g)),
+    cases: (state.cases || []).map((c) => (c.resolvedOn && c.resolvedOn > freezeDay
+      ? { ...c, status: 'open', resolvedOn: null }
+      : c)),
+    reviews: (state.reviews || []).filter((r) => String(r.completedAt || r.updatedAt || stamped(r.periodEnd) || '').slice(0, 10) <= freezeDay),
+    premiseOutcomes: (state.premiseOutcomes || []).filter((o) => String(o.settledOn || '').slice(0, 10) <= freezeDay),
+    supplyPlans: [],
+    supplyMarkers: [],
+  };
+  try {
+    const pastNow = new Date(`${freezeDay}T09:00:00.000Z`);
+    const report = supplyReport(past, pastNow, state.settings || {});
+    const built = buildSupplyPlan(report, past, pastNow, 'sup-demo-1', { lines: 'all', reviewDays: 60 });
+    if (!built.ok) {
+      state.supplyPlans = [];
+      return;
+    }
+    const graded = gradeSupplyPlan(built.record, state, new Date(`${today}T09:00:00.000Z`));
+    state.supplyPlans = [{
+      ...built.record,
+      graded: graded.ok ? graded.grade : null,
+    }];
+  } catch {
+    state.supplyPlans = [];
+  }
+}
+
+/**
+ * Schema v80 — one frozen promise reading, graded out of sample, and one date
+ * that has already moved to its cap.
+ *
+ * The book is derived, so the demo needs no invented promises: it rewinds the
+ * workspace to 45 days ago (settlements after that day become open again), freezes
+ * the reading the engine would have produced then, and grades it today against the
+ * records that have since settled. If the rewound workspace has nothing worth
+ * pricing, no reading is seeded and the terminal says so — an empty ledger is
+ * honest, a hand-written one is not.
+ */
+/**
+ * Schema v81 demo history: a verdict ledger, a round frozen 45 days ago, and the
+ * verdicts that settle it.
+ *
+ * The subtlety this seed exists to honour: a frozen round must be frozen against
+ * the workspace AS IT STOOD THEN, and graded only on verdicts recorded AFTERWARDS.
+ * So the reviews and decision outcomes that landed after the freeze day are undone
+ * in the `past` copy, the prior verdicts are dated before it, and the settlement
+ * verdicts are dated after it. Nothing on the screen is a hand-written number.
+ */
+function seedSceptic(state, now) {
+  const today = dayKey(now);
+  const freezeDay = addDays(today, -45);
+  const reviewDay = addDays(today, -12);
+  const pastNow = new Date(`${freezeDay}T09:00:00.000Z`);
+  const after = (day) => typeof day === 'string' && day.slice(0, 10) > freezeDay;
+  const settings = state.settings || {};
+  const past = {
+    ...state,
+    reviews: (state.reviews || []).map((row) => (after(row.completedAt)
+      ? { ...row, status: 'draft', manager: { ...(row.manager || {}), rating: '' }, completedAt: null }
+      : row)),
+    decisions: (state.decisions || []).map((row) => (after(row.reviewedOn)
+      ? { ...row, reviewedOn: null, outcome: 'pending' }
+      : row)),
+    scepticRounds: [],
+    scepticDispositions: [],
+    scepticMarkers: [],
+  };
+
+  const priorClaims = extractClaims(past, pastNow, settings).claims;
+  const pool = new Map();
+  for (const claim of priorClaims) {
+    if (!pool.has(claim.detectorId)) pool.set(claim.detectorId, []);
+    pool.get(claim.detectorId).push(claim);
+  }
+
+  /* Four verdicts in assessment and four in prediction: enough to clear the
+     declared floor of four scored claims in two families, which is exactly what
+     makes the other four families print a refusal instead of a rate. */
+  const plan = [
+    ['SCP-AS-01', 'refuted', 'pessimistic', 'Read the review back after the cycle closed: the band says often-exceeds and the evidence list is empty. I wrote the conclusion first and looked for support afterwards.'],
+    ['SCP-AS-01', 'refuted', 'pessimistic', 'Same shape in the previous cycle. Two consecutive bands with nothing behind them is a habit, not an oversight.'],
+    ['SCP-AS-02', 'held', 'contested', 'The reflection was captured in the 1:1 notes the week before the review landed. The claim as written ("the person had no say") is wrong even though the review record does not point at it.'],
+    ['SCP-AS-02', 'refuted', 'pessimistic', 'This cycle there is no reflection anywhere — not in the review, not in the 1:1 notes. The band was recorded before the person saw it.'],
+    ['SCP-PR-01', 'refuted', 'extrapolative', 'A goal marked on-track with its key results a third of the window behind the pace line. Being behind is not the problem; the label was.'],
+    ['SCP-PR-01', 'held', 'contested', 'Checked the key results directly: the gap is inside one check-in of the noise on that measure. The label was defensible this time.'],
+    ['SCP-PR-02', 'refuted', 'extrapolative', 'The review date passed eight weeks ago and nobody wrote down what happened. A probability nobody scores is a ritual.'],
+    ['SCP-PR-02', 'held', 'contested', 'The decision was superseded before its review date, and the superseding call carries the outcome. The probability is genuinely unscoreable rather than avoided.'],
+  ];
+
+  const used = new Set();
+  const dispositions = [];
+  const take = (detectorId) => {
+    const rows = pool.get(detectorId) || [];
+    const next = rows.find((row) => !used.has(row.key));
+    if (next) used.add(next.key);
+    return next || null;
+  };
+  let cursor = 0;
+  for (const [detectorId, verdict, , reason] of plan) {
+    const claim = take(detectorId);
+    if (!claim) continue;
+    const offset = 70 - cursor * 4;
+    dispositions.push({
+      id: `scpdisp-demo-${cursor + 1}`,
+      claimKey: claim.key,
+      detectorId: claim.detectorId,
+      family: claim.family,
+      verdict,
+      reason,
+      at: new Date(`${addDays(today, -offset)}T16:00:00.000Z`).toISOString(),
+    });
+    cursor += 1;
+  }
+  past.scepticDispositions = dispositions;
+
+  /* Freeze the round against the past workspace. If the engine refuses — because
+     no family cleared its floor — the demo carries no round rather than a
+     hand-written one. */
+  let round = null;
+  try {
+    const report = scepticReport(past, pastNow, settings);
+    const built = buildScepticRound(report, past, pastNow, 'scp-demo-1', {
+      reviewHorizonDays: 33,
+    });
+    round = built.ok ? built.record : null;
+  } catch {
+    round = null;
+  }
+
+  /* Verdicts recorded AFTER the freeze: these are what grade it, and not one of
+     them was chosen with the frozen probabilities in view. */
+  const settlement = [
+    ['refuted', 'The claim did not survive the window: the record shows the promise was still open at the review date.'],
+    ['refuted', 'Confirmed against the source record — the contradiction was real and continuous.'],
+    ['held', 'On inspection the two records are about different things, but the claim as written still stands, so this scores as a false alarm rather than a dismissal.'],
+  ];
+  let settled = 0;
+  if (round) {
+    for (const claim of round.claims) {
+      if (settled >= settlement.length) break;
+      const [verdict, reason] = settlement[settled];
+      dispositions.push({
+        id: `scpdisp-demo-late-${settled + 1}`,
+        claimKey: claim.claimKey,
+        detectorId: claim.detectorId,
+        family: claim.family,
+        verdict,
+        reason,
+        at: new Date(`${addDays(reviewDay, -1)}T11:00:00.000Z`).toISOString(),
+      });
+      settled += 1;
+    }
+  }
+
+  state.scepticDispositions = dispositions;
+  if (round) {
+    state.scepticRounds = [{ ...round, reviewOn: reviewDay }];
+    try {
+      const graded = gradeScepticRound(state.scepticRounds[0], state, now);
+      state.scepticRounds = [{ ...state.scepticRounds[0], graded: graded.ok ? graded.grade : null }];
+    } catch {
+      state.scepticRounds = [round];
+    }
+  } else {
+    state.scepticRounds = [];
+  }
+}
+
+function seedSolvency(state, now) {
+  const today = dayKey(now);
+  const freezeDay = addDays(today, -45);
+  const after = (day) => typeof day === 'string' && day.slice(0, 10) > freezeDay;
+  const past = {
+    ...state,
+    delegations: (state.delegations || []).map((row) => (after(row.completedOn) || after(row.returnedOn)
+      ? { ...row, status: 'active', completedOn: null, returnedOn: null }
+      : row)),
+    decisions: (state.decisions || []).map((row) => (after(row.reviewedOn)
+      ? { ...row, reviewedOn: null, outcome: 'pending' }
+      : row)),
+    goals: (state.goals || []).map((row) => (after(row.completedOn)
+      ? { ...row, status: 'active', completedOn: null }
+      : row)),
+    feedback: (state.feedback || []).map((row) => (after(row.followUpCompletedOn)
+      ? { ...row, followUpDone: false, followUpCompletedOn: null }
+      : row)),
+    requisitions: (state.requisitions || []).map((row) => (after(row.closedOn)
+      ? { ...row, status: 'open', closedOn: null }
+      : row)),
+    stakeholders: (state.stakeholders || []).map((row) => {
+      const log = (row.contactLog || []).filter((entry) => !after(entry.date || entry.on));
+      const last = log.map((entry) => String(entry.date || entry.on || '').slice(0, 10)).filter(Boolean).sort().pop();
+      return { ...row, contactLog: log, lastContactOn: last || (after(row.lastContactOn) ? null : row.lastContactOn) };
+    }),
+    solvencyReadings: [],
+    solvencyMarkers: [],
+    solvencyRenegotiations: [],
+  };
+  try {
+    const pastNow = new Date(`${freezeDay}T09:00:00.000Z`);
+    const report = solvencyReport(past, pastNow, state.settings || {});
+    const built = buildSolvencyReading(report, past, pastNow, 'slv-demo-1', { reviewDays: 30 });
+    if (!built.ok) {
+      state.solvencyReadings = [];
+    } else {
+      const graded = gradeSolvencyReading(built.record, state, new Date(`${today}T09:00:00.000Z`));
+      state.solvencyReadings = [{ ...built.record, graded: graded.ok ? graded.grade : null }];
+    }
+  } catch {
+    state.solvencyReadings = [];
+  }
+
+  // A date that has already moved twice: the ledger is what makes the move cap
+  // real, so the demo shows it rather than describing it.
+  try {
+    const target = (state.delegations || []).find((row) => row && row.status === 'active' && row.dueOn);
+    if (target) {
+      const finalOn = target.dueOn;
+      const firstOn = addDays(finalOn, -14);
+      const middleOn = addDays(finalOn, -7);
+      state.solvencyRenegotiations = [
+        {
+          id: 'sreneg-demo-1',
+          sourceKey: 'delegation',
+          promiseId: target.id,
+          fromOn: firstOn,
+          toOn: middleOn,
+          reason: 'The reconciliation script the work depended on slipped; moved by a week rather than delivering a review against numbers nobody trusts.',
+          at: new Date(`${addDays(firstOn, -1)}T09:00:00.000Z`).toISOString(),
+        },
+        {
+          id: 'sreneg-demo-2',
+          sourceKey: 'delegation',
+          promiseId: target.id,
+          fromOn: middleOn,
+          toOn: finalOn,
+          reason: 'Second move: the owner was on incident duty for four days. This is the last date the cap allows.',
+          at: new Date(`${addDays(middleOn, -1)}T09:00:00.000Z`).toISOString(),
+        },
+      ];
+    }
+  } catch {
+    state.solvencyRenegotiations = [];
+  }
+}
+
+
+/** Demo history only: the real engine derives the roll-ups and signals. */
+function seedCatchball(state, now) {
+  const today = dayKey(now);
+  const start = addDays(today, -20);
+  const due = addDays(today, 10);
+  const stamp = new Date(`${start}T09:00:00.000Z`).toISOString();
+  const base = { fromSeatId: 'person-demo-1', altitudeKey: 'manager', horizonDays: 30,
+    status: 'agreed', startsOn: start, dueOn: due, agreedOn: start, createdAt: stamp,
+    updatedAt: stamp, roundCount: 2, frozenConfidencePct: 75, correlation: 'strong',
+    leadingMetric: 'Weekly delivery cadence', laggingMetric: 'Milestone completion' };
+  state.catchballPacts = [
+    { ...base, id: 'hk-demo-1', title: 'Activation improvement', toSeatId: 'person-demo-1', strategyBetId: 'bet-demo-1', effortDays: 4, leadingPct: 90, laggingPct: 75, reportedPct: 85 },
+    { ...base, id: 'hk-demo-2', title: 'Instrument the activation funnel', toSeatId: 'person-demo-2', strategyBetId: 'bet-demo-1', parentPactId: 'hk-demo-1', effortDays: 3, leadingPct: 92, laggingPct: 25 },
+    { ...base, id: 'hk-demo-3', title: 'Remove the onboarding bottleneck', toSeatId: 'person-demo-3', strategyBetId: 'bet-demo-1', parentPactId: 'hk-demo-1', effortDays: 5, leadingPct: 85, laggingPct: 90 },
+    { ...base, id: 'hk-demo-4', title: 'Review escalation coverage', toSeatId: 'person-demo-4', strategyBetId: 'bet-demo-2', status: 'proposed', agreedOn: null, roundCount: 1, effortDays: 3, leadingPct: null, laggingPct: null },
+  ];
+  state.catchballRounds = state.catchballPacts.flatMap((p) => [
+    { id: `${p.id}-propose`, pactId: p.id, ownerId: p.toSeatId, actorSeatId: p.fromSeatId,
+      roundNumber: 1, kind: 'propose', mechanism: 'none', recordedOn: start, createdAt: stamp },
+    ...(p.status === 'agreed' ? [{ id: `${p.id}-accept`, pactId: p.id, ownerId: p.toSeatId, actorSeatId: p.toSeatId,
+      roundNumber: 2, kind: 'accept', mechanism: 'none', recordedOn: start, createdAt: stamp }] : []),
+  ]);
+}

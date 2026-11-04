@@ -1,64 +1,116 @@
-import type { ReactNode } from "react";
+import type { ReactNode } from 'react';
+import { cn } from '../utils/cn';
 
-export function Card({
-  title,
-  subtitle,
-  right,
-  children,
-}: {
-  title: string;
-  subtitle?: string;
-  right?: ReactNode;
-  children: ReactNode;
-}) {
+export function Card({ className, children }: { className?: string; children: ReactNode }) {
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-5 shadow-sm">
-      <div className="mb-4 flex items-start justify-between gap-4">
-        <div>
-          <h3 className="text-sm font-semibold text-white">{title}</h3>
-          {subtitle && <p className="mt-0.5 text-xs text-slate-500">{subtitle}</p>}
-        </div>
-        {right}
-      </div>
+    <div
+      className={cn(
+        'rounded-2xl border border-slate-200/70 bg-white/80 shadow-sm shadow-slate-200/50 backdrop-blur-sm',
+        'dark:border-slate-800 dark:bg-slate-900/60',
+        className,
+      )}
+    >
       {children}
     </div>
   );
 }
 
-export function Label({ children }: { children: ReactNode }) {
-  return <p className="mt-3 text-xs leading-relaxed text-slate-500">{children}</p>;
-}
-
-export function Mono({ children }: { children: ReactNode }) {
-  return <code className="rounded bg-slate-800 px-1 py-0.5 text-xs text-slate-300">{children}</code>;
-}
-
-export function Bar({ value, max, color }: { value: number; max: number; color: string }) {
-  const pct = Math.max(0, Math.min(100, (value / max) * 100));
+export function CardHeader({
+  eyebrow,
+  title,
+  description,
+  right,
+}: {
+  eyebrow?: string;
+  title: string;
+  description?: string;
+  right?: ReactNode;
+}) {
   return (
-    <div className="h-2 w-full overflow-hidden rounded-full bg-slate-800">
-      <div className={`h-full rounded-full bg-gradient-to-r ${color} transition-all`} style={{ width: `${pct}%` }} />
+    <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 px-5 py-4 dark:border-slate-800">
+      <div>
+        {eyebrow && (
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-indigo-500">{eyebrow}</p>
+        )}
+        <h3 className="mt-0.5 font-serif text-lg font-semibold text-slate-900 dark:text-slate-100">{title}</h3>
+        {description && <p className="mt-1 max-w-prose text-sm text-slate-500 dark:text-slate-400">{description}</p>}
+      </div>
+      {right}
     </div>
   );
 }
 
-export function Badge({ children, tone = "slate" }: { children: ReactNode; tone?: "slate" | "rose" | "amber" | "emerald" | "indigo" }) {
+export function Badge({
+  tone = 'neutral',
+  children,
+}: {
+  tone?: 'neutral' | 'pass' | 'fail' | 'warn' | 'info' | 'critical';
+  children: ReactNode;
+}) {
   const tones: Record<string, string> = {
-    slate: "bg-slate-500/15 text-slate-300 ring-slate-500/30",
-    rose: "bg-rose-500/15 text-rose-300 ring-rose-500/30",
-    amber: "bg-amber-500/15 text-amber-300 ring-amber-500/30",
-    emerald: "bg-emerald-500/15 text-emerald-300 ring-emerald-500/30",
-    indigo: "bg-indigo-500/15 text-indigo-300 ring-indigo-500/30",
+    neutral: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
+    pass: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
+    fail: 'bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300',
+    warn: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
+    info: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300',
+    critical: 'bg-rose-600 text-white',
   };
-  return <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${tones[tone]}`}>{children}</span>;
+  return (
+    <span className={cn('inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium', tones[tone])}>
+      {children}
+    </span>
+  );
 }
 
-export function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
+export function StatPill({ label, value, sub, tone = 'neutral' }: { label: string; value: string; sub?: string; tone?: 'neutral' | 'pass' | 'fail' | 'warn' | 'info' }) {
+  const ring: Record<string, string> = {
+    neutral: 'ring-slate-200 dark:ring-slate-700',
+    pass: 'ring-emerald-200 dark:ring-emerald-800',
+    fail: 'ring-rose-200 dark:ring-rose-800',
+    warn: 'ring-amber-200 dark:ring-amber-800',
+    info: 'ring-indigo-200 dark:ring-indigo-800',
+  };
   return (
-    <div>
-      <div className="text-[10px] uppercase tracking-wide text-slate-500">{label}</div>
-      <div className="mt-0.5 font-mono text-lg text-white">{value}</div>
-      {hint && <div className="text-[10px] text-slate-600">{hint}</div>}
+    <div className={cn('rounded-xl bg-white/70 px-4 py-3 ring-1 dark:bg-slate-900/50', ring[tone])}>
+      <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">{label}</p>
+      <p className="mt-1 font-serif text-2xl font-semibold text-slate-900 dark:text-slate-100">{value}</p>
+      {sub && <p className="mt-0.5 text-xs text-slate-400">{sub}</p>}
+    </div>
+  );
+}
+
+export function SectionIntro({ title, description }: { title: string; description: string }) {
+  return (
+    <div className="mb-6">
+      <h2 className="font-serif text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">{title}</h2>
+      <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-500 dark:text-slate-400">{description}</p>
+    </div>
+  );
+}
+
+export function DemoNotice() {
+  return (
+    <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-500/10 dark:text-amber-300">
+      <span className="mt-0.5 text-base">⚠️</span>
+      <p>
+        <strong className="font-semibold">Illustrative console.</strong> All figures on this page are hand-authored
+        sample data for demonstration — not live measurements from a real eval runner, CI pipeline, or production
+        system. Wire the data layer to real sources before trusting any number here.
+      </p>
+    </div>
+  );
+}
+
+export function ProgressBar({ value, tone = 'info' }: { value: number; tone?: 'info' | 'warn' | 'fail' | 'pass' }) {
+  const colors: Record<string, string> = {
+    info: 'bg-indigo-500',
+    warn: 'bg-amber-500',
+    fail: 'bg-rose-500',
+    pass: 'bg-emerald-500',
+  };
+  return (
+    <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+      <div className={cn('h-full rounded-full transition-[width] duration-500', colors[tone])} style={{ width: `${Math.min(100, Math.max(0, value))}%` }} />
     </div>
   );
 }

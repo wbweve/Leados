@@ -1,41 +1,72 @@
-// fatigue.ts — session-scoped decision-fatigue heuristic.
-// ORIGINAL to this build. Decision fatigue (the idea that decision QUALITY
-// degrades after many consecutive choices) is a real, studied phenomenon in
-// the psychology literature in general terms, but the specific per-type
-// weights below are illustrative, not measured — labeled explicitly as a
-// HEURISTIC, reset every session, not a clinical or validated instrument.
+// src/lib/fatigue.ts
+//
+// RECONSTRUCTION NOTE: see src/lib/circadian.ts header. Stand-in for the
+// earlier fatigue module. This provides ONLY a descriptive statistic —
+// "has this person's own self-rated decision quality drifted across the
+// day, on their own records" — never a performance score, never compared
+// across people. Every output carries a sample size and a confidence label
+// so callers cannot present it as a fact (see the uncertainty-displayed
+// lint in leaderState).
 
-import type { DecisionType } from "./types";
+import { ALL_TIME_BUCKETS, bucketForHour, type TimeBucket } from "@/lib/circadian";
 
-export const DECISION_WEIGHTS: Record<DecisionType, number> = {
-  "termination-prep": 12,
-  hire: 10,
-  "strategy.decision": 8,
-  budget: 6,
-  vendor: 5,
-  other: 4,
-};
-
-export const FATIGUE_THRESHOLDS = {
-  MODERATE: 30,
-  HIGH: 60,
-  CRITICAL: 85,
-};
-
-export function levelFor(score: number): "LOW" | "MODERATE" | "HIGH" | "CRITICAL" {
-  if (score >= FATIGUE_THRESHOLDS.CRITICAL) return "CRITICAL";
-  if (score >= FATIGUE_THRESHOLDS.HIGH) return "HIGH";
-  if (score >= FATIGUE_THRESHOLDS.MODERATE) return "MODERATE";
-  return "LOW";
+export interface RatedDecisionPoint {
+  hourOfDay: number;
+  /** Self-rated quality, 1 (regret it) .. 5 (confident it was right), optional. */
+  selfRatedQuality: number;
 }
 
-/** Adjusts a stated confidence (0..1) downward as session fatigue rises.
- *  Pure illustrative linear decay — NOT a validated psychometric model. */
-export function fatigueAdjustedConfidence(confidence: number, fatigueScore: number): number {
-  const penalty = Math.min(0.6, (fatigueScore / 100) * 0.6);
-  return Math.max(0, +(confidence * (1 - penalty)).toFixed(3));
+export interface FatigueProxyBucket {
+  bucket: TimeBucket;
+  avgSelfRatedQuality: number | null;
+  sampleSize: number;
 }
 
-export function clampScore(score: number): number {
-  return Math.max(0, Math.min(100, score));
+export interface FatigueProxyResult {
+  buckets: FatigueProxyBucket[];
+  /** The bucket with the lowest average, if there is enough data to say anything. */
+  lowestQualityBucket: TimeBucket | null;
+  confidence: "insufficient-data" | "low" | "moderate";
+  minBucketSampleSizeUsed: number;
+}
+
+const MIN_SAMPLE_PER_BUCKET_FOR_ANY_SIGNAL = 3;
+const MIN_SAMPLE_PER_BUCKET_FOR_MODERATE_CONFIDENCE = 8;
+
+/**
+ * Decision-fatigue PROXY, not a measurement of fatigue itself. It looks for
+ * drift in self-rated decision quality across the person's own time-of-day
+ * buckets. This is explicitly a correlational, low-confidence proxy:
+ * self-rating bias, recall bias, and unmeasured confounds (what was actually
+ * decided, who was involved) are not controlled for. See AI-SESSION-LOG.md
+ * "evidence basis" note.
+ */
+export function computeFatigueProxy(points: RatedDecisionPoint[]): FatigueProxyResult {
+  const byBucket = new Map<TimeBucket, number[]>();
+  for (const b of ALL_TIME_BUCKETS) byBucket.set(b, []);
+  for (const p of points) {
+    const bucket = bucketForHour(p.hourOfDay);
+    byBucket.get(bucket)!.push(p.selfRatedQuality);
+  }
+
+  const buckets: FatigueProxyBucket[] = ALL_TIME_BUCKETS.map((bucket) => {
+    const values = byBucket.get(bucket)!;
+    return {
+      bucket,
+      avgSelfRatedQuality: values.length === 0 ? null : values.reduce((a, b) => a + b, 0) / values.length,
+      sampleSize: values.length,
+    };
+  });
+
+  const eligible = buckets.filter((b) => b.sampleSize >= MIN_SAMPLE_PER_BUCKET_FOR_ANY_SIGNAL && b.avgSelfRatedQuality !== null);
+  const minBucketSampleSizeUsed = eligible.length === 0 ? 0 : Math.min(...eligible.map((b) => b.sampleSize));
+
+  if (eligible.length < 2) {
+    return { buckets, lowestQualityBucket: null, confidence: "insufficient-data", minBucketSampleSizeUsed };
+  }
+
+  const lowest = eligible.reduce((min, b) => (b.avgSelfRatedQuality! < min.avgSelfRatedQuality! ? b : min));
+  const confidence = minBucketSampleSizeUsed >= MIN_SAMPLE_PER_BUCKET_FOR_MODERATE_CONFIDENCE ? "moderate" : "low";
+
+  return { buckets, lowestQualityBucket: lowest.bucket, confidence, minBucketSampleSizeUsed };
 }

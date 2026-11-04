@@ -1,76 +1,139 @@
 // src/lib/familiarity.ts
-// Session-scoped familiarity tracking, intentionally kept out of the
-// durable localStorage store (same separation-of-concerns reasoning the
-// upstream repo's README states for its own familiarity keys — resetting
-// a UI-adaptation counter should never be able to touch real business
-// events). Implementation is original to this sandbox.
+//
+// Expertise ("familiarity") model — Part 41.
+//
+// Pure functions only. No DB, no React, no side effects. This module answers
+// ONE question per domain: "how familiar does this person appear to be, based
+// on how they interact?" It NEVER decides what facts a user sees — only the
+// presentation layer (presentationAdapter.ts) is allowed to read this output,
+// and only to change density/format, never content (enforced by the
+// content-parity test in tests/presentationAdapter.contentParity.test.ts).
 
-import { FAMILIARITY_KEY, FAMILIARITY_NOTIFIED_KEY } from "./core";
+export type Domain = "finance" | "people" | "risk" | "tech";
 
-export type FamiliarityTier = "NOVEL" | "LEARNING" | "FAMILIAR" | "HABITUATED";
+export const DOMAINS: Domain[] = ["finance", "people", "risk", "tech"];
 
-interface FamiliarityStore {
-  views: Record<string, number>; // findingId -> view count, this session
+export type ExpertiseLevel = "novice" | "intermediate" | "expert";
+
+/** A single observed behavior that is evidence of familiarity in a domain. */
+export interface InteractionSignal {
+  domain: Domain;
+  /** 0..1 — how far the user drilled past the headline number into supporting detail. */
+  depth: number;
+  /** 0..1 — use of domain-technical vocabulary/filters rather than plain-language search. */
+  vocabulary: number;
+  /** 0..1 — intensity of drill-down navigation (expanding nested breakdowns, pivoting). */
+  drilldown: number;
+  /** epoch ms when the interaction happened. */
+  timestamp: number;
 }
 
-function readStore(): FamiliarityStore {
-  try {
-    const raw = sessionStorage.getItem(FAMILIARITY_KEY);
-    if (!raw) return { views: {} };
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed.views !== "object") return { views: {} };
-    return parsed;
-  } catch {
-    return { views: {} };
-  }
+export interface ExpertiseScore {
+  domain: Domain;
+  /** 0..1 saturating score. */
+  score: number;
+  level: ExpertiseLevel;
+  /** 0..1 — how much evidence backs this score (small sample = low confidence). */
+  confidence: number;
+  sampleSize: number;
+  /** epoch ms the score was computed for. */
+  asOf: number;
 }
 
-function writeStore(store: FamiliarityStore) {
-  sessionStorage.setItem(FAMILIARITY_KEY, JSON.stringify(store));
+/** Recency half-life: a signal's weight halves every 14 days of inactivity. */
+export const EXPERTISE_HALF_LIFE_MS = 14 * 24 * 60 * 60 * 1000;
+
+/** Saturation constant so repeated strong signals approach but never hit 1. */
+const SATURATION_K = 0.35;
+
+/** Level thresholds — explicit and documented so the UI can explain transitions. */
+export const EXPERTISE_THRESHOLDS: { novice: number; intermediate: number } = {
+  novice: 0.33,
+  intermediate: 0.7,
+};
+
+export function clamp01(n: number): number {
+  if (Number.isNaN(n) || !Number.isFinite(n)) return 0;
+  return Math.min(1, Math.max(0, n));
 }
 
-/** Call once per render of a given finding card; returns the tier AFTER incrementing. */
-export function registerView(findingId: string, crossSessionResolvedCount = 0): FamiliarityTier {
-  const store = readStore();
-  store.views[findingId] = (store.views[findingId] || 0) + 1;
-  writeStore(store);
-  return tierFor(store.views[findingId], crossSessionResolvedCount);
+export function recencyWeight(ageMs: number, halfLifeMs: number = EXPERTISE_HALF_LIFE_MS): number {
+  if (ageMs <= 0) return 1;
+  return Math.pow(0.5, ageMs / halfLifeMs);
 }
 
-export function currentViews(findingId: string): number {
-  return readStore().views[findingId] || 0;
+function signalStrength(signal: InteractionSignal): number {
+  const raw = 0.4 * clamp01(signal.depth) + 0.3 * clamp01(signal.vocabulary) + 0.3 * clamp01(signal.drilldown);
+  return clamp01(raw);
+}
+
+export function levelFromScore(score: number): ExpertiseLevel {
+  if (score < EXPERTISE_THRESHOLDS.novice) return "novice";
+  if (score < EXPERTISE_THRESHOLDS.intermediate) return "intermediate";
+  return "expert";
 }
 
 /**
- * Tier thresholds (this build's own rule, disclosed):
- *  NOVEL:      0 session views
- *  LEARNING:   1-2 session views
- *  FAMILIAR:   3-9 session views (and < habituation threshold)
- *  HABITUATED: 10+ session views OR 8+ cross-session resolutions of this finding
+ * Compute a domain's expertise score from a list of interaction signals.
+ *
+ * Properties guaranteed (see tests/familiarity.property.test.ts):
+ *  - Monotone: adding any additional non-negative signal never decreases the score.
+ *  - Decaying: holding signals fixed, score computed at a later `now` is <= score at an earlier `now`.
+ *  - Bounded: score and confidence are always within [0, 1].
  */
-export function tierFor(sessionViews: number, crossSessionResolvedCount = 0): FamiliarityTier {
-  if (sessionViews >= 10 || crossSessionResolvedCount >= 8) return "HABITUATED";
-  if (sessionViews >= 3) return "FAMILIAR";
-  if (sessionViews >= 1) return "LEARNING";
-  return "NOVEL";
-}
+export function computeExpertise(
+  signals: InteractionSignal[],
+  domain: Domain,
+  now: number = Date.now(),
+): ExpertiseScore {
+  const relevant = signals.filter((s) => s.domain === domain && s.timestamp <= now);
 
-/** Returns true exactly once per finding per session the first time it reaches a tier beyond NOVEL->LEARNING transition boundary used for the toast. */
-export function shouldNotifyCompaction(findingId: string, tier: FamiliarityTier): boolean {
-  if (tier !== "FAMILIAR" && tier !== "HABITUATED") return false;
-  try {
-    const raw = sessionStorage.getItem(FAMILIARITY_NOTIFIED_KEY);
-    const notified: Record<string, boolean> = raw ? JSON.parse(raw) : {};
-    if (notified[findingId]) return false;
-    notified[findingId] = true;
-    sessionStorage.setItem(FAMILIARITY_NOTIFIED_KEY, JSON.stringify(notified));
-    return true;
-  } catch {
-    return false;
+  let weightedSum = 0;
+  let totalWeight = 0;
+  for (const signal of relevant) {
+    const age = now - signal.timestamp;
+    const weight = recencyWeight(age);
+    weightedSum += weight * signalStrength(signal);
+    totalWeight += weight;
   }
+
+  const score = clamp01(1 - Math.exp(-SATURATION_K * weightedSum));
+  const confidence = clamp01(1 - Math.exp(-0.25 * totalWeight));
+
+  return {
+    domain,
+    score,
+    level: levelFromScore(score),
+    confidence,
+    sampleSize: relevant.length,
+    asOf: now,
+  };
 }
 
-export function resetFamiliarity() {
-  sessionStorage.removeItem(FAMILIARITY_KEY);
-  sessionStorage.removeItem(FAMILIARITY_NOTIFIED_KEY);
+export function computeAllExpertise(
+  signals: InteractionSignal[],
+  now: number = Date.now(),
+): Record<Domain, ExpertiseScore> {
+  const out = {} as Record<Domain, ExpertiseScore>;
+  for (const domain of DOMAINS) {
+    out[domain] = computeExpertise(signals, domain, now);
+  }
+  return out;
+}
+
+/**
+ * True if `curr` reflects decay relative to `prev` (no new evidence, time passed).
+ * Used only to produce a human-readable transparency message — never hidden.
+ */
+export function hasDecayed(prev: ExpertiseScore, curr: ExpertiseScore): boolean {
+  return curr.asOf > prev.asOf && curr.score < prev.score;
+}
+
+/**
+ * Default (empty-evidence) expertise score for a domain — the safe fallback
+ * for cold-start users. Always "novice" with zero confidence, which the
+ * presentation layer treats as "use guided density, but don't trap the user".
+ */
+export function defaultExpertise(domain: Domain, now: number = Date.now()): ExpertiseScore {
+  return { domain, score: 0, level: "novice", confidence: 0, sampleSize: 0, asOf: now };
 }

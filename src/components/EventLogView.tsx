@@ -1,80 +1,84 @@
-import { useState } from "react";
-import type { OrgEvent } from "../lib/types";
-import { Card, Label } from "./ui";
+import { useMemo, useState } from 'react';
+import type { AppState } from '../lib/types';
+import { Panel, Label, Stat } from './Shell';
 
-export function EventLogView({
-  events,
-  onReset,
-  onWipe,
-}: {
-  events: OrgEvent[];
-  onReset: () => void;
-  onWipe: () => void;
-}) {
-  const [filter, setFilter] = useState("");
-  const filtered = events.filter((e) => !filter || e.type.includes(filter) || JSON.stringify(e.data).includes(filter));
-  const sorted = [...filtered].sort((a, b) => b.ts.localeCompare(a.ts));
+export function EventLogView({ state, onReset }: { state: AppState; onReset: () => void }) {
+  const [filter, setFilter] = useState('');
+  const events = state.events;
 
-  function exportJson() {
-    const blob = new Blob([JSON.stringify(events, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "leados-pt-l-events.json";
-    a.click();
-    URL.revokeObjectURL(url);
-  }
+  const typeCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    events.forEach((e) => (counts[e.type] = (counts[e.type] || 0) + 1));
+    return Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  }, [events]);
+
+  const filtered = useMemo(() => {
+    const rows = filter ? events.filter((e) => e.type.includes(filter)) : events;
+    return [...rows].sort((a, b) => (a.ts < b.ts ? 1 : -1)).slice(0, 60);
+  }, [events, filter]);
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold text-white">Event Log</h1>
-          <p className="mt-1 text-sm text-slate-400">{events.length} events · append-only · stored in this browser's localStorage</p>
+      <Panel title="Event log" subtitle={`${events.length} total events across ${state.roster.length} people. This is the only substrate every view computes from.`}>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <Stat label="Total events" value={events.length} />
+          <Stat label="Distinct types" value={typeCounts.length} />
+          <Stat label="Roster size" value={state.roster.length} />
+          <Stat
+            label="Span"
+            value={
+              events.length
+                ? `${Math.round(
+                    (new Date(events[events.length - 1].ts).getTime() - new Date(events[0].ts).getTime()) / 86400000
+                  )}d`
+                : '—'
+            }
+          />
         </div>
-        <div className="flex gap-2">
-          <button onClick={exportJson} className="rounded-lg border border-slate-700 bg-slate-800/60 px-3 py-2 text-xs text-slate-200 hover:bg-slate-800">
-            Export JSON
-          </button>
-          <button onClick={onReset} className="rounded-lg border border-slate-700 bg-slate-800/60 px-3 py-2 text-xs text-slate-200 hover:bg-slate-800">
-            Reset to seed
-          </button>
-          <button onClick={onWipe} className="rounded-lg border border-rose-800 bg-rose-950/40 px-3 py-2 text-xs text-rose-300 hover:bg-rose-900/40">
-            Wipe all
-          </button>
+        <div className="mt-4 flex flex-wrap gap-2">
+          {typeCounts.map(([type, count]) => (
+            <button
+              key={type}
+              onClick={() => setFilter(filter === type ? '' : type)}
+              className={`rounded-full border px-3 py-1 text-xs font-mono ${
+                filter === type ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              {type} · {count}
+            </button>
+          ))}
         </div>
-      </div>
+        <button
+          onClick={onReset}
+          className="mt-4 rounded-md border border-rose-200 bg-rose-50 px-3 py-1.5 text-sm font-medium text-rose-700 hover:bg-rose-100"
+        >
+          Reset synthetic data
+        </button>
+        <Label>Resetting regenerates the deterministic seed log for "today" and clears all logged hypotheses/agent audit entries.</Label>
+      </Panel>
 
-      <input
-        placeholder="Filter by type or content…"
-        value={filter}
-        onChange={(e) => setFilter(e.target.value)}
-        className="w-full rounded-lg border border-slate-700 bg-slate-800/60 px-3 py-2 text-sm text-slate-200 placeholder:text-slate-500"
-      />
-
-      <Card>
-        <div className="max-h-[60vh] overflow-y-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="sticky top-0 bg-slate-900">
-              <tr className="text-[10px] uppercase tracking-wide text-slate-500">
-                <th className="pb-2 pr-3">Date</th>
-                <th className="pb-2 pr-3">Type</th>
+      <Panel title={filter ? `Events: ${filter}` : 'Most recent events'} subtitle="Showing up to 60 rows, newest first">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="text-xs uppercase tracking-wide text-slate-500">
+                <th className="pb-2 pr-4">Timestamp</th>
+                <th className="pb-2 pr-4">Type</th>
                 <th className="pb-2">Data</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800">
-              {sorted.map((e) => (
-                <tr key={e.id}>
-                  <td className="py-1.5 pr-3 font-mono text-slate-500">{e.ts}</td>
-                  <td className="py-1.5 pr-3 font-mono text-amber-300">{e.type}</td>
-                  <td className="py-1.5 font-mono text-slate-400">{JSON.stringify(e.data)}</td>
+            <tbody>
+              {filtered.map((e) => (
+                <tr key={e.id} className="border-t border-slate-100 align-top">
+                  <td className="whitespace-nowrap py-2 pr-4 text-xs text-slate-500">{new Date(e.ts).toLocaleString()}</td>
+                  <td className="py-2 pr-4 font-mono text-xs text-indigo-600">{e.type}</td>
+                  <td className="py-2 font-mono text-xs text-slate-600">{JSON.stringify(e.data)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-        <Label>Raw, unfiltered event stream — this is the "noise" half of the Thermodynamics signal-to-noise metric.</Label>
-      </Card>
+      </Panel>
     </div>
   );
 }

@@ -1,318 +1,221 @@
-import type { Projection, Finding } from "./types";
-import { engine, run, CONF_FACTOR } from "./core";
-import { measureOrgEntropy, computeLeadershipEnergyBudget } from "./physics";
-import {
-  buildTemporalProfile,
-  correlate,
-  resolve as simResolve,
-  projectFireDate,
-  avoidancePatterns,
-  suppressedFindingKeys,
-  overconfidenceScore,
-  getTopDomain,
-  TemporalMode,
-} from "./intelligence";
+// =============================================================================
+// synthesis.ts — retrieval scoring engine
+// =============================================================================
+//   score = w1*BM25 + w2*graphProximity + w3*recencyDecay
+//         + w4*authority(entity) + w5*evidenceStrength
+//
+// Weights are loaded from data/retrieval-weights.json, which is produced by
+// scripts/fit-weights.ts (grid search on the TRAIN split of the labeled
+// query set only; the HOLDOUT split is reserved exclusively for
+// scripts/eval-retrieval.ts so the reported P@5/R@20/MRR/nDCG are not
+// fit-contaminated). See docs/PART-12-KNOWLEDGE-MEMORY.md for the fit
+// procedure writeup.
+//
+// This module is deliberately corpus-agnostic: it is given a list of
+// `SearchableItem`s (built from docs + memories in searchCorpus()) rather
+// than querying the DB itself, so the exact same scoring code path can be
+// driven by eval scripts with a synthetic/labeled corpus.
+// =============================================================================
 
-/**
- * DISCLOSURE: this file implements the pasted brief's three pseudocode
- * functions (generateOrganizationalMoment, computeFiveThingsThatMatter,
- * generateHardestQuestion) as closely as the brief's own gaps allow.
- * Two gaps in the brief itself, named explicitly rather than silently
- * filled:
- *   1. The brief shows 3 of "11 more" Organizational Moment templates.
- *      The missing ones are this delivery's own additions, built to cover
- *      every {mode x energy-assessment} combination so the page never
- *      falls through to a mismatched default.
- *   2. `fillTemplate` and `selectMomentTemplate` are referenced but never
- *      defined in the brief. Implemented here as plain string substitution
- *      and a lookup table respectively — disclosed as this session's own
- *      scaffolding, not discovered code.
- */
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { db } from "@/db";
+import { docs, memories, entities, evidenceLinks } from "@/db/schema";
+import { bm25Search, buildBM25Index, type BM25Document } from "./textSearch";
+import { decorateWithRetention } from "./institutionalMemory";
+import { shortestInfluencePath } from "./knowledgeGraph";
+import { eq, inArray } from "drizzle-orm";
 
-function fillTemplate(tpl: string, data: Record<string, any>): string {
-  return tpl.replace(/\{(\w+)\}/g, (_, k) => (data[k] !== undefined && data[k] !== null ? String(data[k]) : `{${k}?}`));
+export interface ScoringWeights {
+  w1_bm25: number;
+  w2_graphProximity: number;
+  w3_recencyDecay: number;
+  w4_authority: number;
+  w5_evidenceStrength: number;
 }
 
-// ---------------------------------------------------------------------------
-// SECTION 1 — The Organizational Moment
-// ---------------------------------------------------------------------------
-
-const MOMENT_TEMPLATES: Record<string, string> = {
-  REACTIVE_HIGH_ENERGY:
-    "The organization is in reactive mode with {findingCount} active findings, {criticalCount} of them critical. " +
-    "The energy balance is positive ({energyBalance}+) — there is momentum to draw from. The risk is that reactive " +
-    "urgency exhausts this reserve before the structural causes are addressed. The {topDomain} domain accounts for " +
-    "{topDomainPct}% of active findings and deserves sustained focus rather than fire-fighting responses.",
-  REACTIVE_BALANCED:
-    "The organization is responding to {findingCount} active findings ({criticalCount} critical) in what is mostly " +
-    "a reactive posture — {reactivePct}% of findings trace to the last 30 days. Energy is balanced ({energyBalance}), " +
-    "which means there is room to respond deliberately rather than merely quickly. The {topDomain} domain is where " +
-    "that deliberateness matters most right now, carrying {topDomainPct}% of the load.",
-  REACTIVE_DEPLETED:
-    "{findingCount} findings are active and most are fresh — {reactivePct}% emerged in the last 30 days — but " +
-    "leadership energy is depleted ({energyBalance}, {energyLabel}). Reacting to everything new while running a " +
-    "deficit is how small fires become large ones. The {topDomain} domain is both the newest pressure and the one " +
-    "most likely to be under-resourced if the pattern continues.",
-  REACTIVE_CRITICAL:
-    "The organization is reacting to {findingCount} findings ({criticalCount} critical) while leadership energy is " +
-    "critically low ({energyBalance}). This is the combination that produces burnout disguised as responsiveness: " +
-    "high activity, falling reserve. The {topDomain} domain is pulling the most attention ({topDomainPct}% of " +
-    "findings) and is the least affordable place to keep improvising.",
-  STRATEGIC_DRIFT_BALANCED:
-    "The organization is drifting on a strategic vector established {avgFindingAge} days ago. Most findings emerged " +
-    "from decisions and patterns in the {strategicWindow} window. The good news: energy is balanced ({energyBalance}) " +
-    "and entropy is {entropyLevel}. The leverage point is not the current state — it is the decision that set this " +
-    "direction. Identify when the drift began and what decision preceded it.",
-  STRATEGIC_DRIFT_HIGH_ENERGY:
-    "A strategic drift is underway — findings cluster {avgFindingAge} days back, in the {strategicWindow} window — " +
-    "but it is happening on top of real momentum ({energyBalance}+ energy). That combination is an opportunity: there " +
-    "is enough reserve to correct course deliberately, in the {topDomain} domain especially, before drift hardens " +
-    "into structure.",
-  STRATEGIC_DRIFT_DEPLETED:
-    "{strategicPct}% of active findings sit in the 30-180 day strategic window, averaging {avgFindingAge} days old, " +
-    "while leadership energy is depleted ({energyBalance}). Correcting a drift takes energy this organization does " +
-    "not currently have in reserve. The {topDomain} domain is where the drift is sharpest and where a small, " +
-    "well-timed correction would cost the least.",
-  STRATEGIC_DRIFT_CRITICAL:
-    "The organization is drifting, not reacting — {strategicPct}% of findings are 30-180 days old — and leadership " +
-    "energy is critically low ({energyBalance}). This is the quiet-crisis profile: nothing looks urgent, everything " +
-    "is getting harder to fix. The {topDomain} domain carries {topDomainPct}% of that drift and is overdue for a " +
-    "decision, not another observation.",
-  STRUCTURAL_DEPLETED:
-    "{structuralPct}% of active findings trace to events older than 180 days. These are not new problems — they are " +
-    "established patterns. The leadership energy balance is {energyBalance} ({energyLabel}). Tactical responses to " +
-    "structural findings drain energy without changing outcomes. The {topDomain} domain is the epicenter. The " +
-    "question is not what to fix this week — it is what structural change would make next quarter different from " +
-    "this one.",
-  STRUCTURAL_HIGH_ENERGY:
-    "{structuralPct}% of active findings are structural — older than 180 days — but leadership energy is high " +
-    "({energyBalance}+). That is rare and worth using deliberately: there is enough reserve right now to fund a real " +
-    "structural fix in {topDomain} instead of another round of symptom management.",
-  STRUCTURAL_BALANCED:
-    "{structuralPct}% of active findings are structural in origin, concentrated in {topDomain}. Energy is balanced " +
-    "({energyBalance}), entropy is {entropyLevel}. Nothing is forcing a decision this week, which is exactly the " +
-    "condition under which structural problems get deferred indefinitely.",
-  STRUCTURAL_CRITICAL:
-    "{structuralPct}% of active findings are structural, concentrated in {topDomain}, and leadership energy is " +
-    "critically low ({energyBalance}). Structural problems do not resolve themselves while reserves are this thin — " +
-    "they compound. This is the moment that most needs a decision and least has the energy to make one.",
-  BALANCED_DEFAULT:
-    "The organization shows {findingCount} active findings spread across temporal horizons with no single mode " +
-    "dominating: {reactivePct}% reactive, {strategicPct}% strategic, {structuralPct}% structural. Entropy reads as " +
-    "{entropyLevel} and leadership energy is {energyBalance} ({energyLabel}). The {topDomain} domain carries the " +
-    "largest single share, at {topDomainPct}% of findings — the closest thing to a clear starting point this moment " +
-    "offers.",
-};
-
-function energyKey(assessment: string): "HIGH_ENERGY" | "BALANCED" | "DEPLETED" | "CRITICAL" {
-  if (assessment.startsWith("HIGH")) return "HIGH_ENERGY";
-  if (assessment.startsWith("BALANCED")) return "BALANCED";
-  if (assessment.startsWith("DEPLETED")) return "DEPLETED";
-  return "CRITICAL";
+export function loadWeights(): ScoringWeights {
+  try {
+    const raw = readFileSync(join(process.cwd(), "data", "retrieval-weights.json"), "utf-8");
+    const parsed = JSON.parse(raw);
+    return {
+      w1_bm25: parsed.w1_bm25,
+      w2_graphProximity: parsed.w2_graphProximity,
+      w3_recencyDecay: parsed.w3_recencyDecay,
+      w4_authority: parsed.w4_authority,
+      w5_evidenceStrength: parsed.w5_evidenceStrength,
+    };
+  } catch {
+    return {
+      w1_bm25: 0.2,
+      w2_graphProximity: 0.2,
+      w3_recencyDecay: 0.2,
+      w4_authority: 0.2,
+      w5_evidenceStrength: 0.2,
+    };
+  }
 }
 
-function selectMomentTemplate(mode: TemporalMode, energyAssessment: string): string {
-  const e = energyKey(energyAssessment);
-  if (mode === "BALANCED") return "BALANCED_DEFAULT";
-  const key = `${mode.split("_")[0]}_${e}`;
-  // REACTIVE_HIGH_ENERGY, REACTIVE_BALANCED, ... STRUCTURAL_* (matches DEPLETED/BALANCED/CRITICAL/HIGH_ENERGY keys above)
-  const normalized = key
-    .replace("REACTIVE_HIGH_ENERGY", "REACTIVE_HIGH_ENERGY")
-    .replace("STRATEGIC_HIGH_ENERGY", "STRATEGIC_DRIFT_HIGH_ENERGY")
-    .replace("STRATEGIC_BALANCED", "STRATEGIC_DRIFT_BALANCED")
-    .replace("STRATEGIC_DEPLETED", "STRATEGIC_DRIFT_DEPLETED")
-    .replace("STRATEGIC_CRITICAL", "STRATEGIC_DRIFT_CRITICAL")
-    .replace("STRUCTURAL_HIGH_ENERGY", "STRUCTURAL_HIGH_ENERGY");
-  return MOMENT_TEMPLATES[normalized] ? normalized : "BALANCED_DEFAULT";
-}
-
-export interface OrganizationalMoment {
+export interface SearchableItem {
+  id: string;
+  kind: "doc" | "memory";
+  title: string;
   text: string;
-  mode: TemporalMode;
-  energyAssessment: string;
-  templateKey: string;
+  entityId: string | null;
+  authority: number;
+  ageDays: number;
+  retentionOrFreshness: number;
+  evidenceStrength: number;
+  facetType: string | null;
 }
 
-export function generateOrganizationalMoment(P: Projection, today: string | Date): OrganizationalMoment {
-  const temporal = buildTemporalProfile(P, today);
-  const entropy = measureOrgEntropy(P, today);
-  const energy = computeLeadershipEnergyBudget(P, today);
-  const findings = run(P, today).findings;
-  const criticalCount = findings.filter((f) => f.sev >= 4).length;
-  const top = getTopDomain(P, today);
+/** Build the current searchable corpus from docs + memories. Exported
+ * separately from `search()` so eval scripts can inject a labeled/synthetic
+ * corpus instead of hitting the live DB. */
+export async function searchCorpus(): Promise<SearchableItem[]> {
+  const [allDocs, allMemories, allEntities, allEvidence] = await Promise.all([
+    db.select().from(docs),
+    db.select().from(memories),
+    db.select().from(entities),
+    db.select().from(evidenceLinks),
+  ]);
 
-  const templateKey = selectMomentTemplate(temporal.diagnosis.mode, energy.assessment);
-  const template = MOMENT_TEMPLATES[templateKey] || MOMENT_TEMPLATES.BALANCED_DEFAULT;
-
-  const text = fillTemplate(template, {
-    findingCount: findings.length,
-    criticalCount,
-    energyBalance: energy.balance > 0 ? "+" + energy.balance : String(energy.balance),
-    energyLabel: energy.assessment,
-    topDomain: top.domain,
-    topDomainPct: top.pct,
-    structuralPct: temporal.proportions.STRUCTURAL.pct,
-    strategicPct: temporal.proportions.STRATEGIC.pct,
-    reactivePct: temporal.proportions.REACTIVE.pct,
-    avgFindingAge: temporal.avgFindingAgeDays,
-    strategicWindow: "30-180 days",
-    entropyLevel: entropy.interpretation.toLowerCase(),
-  });
-
-  return { text, mode: temporal.diagnosis.mode, energyAssessment: energy.assessment, templateKey };
-}
-
-// ---------------------------------------------------------------------------
-// SECTION 2 — The Five Things That Matter
-// ---------------------------------------------------------------------------
-
-export interface LeverageItem {
-  finding: Finding;
-  leverage: number;
-  domainImprovement: number;
-  energyCost: number;
-  inCluster: boolean;
-  leverageReason: string;
-  action: string;
-  estimatedImpact: string;
-}
-
-function generateLeverageReason(item: { inCluster: boolean; prefireMultiplier: number; domainImprovement: number; energyCost: number }): string {
-  const reasons: string[] = [];
-  if (item.inCluster) reasons.push("part of a correlation pattern");
-  if (item.prefireMultiplier > 1) reasons.push("will escalate without action");
-  if (item.domainImprovement > 2) reasons.push("high domain impact");
-  if (item.energyCost < 3) reasons.push("low energy cost");
-  if (!reasons.length) return "Highest leverage given current state.";
-  return "Highest leverage because: " + reasons.join(" + ") + ".";
-}
-
-export function computeFiveThingsThatMatter(P: Projection, today: string | Date): LeverageItem[] {
-  const findings = run(P, today).findings;
-  const correlation = correlate(P, today);
-
-  const scored = findings.map((f) => {
-    const sim = simResolve(f.key, P, today);
-    const domainImprovement = sim ? Math.max(0, sim.heatmapBefore - sim.heatmapAfter) : f.score;
-
-    const energyCost = f.sev * (1 / CONF_FACTOR[f.conf]);
-
-    const inCluster = correlation.clusters.some((c) => c.findings.includes(f.key));
-    const patternMultiplier = inCluster ? 1.5 : 1.0;
-
-    const prefire = projectFireDate(f, P, today);
-    const prefireMultiplier = prefire === "NOW" ? 1.0 : typeof prefire === "string" ? 1.3 : 1.0;
-
-    const leverage = (domainImprovement * patternMultiplier * prefireMultiplier) / Math.max(0.1, energyCost);
-
-    return { finding: f, leverage, domainImprovement, energyCost, inCluster, prefireMultiplier };
-  });
-
-  return scored
-    .sort((a, b) => b.leverage - a.leverage)
-    .slice(0, 5)
-    .map((item) => ({
-      finding: item.finding,
-      leverage: Math.round(item.leverage * 100) / 100,
-      domainImprovement: item.domainImprovement,
-      energyCost: Math.round(item.energyCost * 10) / 10,
-      inCluster: item.inCluster,
-      leverageReason: generateLeverageReason(item),
-      action: item.finding.play ? `Open playbook: ${item.finding.play}` : "Address on Roster or at Health",
-      estimatedImpact: `Domain score: -${Math.round(item.domainImprovement * 10) / 10} points`,
-    }));
-}
-
-// ---------------------------------------------------------------------------
-// SECTION 3 — The One Question
-// ---------------------------------------------------------------------------
-
-export interface HardestQuestion {
-  question: string;
-  source: string;
-  label: string;
-}
-
-export function generateHardestQuestion(P: Projection, today: string | Date): HardestQuestion {
-  const avoidance = avoidancePatterns(P, today);
-  const temporal = buildTemporalProfile(P, today);
-  const calibration = overconfidenceScore(P);
-  const energy = computeLeadershipEnergyBudget(P, today);
-  const suppressed = suppressedFindingKeys(P);
-  const todayIso = engine.iso(today);
-
-  const HARD_QUESTIONS: { condition: () => boolean; question: string; source: string }[] = [
-    {
-      condition: () => avoidance.length >= 2,
-      question:
-        "Your data shows {n} patterns of possible avoidance. What conversation have you been meaning to have for more than three weeks?",
-      source: "avoidance pattern analysis",
-    },
-    {
-      condition: () => temporal.diagnosis.mode === "STRUCTURAL_STRESS" && temporal.proportions.STRUCTURAL.pct > 40,
-      question:
-        "More than 40% of your findings trace to events older than six months. What decision did you make (or not make) six months ago that is producing these results today?",
-      source: "temporal profile analysis",
-    },
-    {
-      condition: () => !!calibration && calibration.gap > 0.25,
-      question:
-        "When you say you are confident, you are right only {hitRate}% of the time. In which domain do you most often feel certain — and what would it take for you to be wrong?",
-      source: "decision calibration data",
-    },
-    {
-      condition: () => energy.balance < -10,
-      question:
-        "Your leadership energy is depleted — more drains than sources over the last {windowDays} days. What are you holding onto that you should be letting go of?",
-      source: "energy budget analysis",
-    },
-    {
-      condition: () => suppressed.length >= 2,
-      question:
-        "You have snoozed {n} findings three or more times without resolving them. What would it mean — really mean — to resolve these permanently?",
-      source: "suppression pattern analysis",
-    },
-    {
-      condition: () => P.successionCandidates.length === 0 && !!P.meta.createdAt && engine._days(P.meta.createdAt, todayIso) > 180,
-      question:
-        "You have no succession candidates logged after six months of using this system. Who would run this organization if you left tomorrow — and are you building them deliberately?",
-      source: "succession data",
-    },
-    {
-      condition: () => {
-        const plans = P.growthPlans;
-        if (plans.length <= 3) return false;
-        const spineMovement = plans.filter((p) => p.spine.length > 1 && p.spine[0].d !== p.spine[p.spine.length - 1].d);
-        return spineMovement.length === 0;
-      },
-      question:
-        "You have {planCount} growth plans open with no level movement on any of them. Are you coaching or are you administering coaching?",
-      source: "growth plan analysis",
-    },
-    {
-      condition: () => true,
-      question:
-        "What would your best finding — the one that, if resolved, would change the most — look like in six months if you did nothing about it?",
-      source: "leverage analysis",
-    },
-  ];
-
-  for (const q of HARD_QUESTIONS) {
-    if (q.condition()) {
-      const text = fillTemplate(q.question, {
-        n: avoidance.length || suppressed.length,
-        hitRate: calibration?.hitRate,
-        windowDays: 30,
-        planCount: P.growthPlans.length,
-      });
-      return {
-        question: text,
-        source: q.source,
-        label: "Generated from your data. This is not a finding — it is a question the data implies. You are the only one who can answer it.",
-      };
-    }
+  const entityById = new Map(allEntities.map((e) => [e.id, e]));
+  const evidenceByEntity = new Map<string, number>();
+  for (const link of allEvidence) {
+    evidenceByEntity.set(link.entityId, (evidenceByEntity.get(link.entityId) ?? 0) + Number(link.strength));
   }
 
-  // unreachable: last condition is always true
-  return { question: "", source: "", label: "" };
+  const docItems: SearchableItem[] = allDocs.map((d) => {
+    const sourceIds = (d.sourceEntityIds as string[]) ?? [];
+    const primaryEntity = sourceIds[0] ? entityById.get(sourceIds[0]) : undefined;
+    const ageDays = (Date.now() - new Date(d.lastSyncedAt).getTime()) / (1000 * 60 * 60 * 24);
+    return {
+      id: `doc:${d.id}`,
+      kind: "doc",
+      title: d.title,
+      text: `${d.title}\n${d.content}`,
+      entityId: sourceIds[0] ?? null,
+      authority: primaryEntity ? Number(primaryEntity.authorityScore) : 0,
+      ageDays,
+      retentionOrFreshness: Math.exp(-ageDays / 90),
+      evidenceStrength: sourceIds[0] ? Math.min(1, (evidenceByEntity.get(sourceIds[0]) ?? 0) / 5) : 0,
+      facetType: primaryEntity?.type ?? null,
+    };
+  });
+
+  const memoryItems: SearchableItem[] = allMemories.map((m) => {
+    const decorated = decorateWithRetention(m);
+    const entity = m.entityId ? entityById.get(m.entityId) : undefined;
+    return {
+      id: `memory:${m.id}`,
+      kind: "memory",
+      title: m.title,
+      text: `${m.title}\n${m.content}`,
+      entityId: m.entityId,
+      authority: entity ? Number(entity.authorityScore) : 0,
+      ageDays: decorated.ageDays,
+      retentionOrFreshness: decorated.retention,
+      evidenceStrength: m.entityId ? Math.min(1, (evidenceByEntity.get(m.entityId) ?? 0) / 5) : 0,
+      facetType: entity?.type ?? m.class,
+    };
+  });
+
+  return [...docItems, ...memoryItems];
+}
+
+export interface SearchOptions {
+  facetType?: string;
+  seedEntityId?: string; // for graph-aware queries: boosts items near this entity
+  limit?: number;
+  weights?: ScoringWeights;
+}
+
+export interface ScoredResult {
+  item: SearchableItem;
+  score: number;
+  components: {
+    bm25: number;
+    graphProximity: number;
+    recencyDecay: number;
+    authority: number;
+    evidenceStrength: number;
+  };
+}
+
+function toBM25Docs(items: SearchableItem[]): BM25Document[] {
+  return items.map((i) => ({ id: i.id, text: i.text }));
+}
+
+export async function scoreItems(
+  items: SearchableItem[],
+  query: string,
+  opts?: SearchOptions,
+): Promise<ScoredResult[]> {
+  const weights = opts?.weights ?? loadWeights();
+  const filtered = opts?.facetType ? items.filter((i) => i.facetType === opts.facetType) : items;
+
+  const index = buildBM25Index(toBM25Docs(filtered));
+  const bm25Results = bm25Search(index, query, filtered.length);
+  const bm25ById = new Map(bm25Results.map((r) => [r.id, r.normalizedScore]));
+
+  // Graph proximity: only computed when a seed entity is given (graph-aware
+  // search). depth 0 = same entity -> 1.0, otherwise 1/(1+depth).
+  const proximityCache = new Map<string, number>();
+  async function graphProximity(entityId: string | null): Promise<number> {
+    if (!opts?.seedEntityId || !entityId) return 0;
+    if (entityId === opts.seedEntityId) return 1;
+    const key = entityId;
+    if (proximityCache.has(key)) return proximityCache.get(key)!;
+    const path = await shortestInfluencePath(opts.seedEntityId, entityId, { maxDepth: 5 });
+    const score = path ? 1 / (1 + path.depth) : 0;
+    proximityCache.set(key, score);
+    return score;
+  }
+
+  const results: ScoredResult[] = [];
+  for (const item of filtered) {
+    const bm25 = bm25ById.get(item.id) ?? 0;
+    const proximity = await graphProximity(item.entityId);
+    const components = {
+      bm25,
+      graphProximity: proximity,
+      recencyDecay: item.retentionOrFreshness,
+      authority: item.authority,
+      evidenceStrength: item.evidenceStrength,
+    };
+    const score =
+      weights.w1_bm25 * components.bm25 +
+      weights.w2_graphProximity * components.graphProximity +
+      weights.w3_recencyDecay * components.recencyDecay +
+      weights.w4_authority * components.authority +
+      weights.w5_evidenceStrength * components.evidenceStrength;
+    results.push({ item, score, components });
+  }
+
+  // Deterministic tie-break: primary score, then raw BM25 relevance, then
+  // item id — avoids ties silently falling back to insertion order (which
+  // would make fitting/eval results depend on incidental corpus ordering).
+  return results
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      if (b.components.bm25 !== a.components.bm25) return b.components.bm25 - a.components.bm25;
+      return a.item.id.localeCompare(b.item.id);
+    })
+    .slice(0, opts?.limit ?? 20);
+}
+
+export async function search(query: string, opts?: SearchOptions): Promise<ScoredResult[]> {
+  const items = await searchCorpus();
+  return scoreItems(items, query, opts);
+}
+
+export async function searchByEntityIds(ids: string[]) {
+  if (ids.length === 0) return [];
+  return db.select().from(entities).where(inArray(entities.id, ids));
+}
+
+export async function getEntityByIdSafe(id: string) {
+  const [row] = await db.select().from(entities).where(eq(entities.id, id));
+  return row ?? null;
 }

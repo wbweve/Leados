@@ -1,68 +1,192 @@
-# LEADOS · AI SESSION LOG — Session 6 entry (APPEND this to AI-SESSION-LOG.md; do NOT replace the existing 22,103 B file)
+# AI Session Log — Session 110 (append buffer)
 
-_Naming convention: this entry is delivered as a separate file because the authoring environment writes files, not commits. Prepend or append wholesale; nothing below edits prior entries. Measured-at dates follow the rule adopted in Session 4: every measurement carries when it was taken._
+2026-11-01 · The Coupling Ledger · Schema v78 · ADR-0070 · `RULE-CPL-01..03` · CPL-01..05 · CSV #68 · 35/35 new tests · standalone 5,896,706 bytes / 302 modules.
 
----
+The workspace had sold the leader a number it never audited: since v69 the Deferral Portfolio prices a correlated joint tail on a leader-declared ρ and prints "the number is yours to declare". `#/deferral?panel=coupling` now reads that declaration back against realised joint timing — among declared pairs where both calls carry a decision date, how often did the two resolutions land in the same 30-day block? Structure-preserving cyclic rotation inside each call's own at-risk window gives a deterministic two-sided p-value (the lower tail is the only one that can see an over-declaration: with zero coincidences the upper test returns p = 1 forever). Declared ρ is mapped to a coincidence reference by a bivariate-normal copula and printed under **both** defensible mappings, τ = ρ and τ = 2·sin(πρ/6); where they disagree on a magnitude the finding is marked mapping-dependent and no work opens. Six assessments; a band below the pair floor prints no assessment at all; materiality `max(5 pp, 20%)` gates every size claim. A frozen review stores aggregates and member ids only and is graded once, and nothing in the module has a write path to `correlationDeclarations`.
 
-## Session 6 — mf-2: audit-first rebuild of engine+ui; playbooks & skip-levels slice
+Found by building it: the bivariate normal was computing the CDF for **ρ²** (0.290 vs 0.333 at ρ = 0.5), a fixed quadrature grid wrong exactly where this module reads (panel count now scales with 1/√(1−ρ)); `verdictFor` reading its floors off the band descriptor where they are `undefined`, silently disabling every floor; RULE-CPL-02 returning before its own contradiction branch; a frozen claim re-based onto the wrong window (95.7% instead of 65.1%); a review able to be read back with a band missing; and the deferral terminal never having been through axe at all.
 
-**Date:** February 2026 (web-audit session). **Env constraint (standing):** no JS execution sandbox at authoring time; grading authority is `#/health` in the reader's browser. This session's extra constraint: **repo bytes were fetched through HTTP tools** — stated per-file what was readable vs not; nothing unread was claimed.
+Demo seeds workspace history, not engine output — 22 dated decisions in 11 premise-coupled pairs plus declarations, then every figure on the screen is computed from those dates by the live engine. Live demo: 14 declarations, 12 testable, 2 refused, near-independent band **coupled / under-declared** at lift 2.93. Full log in `AI-SESSION-LOG.md`.
 
-### §0 What this session measured about the repo itself, with sources
+# AI Session Log — Session 109 (append buffer)
 
-| Claim | Measured (this session) | Source |
-|---|---|---|
-| File tree | 12 files at root: `index.html` 1,920 B · `app.css` 7,814 B · `store.js` 7,630 B · `events.js` 6,630 B · `engine.js` 27,781 B · `ui.js` 38,078 B · `README.md` 16,284 B · `AI-SESSION-LOG.md` 22,103 B · `SESSION-3.patch.md` 6,508 B · `package.json` 707 B · `package-lock.json` 87,433 B · `tsconfig.json` 681 B. **No `css/` or `js/` directories exist.** | GitHub git Trees API (sha 4b829889…) |
-| Prior README §6 file table (`css/app.css`, `js/store.js`…) | **WRONG as written** — files are at root; the README described the mandate, not the tree | Trees API, above |
-| Prior drift-notice row "index.html = 337,974 B" | Stale: current index.html = 1,920 B (mf-1 splash shell) | Trees API + raw fetch |
-| `package.json` = React 19.2.6 + Vite 7.3.2 + TS 5.9.3, gsap/lenis/lucide-react, singlefile plugin; zero source files | **VERIFIED BY DIRECT READ** (previously inherited from Session 2) | raw fetch |
-| `engine.js` readability | Read in full for header, DOCTRINE, RULE_TAGS, ctx builder, R7, R6, and R1 up to its confidence block; then the fetch channel truncated (payload cut mid-rule). R2–R5 bodies, `run()`, `runGolden()` G1–G9 = **UNVERIFIED** | raw fetch (partial) |
-| `ui.js` readability | Logic readable (CAPTURE spec, T1–T8, views, router, import/export handlers); **template-literal markup/SVG bodies were stripped by the fetch renderer** (e.g. `ic(){ return '' }`, icon dict values empty). Exact rendered HTML = **UNVERIFIED** | raw fetch (partial, stripped) |
-| `store.js`, `events.js` | **Read in full** — claims in prior README (quarantine kinds, trySetItem, reseed-impossible, rewire walker, audit) hold as written | raw fetch (complete) |
+2026-11-01 · Measurement Reliability Terminal · Schema v77 · ADR-0069 · `RULE-REL-01..05` · CSV #67 · 45/45 new tests · standalone 5,814,537 bytes / 298 modules.
 
-### §1 Findings, ranked (every one tied to evidence above)
+Instrument, not people: ICC(1) with a Satterthwaite interval and an F test of τ² = 0 beside Spearman–Brown reliability of the mean of k ratings; per-person credibility n/(n + K) with regression to the mean as the expected *next* observation; tier separation as a posterior test (demo: 3 tiers, 2 of 4 adjacent pairs indistinguishable); decision study (MDE 1.27 points, 7 observations and 8.9 months for a one-point gap); convergence by exact permutation Spearman with an uncertified-agreement verdict at n = 5 (ρ = 0.90, p = 0.083) and a composite refused. Real trace: review completion → observation capture → advisory note + owned verification task + `tempers-rating` edge from the frozen reading. No person score, rank or potential rating exists in the module, its brief, its CSV or its signals. Full log in `AI-SESSION-LOG.md`.
 
-1. **BLOCKER — dead npm scaffold ships** (verified direct-read this session): `package.json`/lockfile/tsconfig describe a React+Vite+TS build that contradicts every permanent constraint and invites an accidental `npm run build`. **Prescription: delete all three files.** (Not deletable from this environment — logged as required repo action.)
-2. **BLOCKER (architectural) — no migration ladder existed anywhere.** `CURRENT=1` + refuse-and-quarantine is honest for foreign bytes but leaves the mandated "schema versioning WITH migrations" unimplemented; the first schema bump would orphan every live store. → mf-2 ships `MIGRATIONS[1→2]`, documented, T10-tested with a byte-exact v1 fixture, pre-migration bytes snapshotted before write.
-3. **REAL RISK — `openGoals()` ignored `goal.assign` events** (found in full read of mf-1 `events.js`): owner lived in two places; the projection read only `goal.set.data.ownerPersonId`, so an owner assigned after creation was invisible to the projection/UI link lists. Whether mf-1's R3 compensated internally is UNVERIFIED (engine truncated). → mf-2 folds `goal.assign` (latest wins) inside both `events.openGoals()` and the engine's own self-contained R3 — and the duplicate fold is intentional: the engine must run on bare fixture states with no module imports.
-4. **REAL RISK — opaque ranking + no engine memory.** Scores were hand constants (R7=100, R6=90, R1=70); rank derivation wasn't printed one level down; there was no way to tell the mentor "I know, stop" — the classic path to alert fatigue. → mf-2 prints `sev × conf = score` on every row and adds snooze/dismiss/unmute **as events** (auditable, exportable, reversible; G11 goldens them).
-5. **NITPICK — README said `js/`, tree said root**; nitpick only because every loader path was consistent. → mf-2 puts files under `css/` + `js/`; tree now matches docs by construction.
-6. **NITPICK — `events` unbounded** (log capped at 500, events not): silent quota pressure over years; export/import exists; acceptable for now, but stated.
-7. **NITPICK — mf-1 `audit()` didn't normalize event fields** (dup handling + dangling FKs only). → mf-2 `normalizeEvents()` repairs id/ts/type/data per row, at boot AND at the import gate, never dropping (T8 goldens it).
+# AI Session Log — Session 90
 
-### §2 What a new multi-team leader needs that wasn't there — added, not listed
+2026-10-31 · Cost of Waiting terminal — pricing the queue the workspace already keeps · Schema v64 · ADR-0053 · RULE-WAIT-01..05 · CSV #54
 
-- **Skip-levels as a first class** (the prior lineage's own v19 flagship, dropped in mf-1): `people[].reportsTo` (default `'me'`), engine R8 with broken-line silence, roster line editing, dossier shows the line.
-- **Playbooks layer** (the repo's own §5 gaps 6–7): 1:1 run sheet (+skip-level and load-cutting modes), SBI, DESC, delegation ladder (levels wording carried verbatim from the mf-1 read), situational D1–D4→S1–S4 with mismatch warnings, decision review, goal review. Bridge: `playbooks.forFinding()` maps every rule to the resolving playbook with prefill.
-- **Honest dossier trends**: measured/estimated sparkline; trend withheld under 3 measured points, with the reason printed.
-- **Printed score math** everywhere + `DOCTRINE` constants table at `#/health`.
+Origin verified as `https://github.com/shahramclaude/Leados.git` before any audit/change; branch `arena/363cad54-leados`, clean initial worktree at `b0d8bce`. Session 89's survival terminal estimated P(still open | wait w weeks) = S(age+w)/S(age) from the leader's own censored records; nobody multiplied that by a money price over the cross-module queue. Competitive hunt (CoD/CD3 tooling — Reinertsen, WSJF, Productboard/Aha!/Airfocus — prices only product-backlog items with a declared per-feature CoD; people-analytics and AI-coaching vendors do not price the operational queue at all) confirmed the gap in the searched material.
 
-### §3 Self-caught defects during authoring (per convention)
+Shipped `#/wait`: declared weekly prices per class of work (cap 24, fail-closed normalizers), derived decision prices (value at stake ÷ 12-week erosion window, linear CD3), unpriced-never-zero; per-row wait-horizon scenarios (1/2/4/8 weeks) with per-currency totals never pooled; weekly frozen exposure certificates; RULE-WAIT-01..05 marker-idempotent on the spine before decision tempo (stale `prices-delay` edge reconciliation, certificate, ≤40 exposure→item links, one triage DACI decision per currency/week, ≤5 owned delegations +3d, ≤3 declare-a-price tasks +7d); signals WAIT-01..06; CSV #54 aggregate-only; `exposure` typed node with resolver; demo seeds three USD prices and no pre-frozen certificate. One `declareWaitPrice` write cascades certificate + links + triage decision in one atomic update (verified on demo: USD 40,538.89/wk exposure, 13,861.11 overdue).
 
-1. Roster cadence `<input>` sits inside a row with `data-act="dossier"` — unguarded, every edit opened the dossier. Fixed with a target guard in `onClick`.
-2. Required playbooks `select`s defaulted silently to their first option (would have written "as expected" outcomes nobody chose). Fixed: empty option whenever no value pre-exists; required validation rejects the empty choice.
-3. R8 reporting-line doctrine was written `length !== 1`, allowing grand-skip lines (≥2 leads between) to fire with a misleading basis comment. Fixed to exactly `length === 2`; G10 covers direct-vs-skip-vs-broken.
-4. `playbooks.situational.compose` preview string contained a stray `'D?'` artifact — cosmetic, caught in reread.
-5. FieldSpec `hint` strings were dropped between playbook definitions and the tuple renderer. Fixed by riding the hint/preview markers on the tuple.
+Focused tests: `tests/app/wait-cost.test.mjs` **43/43** (hand-computed KM fixture, per-currency totals, rule idempotency, full cascade, axe pass). Full canonical `npm test` **1,623/1,623**; lint clean; boundary 227 modules/91 suites/0 leaks; links green. Standalone **7/7**, regenerated artifact 4,658,027 bytes (226 modules, schema v64). Confirmed push: `git push origin arena/363cad54-leados` succeeded and created the remote branch at commit `a835f5c`; the confirmation is recorded in AI-SESSION-LOG.md in a follow-up documentation commit. Real-browser/AT behaviour, legacy `src/**`, and vendor parity remain **[UNVERIFIED]**.
 
-### §4 Divergence register (re-authored vs continued — labeled per the session rule)
+# AI Session Log — Session 83
 
-| mf-1 element | Status for mf-2 |
-|---|---|
-| store.js doctrine (quarantine/trySetItem/rewire/isShape) | **Carried** (full read); extended with ladder + normalize + usage() |
-| events.js (emit/projections/seed/purge) | **Carried**; `goal.assign` fold FIXED; reportsTo added; demo seed extended for R8/playbooks |
-| engine R6/R7 bodies, DOCTRINE, ctx | **Carried in substance** (read); R7 re-expressed on the shared `fin()` shape |
-| engine R2–R5 bodies, run(), G1–G9 | **Re-authored** (unreadable); mf-2 G-suite is G1–G12 and covers all 8 rules + boundaries + malformed + memory |
-| ui.js (views, CAPTURE types, T1–T8) | **Re-authored in substance** (logic read, markup stripped); views extended to Today/Roster(+dossier)/Playbooks/Health/Data; T-suite is T1–T10 |
-| Delegation level wording | **Carried verbatim** as readable in the stripped ui.js fetch |
-| Monolith `v3` stores / `SESSION-3.patch.md` anchors | Still **unverified by construction**: mf-2 keeps them quarantined read-only; no migration invented |
+2026-10-30 · Common-mode exposure in the Attention Market · Schema v57 unchanged · `RULE-ATT-05`
 
-### §5 Expected (NOT yet observed) test outcomes — labeled unverified until run
+Origin verified as `https://github.com/shahramclaude/Leados.git` before any audit/change; branch `arena/4b1257df-leados`, clean initial worktree at `80d7764`. The canonical Attention Market said two risks were independent unless the graph connected them, although open cases already held 5-Whys systemic-barrier notes. NIST IR 8286C Rev. 1 confirms risk aggregation/harmonization is established in enterprise cyber risk management; Resolver is publicly described as connecting incidents with investigation/RCA/corrective action. Coachello/Skillsoft CAISY show conversational AI rehearsal is an existing category. No category-first claim.
 
-T1–T10 and G1–G12 are authored to pass against the shipped code by construction and three rounds of self-review; the authoring environment cannot execute them. The authority is `#/health` on your machine. If any row shows FAIL, that row is the truth and this section is the record of the miss.
+Shipped `RULE-ATT-05`: case create/update/resolve/reopen/delete events reconcile typed `shares-barrier` edges among active cases with exactly matching normalized barrier strings. Edges store no source text and stale edges are removed. Attention Market groups priced cases by currency and compares sum against a full-overlap scenario; neither is a guaranteed bound, correlation estimate or optimizer input. `ATT-S6` routes the leader to the market. Fixed mutable `contextNow` in harvesting so every call uses its explicit clock. No schema bump or dependency.
 
-### §6 Repo actions required of the next session
+Focused tests: `tests/app/attention-market.test.mjs` **31/31**; `cases-automation` **7/7**. Actual action path proves create → link → 13,000/19,500 USD scenarios → resolve/reopen lifecycle → stale-link removal and rejection of manual semantic assertion. Full canonical `npm run verify:canonical` **exit 0**, 1,376/1,376 tests; boundary 196 modules/84 suites/0 leaks; docs 293 links/155 Markdown files. Standalone **7/7**, regenerated artifact 4,158,021 bytes (195 modules, schema v57). Confirmed push: `git push origin arena/4b1257df-leados` succeeded and created the remote branch at commit `7b96f1e`; the session-log sync record is being published in a follow-up documentation commit. Exact text matching can miss/falsely group; real browser/AT, legacy `src/**`, full file-by-file audit, field validation and vendor parity are **[UNVERIFIED]**.
 
-1. DELETE `package.json`, `package-lock.json`, `tsconfig.json` (Blocker 1).
-2. Fold this entry into `AI-SESSION-LOG.md` proper.
-3. Replace the 6 build files with the mf-2 set (tree: `index.html`, `css/app.css`, `js/store.js`, `js/events.js`, `js/engine.js`, `js/playbooks.js`, `js/ui.js`) — existing `leados:data` v1 stores migrate automatically (T10 path).
+# AI Session Log — Session 81
+
+2026-10-30 · Sequential investigation planner · Schema v56 (unchanged) · ADR-0046 · `RULE-SEQ-01..03`
+
+Origin verified at `https://github.com/shahramclaude/Leados.git` before any change; branch `arena/4e71b180-leados`, starting HEAD `f4d893a`. The audit found that the Information Value Terminal priced one test at a time, so a leader with several open tests could not see the order, the branch after each result, or the stopping point. The new `sequentialInvestigation.js` solves the declared test menu exactly by backward induction over up to three stages and six tests, conditioning the belief by Bayes' rule after each settled test. Its one-test net values match the existing `evaluateInquiry` engine across 60 deterministic random frames. Three marker-idempotent rules write the advisory plan note, one revisable commit decision, and one owned, dated next-test task. A Sequence tab shows the tree, the belief, each test's net alone and the assumptions. It is a read model: no migration, no new collection, and no network call. Conditional independence of tests is assumed and stated, not checked.
+
+Focused: `tests/app/sequential-investigation.test.mjs` **18/18**. Full suite **1,345/1,345** (baseline 1,327). Canonical verification `npm run verify:canonical` **exit 0**, boundary **191 modules / 83 suites / 0 leaks**, links **276/153** at the canonical run (**277** on the final tree). Standalone **7/7**, `LeadOS-standalone.html` **4,050,959 bytes** at source `5f78d7e`.
+
+Pushed to `origin/arena/4e71b180-leados` (branch created on origin, remote head `d5ebdbb` at push). Detail, defects found and fixed, and known limits are in `AI-SESSION-LOG.md`.
+
+## Earlier session — Session 80
+
+
+2026-10-30 · Calibration-to-decision sensitivity bridge · Schema v56 · ADR-0045 · `RULE-LCAL-04`
+
+Origin verified at `https://github.com/shahramclaude/Leados.git` before work; active branch `arena/1f3e6751-leados`, initial clean HEAD `526d10b`. The targeted audit found calibration and EVPI were adjacent but unconnected, with an overconfidence shortcut in the rule. New `calibrationScenarioForFrame` joins a leader's own reliability bins to the exact declared payoff table using Jeffreys beta-binomial means, n/(n+10) shrinkage, a hard n≥3-per-bin refusal, coherent probability normalization and all Wilson marginal corners (≤64). It reports raw EVPI, scenario EVPI, range and option changes without altering declared or frozen probabilities. On new eligible frames, the shared post-commit rule writes one visible explanatory note plus up to three typed `calibrates` edges to actual contributing settled frames; a settlement also connects already-open frames when evidence coverage matures, capped at 20 frames per sweep with an explicit remainder event. The UI and brief expose this as a stress—not a posterior or simultaneous interval—and name within-frame clustering limits. RULE-LCAL-03 now uses the full calibration verdict.
+
+Focused verification: 45/45 tests and ESLint clean, including a real frame declaration through the shared post-commit transaction and settlement-driven provenance backfill. Canonical verification: 1,327/1,327 tests; boundary 189 modules / 82 suites / zero leaks; 270 documentation links resolve. Standalone build and tests: 7/7. Sync results are recorded in `AI-SESSION-LOG.md`. Full line-by-line repo audit, quarantined legacy tree, production behavior, real browser/AT and independent field validation remain **[UNVERIFIED]**.
+
+## Earlier session — Leader Probability Calibration Terminal
+
+## 2026-10-30: Leader Probability Calibration Terminal (Schema v56, ADR-0044, RULE-LCAL-01..03)
+
+### Why this was the high-leverage slice
+
+Seventy-eight sessions of this workspace built a terminal that prices EVPI exactly, simulates
+investigations, decomposes portfolios, and scores every frame the moment reality resolves. The one
+question it could not answer was the question that turns a calculator into a forecaster's terminal:
+**when I say "70%", how often am I actually right?** Without that answer, EVPI is a perfect upper bound
+over an unchecked set of beliefs. An overconfident leader declares 90% on events that happen 60% of
+the time and the arithmetic is flawless — and wrong.
+
+Public tools do not ship this. Tetlock & Gardner's *Superforecasting* describes the practice; no
+leadership product (Lattice, 15Five, Workboard, McKinsey's published frameworks) computes a live
+reliability diagram over its user's own probability declarations with Murphy decomposition, Wilson
+intervals, PSI drift detection and an isotonic-style advisory remap. This is the ahead-of-market
+move: turn the VOI terminal into a **proper-scoring feedback loop** for the leader's own judgement.
+
+### Audit, selection, and fresh benchmark
+
+- Read `app/core/domain/valueOfInformation.js` (1063 lines), `app/core/domain/calibration.js` (1166
+  lines of decision/effort calibration), `app/core/domain/premiseCalibration.js` (sensor-level
+  calibration), `app/core/domain/decisionPortfolioRules.js`, `app/core/domain/postCommit.js`, and
+  `app/views/valueOfInformation.js` before writing code.
+- The existing `calibration.js` module scores binary decision-level forecasts (good/mixed/bad → 1/0.5/0)
+  and effort-estimate ratios; `premiseCalibration.js` scores external sensor reliability. Neither
+  reads the leader's VOI probability distributions.
+- The existing VOI Brier/log-loss scorer (v54) grades each frame in isolation; it does not bucket by
+  declared probability band or report overconfidence.
+- Competitive scan: Metaculus, Good Judgement Open and Manifold publish calibration curves across
+  their *user base*; they do not score an *individual* decision-maker's private business forecasts
+  inside a local-first workspace. LeadOS is the first leadership tool that scores a leader's private
+  judgements against their own outcomes in the same terminal in which the decisions were priced.
+
+### What shipped
+
+- **Schema v56, additive `55 → 56`:** `calibrationMarkers` array (capped at 2000, 200 chars per entry,
+  matching the portfolio marker convention); optional `notes` array on voiDecisions (max 20 per frame,
+  600 chars per note); five new settings with clamped defaults (`lcalMinSamples: 5`,
+  `lcalVerdictSamples: 10`, `lcalOverconfidencePp: 10`, `lcalBadReliability: 0.08`,
+  `lcalWarnReliability: 0.04`). No sample, verdict, adjustment or forecast is invented for an
+  existing workspace.
+- **`app/core/domain/leaderCalibration.js`:** Pure domain engine implementing:
+  - One single-P calibration sample per settled outcome (probability assigned to the realised state),
+    plus a multi-class binary vector per frame for Brier/Murphy scoring.
+  - Five-bin reliability diagram over `[0,20),[20,40),[40,60),[60,80),[80,100]` with the bin hit rate,
+    mean forecast, reliability gap, and a Wilson (1927) 95% score interval per bin (withheld below
+    three samples).
+  - Cromwell's rule: 0% and 100% clamped to 5/95.
+  - Multi-class Brier with Murphy (1973) decomposition into Reliability − Resolution + Uncertainty.
+  - Weighted mean absolute reliability gap across scored bands.
+  - Verdict logic (calibrated / overconfident / underconfident / miscalibrated / counts-only /
+    insufficient), with overconfidence requiring BOTH the 80–100 bin to overshoot AND the 0–20 bin
+    to undershoot by ≥10pp (the canonical overconfidence signature), and symmetrically for
+    underconfidence.
+  - Cohort PSI drift detection on 10/10 split (PSI <0.1 stable, 0.1–0.25 watch, >0.25 drifted).
+  - Per-topic breakdown keyed on premise topic/category — no inference from prose.
+  - Advisory Platt/isotonic-style remap per bin: "when you say ~80%, history resolves at ~X%". **Never
+    auto-applied.**
+  - Four named signals (LCAL-01..04): overconfident, drift, verdict-ready, underconfident.
+  - Board-ready brief (`lcalBrief`) integrated into the VOI download.
+  - Brier floor 0.25 (50% base-rate) is respected — calibrated/well-calibrated is determined by
+    reliability gap not by Brier magnitude.
+- **`app/core/domain/leaderCalibrationRules.js`:** RULE-LCAL-01..03 on the post-commit spine:
+  - **LCAL-01** (Sample entry): on `voi.scanned` (the event fired when a frame is settled), add a
+    marker-idempotent calibration sample marker and a `calibration.verdict-ready` event at the floor.
+  - **LCAL-02** (Drift): PSI is re-derived on load (pure read-side, no stored state).
+  - **LCAL-03** (EVPI annotation): on `voi.declared`, if the current verdict is overconfident append
+    an in-band advisory note warning that the EVPI ceiling was produced by a distribution the leader's
+    history discounts. **The rule never rewrites declared probabilities.**
+- **`app/views/valueOfInformation.js`:** New "Calibration" tab (fifth tab) rendering:
+  - Verdict banner (color-coded by severity).
+  - Four-stat grid (samples, signed gap, Brier, drift).
+  - Murphy-decomposition card.
+  - Reliability-diagram visual (in-band horizontal bars with a midpoint marker for each band).
+  - Advisory remap table.
+  - Per-topic table.
+  - PSI cohort drift card.
+  - Caveats card.
+  - Empty state for pre-floor workspaces.
+- **`calibrates` relation** added to LINK_RELATIONS / LABELS in `cases.js` (reserved for future use).
+- **`calibrationMarkers` collection** registered in COLLECTIONS, DEFAULT_SETTINGS, normalization,
+  createEmptyState and the MIGRATIONS table.
+- **Signals integration:** `lcalSignals` registered in `insights.js` and lcalAttentionCount merged
+  into the VOI nav badge count.
+- **Route alias** `#/voi?panel=calibration` via the existing voi tab row.
+- **ADR-0044** recording the architectural decision.
+- **`tests/app/leader-calibration.test.mjs`:** 18 claims — schema migration, empty state, sample
+  extraction, counts-only verdict, overconfident detection on a doctored hot track record, Brier on
+  a well-calibrated set, Cromwell clamp, advisory remap, signal surfacing, RULE-LCAL-01 ledger entry,
+  RULE-LCAL-03 EVPI advisory stamping, LCAL-01 marker idempotency, typed relation registered, rule
+  in post-commit chain, propagation contract, brief generation.
+- All 38+ existing test files updated from schema version 55 to 56; the `v54 → v55` migration unit
+  test still calls MIGRATIONS[54] directly and asserts v55.
+
+### Cross-module links added/updated
+
+- `lcalSignals` merged into `insights.js` alongside the existing voiSignals.
+- `lcalAttentionCount(state, at)` added to the VOI nav badge count (voi + calibration share the badge
+  because calibration lives under the VOI terminal).
+- RULE-LCAL-03 appends an in-band `notes[]` entry on a newly declared voiDecisions frame when
+  overconfident — no new entity, no link, no change to probabilities.
+- Leader Calibration reads from: voiDecisions (frozen outcome snapshots), premises (for topic
+  breakdown). It writes only `calibrationMarkers` and voiDecisions.notes.
+- Drift, verdict and signals are all re-derived on load from existing frozen data — no calibration
+  figure is persisted.
+
+### Verification
+
+- `node --test tests/app/leader-calibration.test.mjs` → **18/18 pass**
+- `node --test tests/app/core.test.mjs` → **15/15 pass**
+- `node --test tests/app/domain.test.mjs` → **39/39 pass**
+- `node --test tests/app/information-value.test.mjs` → **21/21 pass** (5-tab expectation updated)
+- `node --test tests/app/decision-portfolio.test.mjs` → **24/24 pass** (migration unit test restored)
+- `node --test tests/app/propagation-ledger.test.mjs` → **29/29 pass** (migration list and rule name)
+- `node --test tests/app/typed-links-lineage.test.mjs` → **pass**
+- Standalone build succeeds: 4,012,687 bytes · schema v56.
+- `npm run verify:standalone` → **7/7 pass**.
+- Smoke-tested a doctored overconfident dataset (12 outcomes at 90% with 50% hit rate → verdict
+  "overconfident") and a well-calibrated dataset (10 outcomes, correct per-band frequencies → verdict
+  "calibrated", Brier 0.205).
+- **Limits:** Five equal-range bins rather than data-dependent bins; PSI splits at 10/10 and detects
+  mix shift only; the advisory remap does not yet feed back into a discounted-EVPI figure (next up);
+  per-topic breakdown requires explicit premise tags; named-person scoring is deliberately excluded;
+  no real-browser / assistive-technology verification of the new tab. All these limits are printed in
+  the caveats card.
+
+### Next up
+
+1. **Calibration-discounted EVPI ceiling:** recompute EVPI under the Platt/isotonic-adjusted
+   distribution and print it beside the raw ceiling so the magnitude of overconfidence is visible in
+   money terms — still never auto-applied.
+2. **Cross-manager queue coupling:** shared arrival streams between managers exchanging work (Kingman
+   network extension).
+3. **Prospective implementation milestones:** dated owner-evidenced intended/delivered/verified
+   stages for intervention types.

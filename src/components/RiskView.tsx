@@ -1,71 +1,69 @@
-import { useMemo } from "react";
+import { project } from "../lib/engine";
 import type { AppState } from "../lib/types";
-import { buildFindings } from "../lib/engine";
-import { buildRiskRegister, detectCrossRiskAmplification } from "../lib/riskIntelligence";
-import { Card, Label, Badge, Bar } from "./ui";
-
-const STATUS_TONE: Record<string, "slate" | "amber" | "rose" | "emerald"> = {
-  CLEAR: "emerald",
-  WATCH: "slate",
-  ELEVATED: "amber",
-  CRITICAL: "rose",
-};
+import { DOMAIN_LABEL, DOMAINS } from "../lib/types";
+import { BucketBadge, Card, SeverityBadge } from "./Shell";
 
 export function RiskView({ state }: { state: AppState }) {
-  const findings = useMemo(() => buildFindings(state), [state]);
-  const register = useMemo(() => buildRiskRegister(findings), [findings]);
-  const amps = useMemo(() => detectCrossRiskAmplification(register), [register]);
+  const projection = project(state);
+  const org = projection.findings.filter((f) => f.domain === "org");
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-white">Unified Risk Register</h1>
-        <p className="mt-1 max-w-3xl text-xs text-slate-500">
-          8 fixed categories, always shown even at zero. Score = capped sum of (severity × 8) per category. Overall risk =
-          mean of the 8 category scores. Cross-category amplification is detected separately below.
+        <h1 className="text-2xl font-semibold tracking-tight">Risk Register</h1>
+        <p className="text-sm text-stone-500">
+          All {DOMAINS.length} domains always shown, even at zero. Score = Σ severity-weight × 0.92<sup>ageDays</sup> over open findings in that domain.
         </p>
       </div>
 
-      <Card title="Overall Risk" subtitle="0 when every category is CLEAR, 100 when every category is saturated CRITICAL">
-        <div className="flex items-center gap-4">
-          <div className="text-4xl font-mono font-bold text-white">{register.overallRisk}</div>
-          <Badge tone={STATUS_TONE[register.overallRisk === 0 ? "CLEAR" : register.overallRisk < 35 ? "WATCH" : register.overallRisk < 70 ? "ELEVATED" : "CRITICAL"]}>
-            {register.overallRisk === 0 ? "CLEAR" : register.overallRisk < 35 ? "WATCH" : register.overallRisk < 70 ? "ELEVATED" : "CRITICAL"}
-          </Badge>
-        </div>
-      </Card>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        {register.categories.map((c) => (
-          <Card key={c.category} title={c.category} subtitle={`${c.findingCount} active finding(s), max severity ${c.maxSev}`} right={<Badge tone={STATUS_TONE[c.status]}>{c.status}</Badge>}>
-            <Bar value={c.score} max={100} color={c.status === "CLEAR" ? "from-emerald-400 to-emerald-600" : c.status === "WATCH" ? "from-slate-400 to-slate-600" : c.status === "ELEVATED" ? "from-amber-400 to-amber-600" : "from-rose-400 to-rose-600"} />
-            <Label>score {c.score}/100</Label>
-          </Card>
-        ))}
-      </div>
-
-      <Card title={`Cross-Category Amplification (${amps.length})`} subtitle="Pairs of simultaneously-elevated categories that are worse together than apart">
-        {amps.length === 0 ? (
-          <p className="text-sm text-slate-400">None detected right now.</p>
-        ) : (
-          <ul className="space-y-3">
-            {amps.map((a) => (
-              <li key={a.id} className="rounded-lg border border-rose-900/50 bg-rose-950/20 p-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm font-medium text-slate-200">{a.label}</span>
-                  <Badge tone="rose">sev {a.sev}</Badge>
-                  <span className="text-[10px] text-slate-600">{a.categories.join(" + ")}</span>
+      {org.length > 0 && (
+        <Card title="Cross-domain amplification">
+          <ul className="space-y-2">
+            {org.map((f) => (
+              <li key={f.key} className="flex items-start justify-between gap-4 rounded-lg bg-rose-50 p-3">
+                <div>
+                  <div className="text-sm font-medium text-rose-800">{f.title}</div>
+                  <div className="text-xs text-rose-700">{f.detail}</div>
                 </div>
-                <p className="mt-1 text-xs text-slate-400">{a.detail}</p>
+                <SeverityBadge severity={f.severity} />
               </li>
             ))}
           </ul>
-        )}
-        <Label>
-          Wired up: AUSTERITY_TRAP (FINANCIAL+PEOPLE), TRUST_COLLAPSE (GOVERNANCE+REPUTATIONAL, always severity 5 by
-          definition), EXECUTION_STRATEGY_GAP (STRATEGIC+OPERATIONAL).
-        </Label>
-      </Card>
+        </Card>
+      )}
+
+      <div className="grid gap-4 md:grid-cols-2">
+        {projection.domainScores.map((d) => {
+          const findings = projection.findings.filter((f) => f.domain === d.domain);
+          return (
+            <Card key={d.domain}>
+              <div className="mb-2 flex items-center justify-between">
+                <div className="font-semibold">{DOMAIN_LABEL[d.domain]}</div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-mono text-stone-500">{d.score}</span>
+                  <BucketBadge bucket={d.bucket} />
+                </div>
+              </div>
+              {findings.length === 0 ? (
+                <div className="py-3 text-center text-xs text-stone-400">No open findings</div>
+              ) : (
+                <ul className="space-y-2">
+                  {findings.map((f) => (
+                    <li key={f.key} className="rounded-lg border border-stone-100 p-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="text-sm font-medium">{f.title}</div>
+                        <SeverityBadge severity={f.severity} />
+                      </div>
+                      <div className="mt-1 text-xs text-stone-500">{f.detail}</div>
+                      <div className="mt-1 font-mono text-[11px] text-stone-400">{f.rule} · age {Math.round(f.ageDays)}d</div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Card>
+          );
+        })}
+      </div>
     </div>
   );
 }

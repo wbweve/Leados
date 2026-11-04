@@ -1,0 +1,296 @@
+# LeadOS canonical architecture
+
+**Session 126 update:** Schema v92 adds the disclosure layer — `disclosureGrants` (the only record that can widen a read) and `disclosureMarkers` (rule idempotency) — and replaces the route allowlist with a compiled posture table: 97 module manifests × seat × live releases, compiled once per render into `detail | aggregate | withheld`, with an aggregate renderer for every module above its ceiling and a consent-bound, expiring, span-bounded release contract (`RULE-DSC-01`/`02`). See [ADR-0086](docs/adr/0086-disclosure-compiler.md).
+
+**Session 124 update:** Schema v90 adds `catchballPacts`, `catchballRounds`, and `catchballMarkers`. `catchballActions.js` is mounted behind the existing seat gateway; `catchballRule` runs on the shared post-commit spine before the final attention/seat/seal passes. `catchball.js` supplies scoped roll-ups and calibration, while `#/catchball` and CSV scope #79 expose the reviewed views. See [ADR-0084](docs/adr/0084-hoshin-catchball-cascade.md).
+
+**Current as of 2026-11-04 (schema v92).** The canonical product is the local-first, zero-build browser app rooted at `index.html`. Response Studio ([ADR-0065](docs/adr/0065-response-studio.md)) and Action Bundles ([ADR-0066](docs/adr/0066-action-bundles.md)) add disposable-store rehearsal workers (`app/services/responseRehearsal.worker.js`) and atomic multi-command adoption/compensation, while the Outcome Attribution & Loop Settlement Terminal (`#/attribution`, [ADR-0067](docs/adr/0067-outcome-attribution-loop-settlement.md)) grades adopted loops with Lipke Earned Schedule, Goldratt Fever Charts, Pressman–Wildavsky clearance separation, 2×2 thesis-vs-execution attribution, and Brinson–Fachler variance, and the Counterfactual Policy Terminal (`#/counterfactual`, [ADR-0068](docs/adr/0068-counterfactual-policy-terminal.md)) evaluates the leader's own recorded behaviour against five named policies by off-policy evaluation with Manski partial-identification bounds, a Rosenbaum hidden-bias bound and a Hoeffding confidence sequence, and the Measurement Reliability Terminal (`#/reliability`, [ADR-0069](docs/adr/0069-measurement-reliability-terminal.md)) audits the leader's own rating instrument — a variance decomposition (ICC(1), Satterthwaite interval, F test of τ² = 0, Spearman–Brown reliability of the mean), per-person credibility with regression to the mean stated as the expected next observation, tier separation as a posterior test rather than a sort, a decision study that prices the observations and months a defensible difference would cost, and instrument convergence that refuses a composite unless every testable pair agrees; and the Coupling Ledger (`#/deferral?panel=coupling`, [ADR-0070](docs/adr/0070-coupling-ledger.md)) reads a leader-declared pairwise ρ back against realised joint resolution timing — conditional co-resolution in calendar blocks, a structure-preserving cyclic rotation null read at both tails (the deficit tail is the only one that can report an over-declaration), two printed ρ→τ copula mappings with a mapping-dependent magnitude suppressed, six verdicts with a band below its pair floor printing no assessment at all, and aggregate-only frozen reviews graded once; and the Evidence Supply Chain (`#/supply`, [ADR-0071](docs/adr/0071-evidence-supply-chain.md)) treats every judgement the workspace refuses to make as a work order — six evidence lines harvested from dated records the workspace already keeps, an arrival rate measured over a declared window, a Gamma–Poisson (negative binomial) closed-form predictive for the wait to the next `k` units, five verdicts including retirement by sunk-cost, a Theory-of-Constraints constraint that is only called binding above the leader's declared share, capture-versus-wait priced against a declared exchange rate, a greedy schedule bounded by a printed fractional optimum, and one assumption-free Fréchet probability per frozen plan graded once by Brier; and the Promise Solvency Terminal (`#/solvency`, [ADR-0073](docs/adr/0073-promise-solvency-terminal.md)) reads every dated promise the workspace already holds as one liability portfolio — per-source settlement curves with a Jeffreys-smoothed on-time share and four verdicts that print their reasons, `PD(t) = S(1)/S(today − obligation)` with one virtual on-time settlement at offset 0, a one-factor Gaussian copula with Euler/Tasche marginal contributions and the Fréchet–Hoeffding interval beside it, the full count distribution `P(N = k)` computed by convolving conditional Bernoullis across the factor, measured coverage against measured arrivals with Little's Law and a 100/80/60/40% stress curve, repair economics against a declared breach multiplier, an append-only renegotiation ledger whose rows are graph nodes, and frozen readings graded once on the count (RPS, log score) and on every individual promise (Brier against the book's own breach rate) — with the assumption-free ceiling stored, printed and deliberately never scored; and the Cross-Examination Terminal (`#/sceptic`, [ADR-0074](docs/adr/0074-cross-examination-terminal.md)) is the only surface here that argues against the record it reports on — twelve structural detectors over six claim families compare two records the workspace already holds, every finding prints the single observation (its refuter) that would settle it, verdicts are human, reasoned and append-only with the dismissal rate printed beside the hit rate, family rates are Jeffreys posteriors with 90% intervals refused below a declared scored floor and computed over every verdict ever recorded so a repaired claim cannot improve its family, coverage is discovery sampling with a Clopper–Pearson false-alarm bound that reads 100% at zero examinations, and frozen rounds are graded once, out of sample, against their own base rate — with a negative skill figure allowed; the shared post-commit rule spine remains the only operational propagation engine. It is not the older Next.js starter under `src/**`. Do not use legacy-tree descriptions as evidence of the running product. The active boundary is checked by `scripts/check-canonical-boundary.mjs` and recorded in [ADR-0006](docs/adr/0006-canonical-zero-build-app.md) and [ADR-0007](docs/adr/0007-legacy-next-tree-disposition.md).
+
+## Runtime shape
+
+```text
+index.html
+  └── app/main.js              hash routing, navigation, render orchestration
+       ├── app/views/**        feature screens and destination focus
+       ├── app/ui/**           shared DOM, dialogs, components, charts, downloads
+       ├── app/actions.js      validated application commands and read APIs
+       └── app/core/**         state, schema, domain calculations and automation
+```
+
+The browser loads native ES modules directly. Canonical `app/**` imports are relative `.js` paths; the app has no server-side application layer and makes no outbound network calls. `scripts/build-standalone.mjs` creates the single-file offline distribution from the same canonical sources; the generated HTML is an output, not a second hand-maintained implementation.
+
+## State and write path
+
+- **`app/core/store.js`** owns the browser workspace lifecycle: load, normalize, transact, persist, import/export and explicit demo-data cleanup.
+- **`app/core/schema.js`** is the data contract. It defines the current schema, version-by-version additive migrations, normalization and typed-link validation. The current schema is **v89**.
+- **`app/actions.js`** is the command boundary used by views. Mutations validate inputs and commit through the store rather than writing from a screen.
+- **`app/core/domain/**`** contains domain calculations, rule logic, read models and link resolution. **`app/core/domain/postCommit.js`** runs the synchronous event-driven rule chain in savepoints, commits only successful effects, and records failures separately as propagation receipts.
+- **`app/views/**`** renders local state and links to records through typed resolver routes. Query parameters focus an exact destination record; opening a deep link does not itself apply a domain mutation.
+
+The normal flow is:
+
+```text
+view → action/API → store transaction → post-commit rules → persisted workspace
+     → derived read model → view
+
+The versioned schema normalizer runs when workspaces are loaded or imported; an ordinary write keeps its validated draft and its post-commit effects within the same store update before persistence.
+```
+
+## Schema v67 — Consequence Lab read/decision boundary
+
+`app/core/domain/consequence.js` reads the existing typed decision graph (lazy resolution,
+two hops, 64-node/2,000-edge safety caps) and the `waitCostReport`'s class Kaplan–Meier curve
+without persisting an inferred causal edge. A graph neighbour is association only. For a
+supported horizon it integrates the *conditional* survival step function (restricted mean
+outstanding time) and multiplies it by the root's existing declared/derived weekly price;
+the terminal also prints the endpoint-only lower bound used by `#/wait` and a full-period
+ceiling. Below the dated-exit/at-risk floors or beyond observed follow-up the forecast is
+withheld. Other priced linked work is shown only as a per-currency conditional full-block
+ceiling, never summed into the root forecast.
+
+`app/core/domain/consequenceSchema.js` bounds prospective `consequenceReadings` (60) and
+`consequenceMarkers` (400), with additive `66→67` migration that invents no history. On
+`consequence.frozen`, `consequenceRules.js` writes `maps-consequence`/
+`surfaces-impact` typed edges, one leader-owned fragile-premise verification task and
+at most one priced-root coordination DACI decision; `consequence.scan` reconciles only
+this module's dead edges and opens due grading work; a Brier surprise opens a blameless
+learning task. `postCommit.js` schedules this before Decision Tempo. `app/actions.js`
+validates horizons/floors, refuses re-freeze of the same decision+horizon+day, grades once
+from `decidedOn` after the review date, and refuses deletion of graded history.
+The five panels at `#/consequences`, Decision-card entrance, Insights/Today signals,
+board brief and privacy-gated CSV #57 are read adapters over that boundary. No runtime
+dependency, backend or network path was added; details and refusals are in
+[ADR-0056](docs/adr/0056-decision-consequence-lab.md).
+
+## Cross-module relationships and automation provenance
+
+`LINK_ENTITY_TYPES`, `LINK_ENTITY_COLLECTIONS` and `LINK_RELATIONS` in `app/core/domain/cases.js` define the allowed typed graph. One resolver maps a valid type/ID pair to its owner and route. Confidential conflicts and anonymous pulse responses are not general graph nodes.
+
+Schema v48 adds `propagationLineage`, a bounded record of successful event-driven effects. A transaction stores the source event, applied rule steps, changed collection/type/ID references, newly created typed edges and emitted event types—not record bodies, titles, notes or score inputs. It is capped at 250 transactions, 32 steps and 48 target/link/event references per transaction. No pre-v48 success history is inferred. `propagationReceipts` remains the distinct failure/retry record. Demo cleanup scrubs deleted IDs; candidate-linked transactions are omitted from redacted exports; CSV scope #43 is counts/types-only.
+
+Schema v49 adds a frozen `executionSnapshot` to an Impact study when it is scored. It matches exact typed source IDs in retained lineage root/step events from the declared start through scoring, preserves aggregate counts and at most 12 navigation references, and leaves v48 studies unbackfilled. The snapshot is not an outcome, fidelity or causal claim. Demo cleanup clears removed source pointers without rewriting frozen counts; redacted export removes navigation IDs for omitted traces; Impact CSV scope #32 exports aggregate status/counts only.
+
+Schema v50 adds `fidelityPlans`: a declared delivery denominator, five weighted stages, and two readings that are never merged. Four stages are derived from dated typed collections by `app/core/domain/fidelity.js` (1:1s, feedback, delegations, goals) with an explicit per-instrument standard; adaptation has no instrument and is attested only. Exposure is the product reach × dose × quality; grading is refused below 60% coverage. `app/core/domain/fidelityRules.js` runs `RULE-FID-01..05` on the same spine: typed `measures-delivery` links, a disagreement prompt, one repair decision plus one owned delegation per under-delivered settlement, one overdue-checkpoint task per plan, and a frozen `implementationSnapshot` on a scored Impact study. The snapshot carries ITT, the Bloom/LATE per-complier estimate and the inflated MDE as `null` when no counterfactual was fitted, and `RULE-IMP-02` branches on measured exposure when a contradicted study was materially under-delivered. The plan is a graph node (`fidelity` → `fidelityPlans`, route `#/fidelity?plan=<id>`), so an intervention record and its delivery reading are navigable from either end.
+
+Schema v51 adds `compBands` (a declared level range) and `meritCycles` (a declared budget, one comparison dimension, an owner, nested pay rows, a frozen `audit` and resolved `outcomes`). `app/core/domain/comp.js` is a pure read model: band positioning and integrity, relative-pay findings, a twofold log-pay Oaxaca–Blinder decomposition with an adjusted-gap interval from the group coefficient's standard error, a four-fifths screen over the decision, a printed four-term retention hazard, a replacement-cost model weighted by the succession bench, three priced policies with regret, and Brier-scored calibration once departures resolve a frozen prediction. `app/core/domain/compRules.js` runs `RULE-COMP-01..05` on the same spine: typed `compensates` provenance, exactly one DACI *mechanism* decision (never an individual adjustment) plus one owned evidence task when the audit is flagged, one relative-pay task per cycle, one dated outcome review, and a resolved prediction on `person.archived`. The cycle is a graph node (`merit` → `meritCycles`, route `#/merit?cycle=<id>`). No protected characteristic is stored anywhere in the workspace, which is why the audit runs on a declared, non-sensitive comparison and says so.
+
+Schema v53 adds `orgDesigns`: one record per declared structural design, holding the proposed
+reporting moves, the conventions the reading used, the previous reporting lines captured at commit
+and the frozen prediction the design is later graded against. `app/core/domain/orgDesign.js` is a
+pure read model over the roster, the decision record, recorded pay and each person's own completion
+history: span and layers from the reporting graph, coordination channels as `n(n−1)/2` per unit,
+priced coordination from the latest effective merit cycle (absent, never zero, where no pay exists),
+and Kingman's (1961) diffusion approximation per manager with `λ`, `Ts` and `Cs` measured from that
+manager's own completed commitments. `app/core/domain/orgDesignRules.js` runs `RULE-ORD-01..05` on
+the same spine: typed `structures`/`resizes` provenance, one residual span decision plus one owned
+scope task when a unit remains over the declared band, at most three blameless prompts for the
+people whose line moved, one dated outcome review, and the score that grades the queue model out of
+sample. Committing applies the moves to `people.managerId` in the same transaction that freezes the
+snapshot; `revertOrgDesign` restores exactly the recorded line and refuses to overwrite a later
+decision. The design is a graph node (`orgdesign` → `orgDesigns`, route `#/orgdesign?design=<id>`).
+
+Schema v57 adds `attentionPlans`: one record per committed weekly allocation, holding the frozen
+optimisation result (the bought set, the forgone set **and its price**, the LP or exact bound, the
+finite-difference price of the next hour), the review that grades it, and marker keys for rule
+idempotency. `app/core/domain/attentionMarket.js` is a pure read model over the records the leader
+already typed — a case's three-point cost estimate, a funded item's effort and value, a negotiation's
+stakes over its BATNA, a dependency's measured daily impact, an overspent budget and a priced decision
+frame — and solves a multiple-choice knapsack with two resource constraints: the leader's hours and a
+delegate pool. Groups are pruned to their upper convex hull; small markets close exactly by branch and
+bound, larger ones by Dyer's relaxation with a Lagrangian dual minimised by golden-section search and a
+printed gap to a proven bound. Nothing is invented: a record with no money is `unpriced` and listed with
+its hours, and the one derived hour — the share of a TEAM effort estimate that lands on the leader — is a
+declared convention printed beside every figure it produced. `app/core/domain/attentionMarketRules.js`
+runs `RULE-ATT-01..04` on the same spine: typed `allocates`/`forgoes` provenance, one owned dated
+delegation per named hand-off, exactly one DACI decision carrying the whole forgone list with its price,
+and an attribution decision plus an owned re-planning task when a reviewed plan misses. The plan is a graph
+node (`attention` → `attentionPlans`, route `#/attention?panel=plan&plan=<id>`), and `forgoes` is a
+first-class relation so a record can be navigated to the plan that consciously refused it.
+
+Schema v58 adds `autopilotPolicies` and `autopilotRuns`: a leader-authored operating agreement in a closed vocabulary (4 sources, 14 events, 5 actions, 7 template tokens, no eval or property paths), a rehearsal computed from current records on a disposable copy, and an activation bound to a digest of the definition, the workspace revision and that rehearsal. `app/core/domain/autopilot.js` runs the single executor behind both rehearsal and `RULE-AP-01`, which sits first on the spine so conditions see the record as the triggering action left it. Stored agreements that cannot prove their approval pause on load; agreement output cannot trigger another agreement.
+
+Schema v62 adds `performanceConcerns`: a due-process record of a gap in someone's work — the declared expectation and its source/date, dated observations scored for SBI answerability, conversations, support actions, the seven Mager–Pipe analysis answers, a plan with a frozen probability, and a single scored outcome. `app/core/domain/performance.js` is a pure read model (evidence audit, six procedural-justice rules, cause analysis, remedy adequacy, cost of delay with an explicit unpriced verdict, Brier-scored calibration withheld below five resolved plans, a no-name brief), and `app/core/domain/performanceRules.js` runs `RULE-PERF-01..05` on the same spine as support work only: one owned task and one blameless prompt for a missing expectation, the two-way conversation when the evidence floor is met without it, one DACI decision on the support mechanism plus typed `concern→person` and `decision→concern` edges and a dated check-in at adoption, exactly one decision about the next *process* step on a not-met review with no exit option, and one task per passed review on an explicit scan. The module records no rating, potential score, ranking or sentiment, takes no adverse action, and says in as many words that it is not legal advice. CSV scope #52 exports codes, counts and the scored prediction only. The same migration splits `coupledLoadAutoPropagate` out of the continuity module's `couplingAutoPropagate`, so pausing one module no longer pauses the other.
+
+Schema v59 adds `signalClasses`, `signalProbes` and `signalLevers`: a declared escalation channel priced as a series of relays over the reporting graph, the probe ledger that grades that declaration after the fact, and the levers adopted against it. `app/core/domain/signalPath.js` is a pure read model — reach and false-alarm rates as series/parallel products, arrival-conditional latency, expected loss, Shannon mutual information, d′ with a log-linear correction, Wilson intervals and a Brier score — and `app/core/domain/signalPathRules.js` runs `RULE-SIG-01..04` on the same spine: typed `reaches`/`involves` edges per committed chain, exactly one redesign decision plus one owned probe task when the ledger contradicts the frozen declaration, a link from any case that lands on a path below the blind floor, and owned dated work for an adopted lever. A committed reading freezes at four decimal places and the exposure it priced cannot be rewritten, because that is the number the probes grade. Below six settled probes the page withholds a verdict. The class is a graph node (`signal` → `signalClasses`, route `#/signal?panel=path&class=<id>`), and CSV scope #51 carries class codes, ratios and counts only — no label, name or absolute amount.
+
+The trace establishes *what the rule committed*, not causality or effectiveness. A typed edge proves provenance/association as recorded by the app; it is not a claim that the downstream intervention worked. Historical events are not replayed from this ledger.
+
+## Enforced canonical boundary
+
+`npm run check:boundary` verifies that:
+
+1. The canonical entry point is `index.html` → `app/main.js`.
+2. Canonical modules do not import from quarantined legacy trees, use bare package imports or make outbound network API calls.
+3. Canonical tests and the serving script do not pull the quarantined legacy implementation into the running product.
+
+`npm run verify:canonical` adds ESLint, internal documentation-link checking and the app test suite. `npm run verify:standalone` rebuilds and tests the self-contained offline file. These checks do not certify real-browser assistive-technology behavior or audit every historical source file; those remain explicit manual-review responsibilities.
+
+## Legacy and non-goals
+
+- **`src/**` and other quarantined trees are non-canonical.** Their prior Next.js/TypeScript architecture notes were retired because they contradicted the running app. The legacy implementation is not asserted to be production-ready or fully audited.
+- This architecture does not imply hosted accounts, a backend, cross-device synchronization, telemetry, a distributed job runner or external tracing integration.
+- Local JSON backups can carry workspace IDs and prose by design. “Content-free lineage” means the lineage row does not copy record prose; it does not make all workspace identifiers anonymous. Users remain responsible for the sensitivity of full backups.
+
+Schema v63 adds `survivalReadings` and `survivalMarkers`. The Delivery Survival Terminal (`#/survival`) is a **derived read model with a frozen commitment**: `app/core/domain/survival.js` harvests dated items from six existing collections (portfolio, cases, requisitions, changes, delegations, decisions) and recomputes Kaplan–Meier survival, the Aalen–Johansen cumulative incidence of completion, the Nelson–Aalen hazard by elapsed-time bucket, a Mantel–Cox log-rank comparison and an empirical age percentile on every read, so no stored statistic can drift from the records that produced it. Only the *prediction* is persisted — per-item probabilities, the at-risk counts they were conditioned on, the curve digest and a review date — and it is graded once, afterwards, with Brier against the class's own base rate. `app/core/domain/survivalSchema.js` is the persisted contract; `survivalRules.js` runs `RULE-SURV-01..05` on the shared spine (typed `endangers` edges plus one owned task per doomed item for its recorded owner only, one repair task after a reading loses to its base rate, exactly one DACI decision per class per week when abandonment reaches the declared share of exits, one task per returned delegation with no recorded reason, one grading task per stale reading). The `reading` entity type joins the shared link registry with an `endangers` relation, so a prediction is navigable from, and back to, the work it named. CSV scope #53 exports aggregate columns only, blanked below the evidence floor.
+
+Schema v64 adds `waitPrices`, `waitExposures` and `waitCostMarkers`. The Cost of Waiting Terminal (`#/wait`) is a **derived money read model with weekly frozen certificates**: `app/core/domain/waitCost.js` prices the six harvestable classes — a declared weekly price per class (fail-closed), a derived price for decisions with linked committed money (value at stake ÷ 12-week erosion window, linear CD3), and *unpriced, never zero* otherwise — then multiplies each open item's weekly price by the censoring-aware still-open probability S(age+w)/S(age) from the Session 89 curve, refused below the at-risk floor and flagged past the longest observation. Wait-horizon scenarios (1/2/4/8 weeks) are printed per row with expected additional cost; totals are per currency and never pooled; rows are ranked priced-overdue first. Only the weekly **exposure certificate** is persisted (cap 60), navigable through the SYSTEM_GENERATED `prices-delay` edges from the new `exposure` entity type. `waitCostRules.js` runs `RULE-WAIT-01..05` on the shared spine before decision tempo (stale-edge reconciliation, the certificate, ≤40 links, one triage DACI decision per currency per week, ≤5 owned delegations, ≤3 declare-a-price tasks), all marker-idempotent; CSV scope #54 exports aggregate per class × currency rows under opaque codes, blanked below the evidence floor.
+
+Schema v65 adds `parityAudits` and `parityMarkers` ([ADR-0054](docs/adr/0054-leadership-parity-consistency-terminal.md)). The Leadership Parity & Standard Consistency Terminal (`#/parity`) is a **pure read model over dated leader-side records with frozen falsifiable audit commitments**: `app/core/domain/parity.js` harvests 1:1 cadence/duration/notes, SBI-complete feedback, GROW/stretch delegations, recognition, succession bench development, formal performance concerns, and review ratings across active direct reports, decomposes leader investment via finite-sample Gini, Atkinson ($\varepsilon=0.5$), and additive Theil $T = T_{\text{between}} + T_{\text{within}}$ entropy across `role × tenureBand` cohorts (protecting early-ramp reports during `parityRampDays` from disparity flags), tracks leader-owned 1:1 commitments with Wilson 95% score intervals, checks open performance concerns for peer-threshold inversions and longitudinal rating concordance (tie-adjusted Kendall $\tau_b$), and solves a bounded 14-day counterfactual rebalancing plan. `app/core/domain/paritySchema.js` fail-closed normalizes `parityAudits` (cap 60) and `parityMarkers` (cap 400). `app/core/domain/parityRules.js` runs `RULE-PAR-01..05` on the shared spine before decision tempo: one process-level DACI standard-consistency calibration decision with typed `audits-consistency` edges (`RULE-PAR-01`), blameless 1:1 cadence/SBI prompts plus leader-owned tasks with `rebalances-attention` edges (`RULE-PAR-02`), leader-promise recovery tasks/decisions with `repairs-contract` edges (`RULE-PAR-03`), overlooked-bench sponsorship prompts (`RULE-PAR-04`), and stale-audit grading work (`RULE-PAR-05`, `parity` entity type, resolver `#/parity?panel=rebalance&audit=<id>`). CSV scope #55 exports opaque cohort and channel aggregates only.
+
+Schema v66 adds `evidenceReviews` and `evidenceMarkers` ([ADR-0055](docs/adr/0055-evidence-terminal.md)). The Evidence Terminal (`#/evidence`) is a **synthesis read model with frozen falsifiable reviews**: `app/core/domain/evidence.js` harvests two families from records the workspace already keeps — the standardized ITS level shift of every scored, locked impact study (as a percentage of the pre-period mean, so different metrics can be pooled, oriented so positive always means better), and every declared probability that has since resolved across three sources (a study's expected confidence, a premise prior, a frozen support-plan probability) — and pools each with **DerSimonian–Laird random effects**, computing both the z and the Hartung–Knapp interval and reporting the wider of the two. Refusals are part of the design: no pooling below `evidenceMinPoolStudies` (counts only), no τ² or I² below `evidenceMinHeterogeneity` (three studies cannot separate real variance from noise), no Egger below ten, no cross-source Brier below six resolved predictions. `overlappingPairs` counts studies of the same metric whose windows share observations, because pooling non-independent estimates understates the standard error; `leaveOneOut` names any study whose deletion moves the answer. Recommendation ranking is the lower credible bound plus the priced value of one more trial, with both EVPI/EVSI limits asserted by test. `app/core/domain/evidenceSchema.js` fail-closed normalizes `evidenceReviews` (cap 40, aggregates only — no title, hypothesis, note or identifier, so a review cannot become a second unredacted copy behind the export boundary) and `evidenceMarkers` (cap 400). `app/core/domain/evidenceRules.js` runs `RULE-EBM-01..05` on the shared spine before decision tempo (one DACI decision per pooled cell ever when the interval stays on the harmful side of zero, with `grounds-practice` edges; one replication task when a supported result stands alone, counted on independent roots; one pre-registration task where information value exceeds expected effect; `recommends-for` edges from the newest frozen review to open cases plus one owned delegation; stale-edge reconciliation and grading work). The `evidence` entity type joins the shared link registry with `recommends-for` and `grounds-practice` relations, resolver `#/evidence?panel=reviews&review=<id>`. CSV scope #56 exports opaque intervention, outcome and source codes with every figure blank below its floor.
+
+
+
+## Schema v71 — the Borrowed Evidence Engine (Session 100, ADR-0062)
+
+`app/core/domain/credibilityRegistry.js` (leaf vocabulary: groups, regimes, conventions, rule and signal ids) → `credibilitySchema.js` (fail-closed normalisers for `credibilityFrames`, `credibilityDeclarations`, `credibilityMarkers`) → `credibility.js` (pure read model: adapters over three existing ledgers, the grid hierarchy, frames, signals, brief) → `credibilityRules.js` (`RULE-CRE-01..03` on the shared post-commit spine, registered between `integrityRule` and `decisionTempoRule`). The view (`app/views/credibility.js`, six panels) and dialogs (`app/ui/credibility-modals.js`) talk only to the API (`credibilityRead`, `credibilityWhatIf`, `scanCredibility`, `freezeCredibilityFrame`, `declareCredibility`, `deleteCredibilityFrame`, `setCredibilityConventions`). A new evidence group plugs in with one registry entry and one adapter in `evidenceUnits` — the engine, rules, view and CSV scope iterate the registry, so no per-module glue is needed.
+
+## Schema v79 — the Evidence Supply Chain (Session 111, ADR-0071)
+
+`app/core/domain/supplyRegistry.js` (leaf vocabulary: the six evidence lines, verdicts, rule and
+signal ids, clamped limits) → `supplySchema.js` (fail-closed normalisers for `supplyPlans`,
+`supplyMarkers` and the per-line conventions) → `supply.js` (pure read model: per-line harvesters
+over existing collections, the Gamma–Poisson predictive, verdicts, constraint, capture economics,
+a bounded greedy schedule with its fractional bound, freeze/grade, brief and signals) →
+`supplyRules.js` (`RULE-SUP-01..05` on the shared post-commit spine, registered after the
+reliability rule and before decision tempo). The view (`app/views/supply.js`, six panels) and
+dialogs (`app/ui/supply-modals.js`) talk only to the API (`supplyRead`, `supplyBriefText`,
+`freezeSupplyPlan`, `gradeSupplyPlan`, `deleteSupplyPlan`, `setSupplyConventions`, `scanSupply`).
+
+Three structural points are worth recording because they constrain future modules:
+
+1. **The registry is the extension point.** A seventh evidence line is one entry in
+   `SUPPLY_LINES` plus one harvester in `supply.js`; the report, schedule, rules, view, signals
+   and CSV scope all iterate the array. No per-module glue is required or permitted.
+2. **Units are harvested, never stored.** `review-observation` deliberately calls
+   `harvestReviewObservations` from `reliability.js` so the supply chain and the reliability
+   terminal can never disagree about what counts as one observation. Any future line must resolve
+   its own duplicates the same way rather than inventing a second definition.
+3. **Only the plan and the markers persist.** Every count, rate, interval and probability is
+   recomputed on read; the frozen plan stores its members' required and observed counts so a
+   later convention change cannot move a graded claim.
+
+The typed graph gains one node (`supplyplan` → `supplyPlans`, resolver
+`#/supply?panel=plans&plan=<id>`) and three relations written only by the rules —
+`supplies-evidence` (plan → capture task), `unblocks-judgement` (plan → the open record its output
+is for) and `retires-question` (retirement task → the open record it would close). CSV scope #69
+exports one aggregate row per line and one per frozen plan, blank below every floor and never
+zero; the Insights bucket is `Evidence supply` (`SUP-01..06`).
+
+## Schema v81 — the Cross-Examination Terminal (Session 114, ADR-0074)
+
+`app/core/domain/scepticRegistry.js` (leaf vocabulary: six claim families, twelve detector ids with
+one refuter sentence each, three verdicts, rule/signal ids, three relations, clamped limits including
+`minScoredPerFamily` and `dismissalCapPct`) → `scepticSchema.js` (fail-closed normalisers for
+`scepticRounds`, `scepticDispositions` and `scepticMarkers`; a disposition with no reason, an unknown
+verdict, a non-positive stake or a duplicate id is dropped with a warning; the marker store is a set
+capped at 400) → `sceptic.js` (pure read model and closed-form maths: `logGamma`, `betaIncomplete`,
+`betaQuantile`, `jeffreysPosterior`, `clopperPearsonUpper`, `falseAlarmUpper`, `ruleOfThreeUpper`,
+`brierScore`, `logLoss`, `skillScore`, the twelve detectors, the family/queue/coverage/auditor/
+exposure read model, freeze/grade/lapse, brief and signals) → `scepticRules.js`
+(`RULE-SCP-01..05`, registered after `solvencyRule` in both `postCommit.js` and
+`propagationContracts.js`). The view (`app/views/sceptic.js`, six panels) and dialogs
+(`app/ui/sceptic-modals.js`) talk only to the API (`scepticReport`, `scepticBriefText`,
+`disposeScepticClaim`, `freezeScepticRound`, `gradeScepticRoundNow`, `scanSceptic`,
+`setScepticConventions`, `deleteScepticRound`).
+
+Four structural points constrain future modules:
+
+1. **Detectors read records; they never read prose.** Nothing in the module touches `messages`,
+   `pulses`, `conflicts` or feedback text: the comparison must be two records (or a record and a
+   hole where another should be), so that the finding is reproducible and the refuter can be
+   written. A detector that cannot name its refuter is not registered.
+2. **A verdict is never written by code.** `RULE-SCP-01..05` may open tasks, edges, decisions and
+   grading work, and a test counts dispositions before and after every rule pass to prove the count
+   is unchanged. The terminal has no path to grading its own homework.
+3. **Rates are computed over every verdict ever recorded, not over live claims.** Verdicts on
+   deleted or repaired claims stay in the denominator. That is the survivorship refusal (Wald 1943)
+   expressed as a data-layout decision rather than a comment.
+4. **Coverage counts errors as zero.** A detector that throws contributes no examined records,
+   because an error is not evidence; the population is what was actually read, and the false-alarm
+   bound is Clopper–Pearson over verdicts on that population.
+
+The typed graph gains two nodes — `scepticround` → `scepticRounds` (resolver
+`#/sceptic?panel=rounds&round=<id>`) and `scepticdisposition` → `scepticDispositions` (resolver
+`#/sceptic?panel=auditor&verdict=<id>`) — and three relations: `cross-examines` (task → the record
+whose claim it questions), `finds-against` (task → the round whose finding opened it) and
+`records-verdict` (a recorded verdict → the record whose claim it settles). CSV scope #71 exports one
+aggregate row per family, per detector, one coverage row and one row per frozen round, blank for
+every refusal and never zero; the Insights bucket is `Cross-examination` (`SCP-01..07`).
+
+## Schema v80 — the Promise Solvency Terminal (Session 113, ADR-0073)
+
+`app/core/domain/solvencyRegistry.js` (leaf vocabulary: six promise sources, source verdicts, promise
+states, repair verdicts, rule/signal ids, clamped limits including `maxExposures` and
+`quadratureNodes`) → `solvencySchema.js` (fail-closed normalisers for `solvencyReadings`,
+`solvencyMarkers` and `solvencyRenegotiations`; the marker store is a set capped at 400; a reading
+with no probability or no review date is dropped with a warning) → `solvency.js` (pure read model
+and closed-form maths: `erf`, `normCdf`, `normInv`, `wilsonInterval`, the Vasicek copula,
+`breachCountDistribution`, `rankedProbabilityScore`, `countLogScore`, surge/harvest/capacity/repair
+read model, freeze/grade/skill, brief and signals) → `solvencyRules.js` (`RULE-SLV-01..05`,
+registered after `supplyRule` in both `postCommit.js` and `propagationContracts.js`). The view
+(`app/views/solvency.js`, six panels) and dialogs (`app/ui/solvency-modals.js`) talk only to the
+API (`solvencyRead`, `solvencyBriefText`, `freezeSolvencyReading`, `gradeSolvencyReadingNow`,
+`deleteSolvencyReading`, `renegotiatePromise`, `setSolvencyConventions`, `scanSolvency`).
+
+Four structural points constrain future modules:
+
+1. **Promises are harvested, never stored.** Each harvester in `SOLVENCY_GRAPH_TYPE` maps one source
+   key to a first-class graph node, so an edge from a reading to a promise can never be a no-op —
+   the failure mode `ensureEntityLink` exists to catch. A source added without a graph type would
+   silently write nothing, which is why the registry holds both facts together.
+2. **The maths is exported, not inlined.** Every special function and both scoring rules are
+   exported from the domain module so a test can check them against hand-computed values, and so a
+   future surface (a ρ calibration panel, a slip budget) can reuse the identity rather than
+   re-deriving it.
+3. **The ceiling is stored, printed and never scored.** `predictedCeilingPct` is frozen with the
+   reading because it is the honest bound; it is deliberately excluded from grading because a bound
+   that reads 100% would earn a perfect Brier against any book that broke.
+4. **One action writes into another module, and it is auditable.** `renegotiatePromise` changes the
+   real source date, appends an immutable `solvencyRenegotiations` row and edges that row to the
+   promise with `renegotiates`. No rule may move a date; only a leader may, with a reason and under
+   a declared cap.
+
+The typed graph gains two nodes — `solvencyreading` → `solvencyReadings` (resolver
+`#/solvency?panel=frozen&reading=<id>`) and `solvencyrenegotiation` → `solvencyRenegotiations`
+(resolver `#/solvency?panel=repair&promise=<id>`) — and three relations: `endangers-promise`
+(reading → every promise it priced, capped at eight), `underwrites-commitment` (reading → the
+capacity decision it opened) and `renegotiates` (ledger row → the promise it moved; also used by a
+repair task opened from a reading). CSV scope #70 exports one aggregate row per source, per maturity
+bucket and per frozen reading, blank for every refusal and never zero; the Insights bucket is
+`Promise solvency` (`SLV-01..06`).
+
+## ADR-0080 — Mission Control (Session 120, Schema v86)
+
+`missionRegistry.js` declares five altitude-specific operating loops and allowed command kinds. `mission.js` is a pure read model over the existing Command Chain work harvester: it partitions by responsible owner node, applies primary + complementary small-cell suppression above the individual-detail boundary, and returns interval parent totals. `missionActions.js` reuses the Action Bundle registry/executor and the production API; it adds no second workflow engine. `missionRules.js` (`RULE-MIS-01`) runs before the final `seatRule`: a frozen identity-free brief opens one governed review and writes `summarizes-span` / `tracks-followup` provenance.
+
+The boundary is now explicit. `accessGateway.js` wraps every API method: the undeclared local operator is unchanged; a declared seat receives only reviewed adapters with rank, person-scope, source-case and budget-ownership checks, and unknown methods fail closed. `viewScope.js` projects a redacted state to the shell and blocks projection if seat resolution fails. Legacy raw-data screens are not seat-scoped yet and are withheld under declared seats; Mission Control and Altitude Lens are the supported scoped surfaces. This is a local workflow boundary, not authenticated multi-user security.
+
+Schema v86 adds the bounded immutable `missionBriefs` collection and `missionCellFloor` setting. The typed graph adds `missionbrief` and `summarizes-span`. Suppression is not differential privacy; rehearsal is a software effect diff, not a causal prediction.
+
+## ADR-0082 — The Sealed Spine (Session 122, Schema v88)
+
+`sealCrypto.js` (pure SHA-256 / HMAC-SHA256 / canonical JSON, RFC 4231 + FIPS vectors verified) → `sealRegistry.js` (constants, limits, premise) → `sealSchema.js` (`normalizeSealSettings`: `sealEnabled`, `sealAutoPropagate`, `sealMode` — defaults when absent, so **the feature needs no migration of its own**; the repository is at Schema v88 after Session 121's additive Altitude Router bump) → `sealChain.js` (`computeSeal`, `txDigest`, `verifySealChain` genesis walk, span attestations) → `sealRules.js` (`sealRule` = RULE-SEAL-01/02). The view (`app/views/seal.js`, four panels) and the API (`sealRead`, `sealVerify`, `sealScan`, `sealBriefText`, `enableSealing`, `disableSealing`, `setSealAutoPropagate`) talk only to the reviewed gateway surface.
+
+`sealRule` is registered **absolutely last** on the shared post-commit spine (62 rules, after `seatRule`), so one `audit.seal` event per sealed transaction commits to `sha256(prev ‖ digest ‖ revision)` over exactly the events every other rule appended in that atomic write. The seat rule still reads the finished workspace at position −2. Seal events are exempt from the event-log retention cap (600 non-seal / 5000 seals) and carry the chain fields in their summary (`prev= digest= rev= ev= mode= root=`), so verification replays from genesis entirely from the log itself.
+
+Key lifecycle: `store.js` derives a PBKDF2 256-bit session key (domain `leados-seal-v1:`) from the vault passphrase at unlock / enable / change-passphrase, holds it in memory only, and clears it at all five vault-lock sites. HMAC mode is used whenever the key is present; plain SHA-256 otherwise — and every surface prints which. The ADR-0080 gateway exposes `sealRead`/`sealVerify`/`sealBriefText` as safe reads, `sealScan` under the `audit-seal` right (ranks 1–5), and refuses enable/disable/pause under a declared seat (operator-only).
+
+Honest limits: this is not authentication and not a multi-user boundary; plain-hash mode is tamper-evident against corruption, not forgery-proof; retention-evicted blocks stay chain-verified but content-unverifiable and are reported as such; verification is on demand, not continuous.
+
+## Disclosure layer (ADR-0086, Schema v92)
+
+The Operating Seat ([ADR-0076](docs/adr/0076-operating-seat.md)) decides *per record* whether a seat may read it. That is necessary and not sufficient: a leader above a class ceiling needs the module's **aggregate**, and a leader who needs one span's detail needs a way to ask for it. The disclosure layer is the compile between the two.
+
+```text
+app/core/domain/disclosureManifests.js   97 route manifests: collections, class, counted fields, mode
+app/core/domain/disclosure.js            postureFor / compileDisclosure / moduleAggregate / validateGrantRequest
+app/core/domain/disclosureRules.js       RULE-DSC-01 open (decision + consent task + edges), RULE-DSC-02 sweep
+app/core/domain/disclosureActions.js     request / consent / refuse / revoke / scan, plus the pure reads
+app/views/disclosure.js                  the console, and renderAggregatePosture for every module above its ceiling
+```
+
+- **One compile per render.** `main.js` compiles a posture table once and feeds it to the nav, the route gate and the screen, so the three cannot disagree.
+- **The aggregate is generated, never hand-built.** `moduleAggregate` walks the manifest's collections, attributes each record to a span by `responsibleNodeId`, refuses records outside the seat's subtree (and counts them), then applies the floor, one complementary suppression and total suppression. Money stays per currency; a missing date is `unknown`.
+- **Grants are policy input, not settings.** `postureFor` reads live grants from the ledger; `viewScope.scopedViewState` adds exactly the granted span's records, marked `__disclosureGrant`. The rule engine never grants anything — only the span leader's consent does.
+- **The proof lives in the tests, not the prose.** `tests/app/disclosure-compiler.test.mjs` navigates every route at four altitudes against sentinel-bearing private data and fails on any out-of-span name, peer record or private note reaching the DOM.

@@ -1,0 +1,262 @@
+/**
+ * app/core/domain/people.js — roster queries and per-person derived facts.
+ * Pure functions: state in, plain values out.
+ */
+
+import { daysBetween, daysSince, dayKey, toDate } from '../time.js';
+import { LEVEL_LABELS } from '../schema.js';
+
+export function activePeople(state) {
+  return (state.people || []).filter((p) => p.status !== 'archived');
+}
+
+export function archivedPeople(state) {
+  return (state.people || []).filter((p) => p.status === 'archived');
+}
+
+export function personById(state, id) {
+  return (state.people || []).find((p) => p.id === id) || null;
+}
+
+export function peopleIndex(state) {
+  const map = new Map();
+  for (const p of state.people || []) map.set(p.id, p);
+  return map;
+}
+
+export function displayName(person) {
+  return person && person.name ? person.name : 'Unassigned';
+}
+
+export function initials(person) {
+  const name = displayName(person).trim();
+  if (!name || name === 'Unassigned') return '?';
+  return name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase();
+}
+
+export function levelLabel(level) {
+  return LEVEL_LABELS[level] || 'Individual contributor';
+}
+
+/** Tenure in whole days, or null when no start date was recorded. */
+export function tenureDays(person, now) {
+  if (!person || !person.startDate) return null;
+  return daysSince(person.startDate, now);
+}
+
+export function isNewJoiner(person, now, settings) {
+  const tenure = tenureDays(person, now);
+  if (tenure === null) return false;
+  return tenure >= 0 && tenure <= (settings?.onboardingDays ?? 90);
+}
+
+export function directReports(state, managerId) {
+  return activePeople(state).filter((p) => p.managerId && p.managerId === managerId);
+}
+
+export function managerOf(state, person) {
+  if (!person || !person.managerId) return null;
+  return personById(state, person.managerId);
+}
+
+/** Anyone the leader is directly responsible for. */
+export function reportsOfLeader(state) {
+  return activePeople(state).filter((p) => !p.managerId);
+}
+
+/**
+ * Sort key that puts people needing attention first: no 1:1 ever, no goal,
+ * then alphabetical. Used by the roster so the list is not just alphabetical.
+ */
+export function rosterOrder(state, now) {
+  const people = activePeople(state);
+  return people.slice().sort((a, b) => {
+    const aHas = state.oneOnOnes.some((m) => m.personId === a.id);
+    const bHas = state.oneOnOnes.some((m) => m.personId === b.id);
+    if (aHas !== bHas) return aHas ? 1 : -1;
+    return a.name.localeCompare(b.name);
+  });
+}
+
+/** All records about a person, newest first, for the person detail page. */
+export function personTimeline(state, personId) {
+  const items = [];
+  for (const m of state.oneOnOnes.filter((r) => r.personId === personId)) {
+    items.push({
+      kind: '1:1',
+      id: m.id,
+      date: m.date,
+      title: m.status === 'held' ? '1:1 held' : `1:1 ${m.status}`,
+      detail: m.notes || '',
+    });
+  }
+  for (const f of state.feedback.filter((r) => r.personId === personId)) {
+    items.push({
+      kind: f.direction === 'received' ? 'Feedback received' : 'Feedback given',
+      id: f.id,
+      date: f.date,
+      title: `${f.kind === 'praise' ? 'Praise' : 'Constructive'} feedback ${f.direction === 'received' ? 'from' : 'to'} ${displayName(personById(state, personId))}`,
+      detail: f.situation,
+    });
+  }
+  for (const g of state.goals.filter((r) => r.ownerId === personId)) {
+    items.push({ kind: 'Goal', id: g.id, date: g.createdAt, title: `Goal: ${g.title}`, detail: g.confidence });
+  }
+  for (const p of state.growthPlans.filter((r) => r.personId === personId)) {
+    items.push({ kind: 'Growth plan', id: p.id, date: p.createdAt, title: 'GROW plan created', detail: p.goal });
+  }
+  for (const r of state.recognition.filter((x) => x.personId === personId)) {
+    items.push({ kind: 'Recognition', id: r.id, date: r.date, title: 'Recognised', detail: r.what });
+  }
+  for (const d of (state.delegations || []).filter((x) => x.personId === personId)) {
+    if (d.delegatedOn) {
+      items.push({ kind: 'Delegation', id: d.id, date: d.delegatedOn, title: `Delegated: ${d.title}`, detail: d.expectedOutcome || '' });
+    }
+    if (d.status === 'done' && d.completedOn) {
+      items.push({ kind: 'Delegation completed', id: `${d.id}-done`, date: d.completedOn, title: `Completed delegation: ${d.title}`, detail: d.completionNote || '' });
+    }
+    if (d.status === 'returned' && d.returnedOn) {
+      items.push({ kind: 'Delegation returned', id: `${d.id}-returned`, date: d.returnedOn, title: `Returned delegation: ${d.title}`, detail: d.returnReason || '' });
+    }
+  }
+  for (const review of (state.reviews || []).filter((r) => r.personId === personId)) {
+    items.push({
+      kind: 'Performance review', id: review.id, date: review.completedAt || review.updatedAt,
+      title: `Performance review ${review.status === 'complete' ? 'completed' : 'started'}`,
+      detail: `${review.periodStart} to ${review.periodEnd}`,
+    });
+  }
+  for (const item of (state.managerSupport || []).filter((record) => record.personId === personId)) {
+    items.push({
+      kind: 'Manager follow-up',
+      id: item.id,
+      date: item.addedOn,
+      title: `Manager-owned follow-up · Day ${item.sourceHorizon || '?'} check-in`,
+      detail: `${item.text}${item.due ? ` · due ${item.due}` : ''} · ${item.status}`,
+    });
+  }
+  for (const plan of (state.onboarding || []).filter((r) => r.personId === personId)) {
+    const isTransition = plan.kind === 'role-transition';
+    const isReboarding = plan.kind === 'reboarding';
+    const planLabel = (isTransition || isReboarding) && plan.label ? ` — ${plan.label}` : '';
+    const kindTitle = isTransition ? 'Role transition' : isReboarding ? 'Return to work' : 'Onboarding';
+    const checkinNoun = isTransition ? 'transition' : isReboarding ? 're-boarding' : 'onboarding';
+    if (plan.startDate) {
+      items.push({
+        kind: kindTitle,
+        id: plan.id,
+        date: plan.startDate,
+        title: isTransition
+          ? `Role-transition 30-60-90 plan started${planLabel}`
+          : isReboarding
+            ? `Return-to-work 30-60-90 plan started${planLabel}`
+            : '30-60-90 onboarding plan started',
+        detail: plan.roleClarity || plan.earlyWin || '',
+      });
+    }
+    for (const h of [30, 60, 90]) {
+      const rev = plan.reviews?.[h];
+      if (rev?.heldOn) {
+        items.push({
+          kind: `Day ${h} check-in`,
+          id: `${plan.id}-rev-${h}`,
+          date: rev.heldOn,
+          title: `Day ${h} ${checkinNoun} check-in held`,
+          detail: rev.summary || '',
+        });
+      }
+    }
+    if (plan.status === 'completed' && plan.completedOn) {
+      items.push({
+        kind: `${kindTitle} completed`,
+        id: `${plan.id}-completed`,
+        date: plan.completedOn,
+        title: isTransition
+          ? `30-60-90 role transition completed${planLabel}`
+          : isReboarding
+            ? `30-60-90 return-to-work plan completed${planLabel}`
+            : '30-60-90 onboarding completed',
+        detail: plan.earlyWin || '',
+      });
+    }
+  }
+  for (const c of (state.cases || []).filter(
+    (rec) => rec.ownerId === personId || (Array.isArray(rec.involvedPersonIds) && rec.involvedPersonIds.includes(personId)),
+  )) {
+    const roleNote = c.ownerId === personId ? 'Owner' : 'Involved';
+    if (c.openedOn) {
+      items.push({
+        kind: 'Operational case',
+        id: `${c.id}-opened`,
+        date: c.openedOn,
+        title: `Case (${roleNote}): ${c.title}`,
+        detail: c.rca?.systemicBarrier || c.summary || '',
+      });
+    }
+    if ((c.status === 'resolved' || c.status === 'closed') && c.resolvedOn) {
+      items.push({
+        kind: 'Case resolved',
+        id: `${c.id}-resolved`,
+        date: c.resolvedOn,
+        title: `Case resolved: ${c.title}`,
+        detail: c.resolutionNotes || c.rca?.preventiveAction || '',
+      });
+    }
+  }
+  for (const chg of (state.changes || []).filter(
+    (rec) => rec.ownerId === personId || (Array.isArray(rec.impacts) && rec.impacts.some((i) => i.personId === personId)),
+  )) {
+    const impact = (chg.impacts || []).find((i) => i.personId === personId);
+    const roleNote = chg.ownerId === personId ? 'Owner' : (impact?.newRoleLabel ? `Transition → ${impact.newRoleLabel}` : 'Impacted');
+    if (chg.openedOn) {
+      items.push({
+        kind: 'Org change',
+        id: `${chg.id}-opened`,
+        date: chg.openedOn,
+        title: `Change (${roleNote}): ${chg.title}`,
+        detail: chg.vision || chg.summary || '',
+      });
+    }
+    if (chg.status === 'anchored' && chg.anchoredOn) {
+      items.push({
+        kind: 'Change anchored',
+        id: `${chg.id}-anchored`,
+        date: chg.anchoredOn,
+        title: `Change anchored: ${chg.title}`,
+        detail: chg.closedReason || chg.vision || '',
+      });
+    }
+  }
+  for (const dep of (state.dependencies || [])) {
+    const st = (dep.stewards || []).find((s) => s && s.personId === personId);
+    if (!st) continue;
+    if (st.verifiedOn) {
+      items.push({
+        kind: 'Continuity verified',
+        id: `${dep.id}-verified-${personId}`,
+        date: st.verifiedOn,
+        title: `Verified ${st.role || 'backup'} steward: ${dep.name}`,
+        detail: st.notes || `${dep.criticality} ${dep.kind}`,
+      });
+    } else if (dep.createdOn) {
+      items.push({
+        kind: 'Stewardship',
+        id: `${dep.id}-steward-${personId}`,
+        date: dep.createdOn,
+        title: `Steward (${st.role || 'primary'}): ${dep.name}`,
+        detail: dep.summary || `${dep.criticality} ${dep.kind}`,
+      });
+    }
+  }
+  return items
+    .filter((i) => toDate(i.date))
+    .sort((a, b) => (toDate(b.date)?.getTime() || 0) - (toDate(a.date)?.getTime() || 0));
+}
+
+/** Days between two day keys, exposed for views that show "joined N days ago". */
+export { daysBetween, dayKey };

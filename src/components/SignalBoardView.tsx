@@ -1,135 +1,139 @@
-import { useMemo } from "react";
-import type { AppState, Category } from "../lib/types";
-import { CATEGORIES } from "../lib/types";
-import { RULE_CATALOG } from "../lib/rules";
-import { toggleSignal, setPersonLink, setRunway, simulateRecurrence, applyPreset } from "../lib/store";
-import { Card, Label, Badge } from "./ui";
+import { CATEGORIES, CATEGORY_LABEL, type Category } from "../lib/types";
+import { RULES } from "../lib/rules";
+import type { SignalState } from "../lib/store";
+import { Card, Badge } from "./Shell";
+import { cn } from "../utils/cn";
 
-const CATEGORY_COLOR: Record<Category, "rose" | "amber" | "emerald" | "indigo" | "slate"> = {
-  STRATEGIC: "indigo",
-  OPERATIONAL: "slate",
-  FINANCIAL: "amber",
-  PEOPLE: "rose",
-  GOVERNANCE: "indigo",
-  MARKET: "slate",
-  REPUTATIONAL: "rose",
-  RESILIENCE: "amber",
+const SEV_TONE: Record<number, "slate" | "amber" | "rose" | "emerald" | "indigo"> = {
+  1: "slate",
+  2: "indigo",
+  3: "amber",
+  4: "amber",
+  5: "rose",
 };
 
-export function SignalBoardView({ state, setState }: { state: AppState; setState: (s: AppState) => void }) {
-  const byCategory = useMemo(() => {
-    const map: Record<Category, typeof RULE_CATALOG> = Object.fromEntries(CATEGORIES.map((c) => [c, []])) as any;
-    for (const r of RULE_CATALOG) map[r.category].push(r);
-    return map;
-  }, []);
+export function SignalBoardView({
+  state,
+  onChange,
+  onReset,
+  onClear,
+}: {
+  state: SignalState;
+  onChange: (s: SignalState) => void;
+  onReset: () => void;
+  onClear: () => void;
+}) {
+  const activeCount = Object.values(state.active).filter(Boolean).length;
+
+  const toggle = (rule: string) => {
+    onChange({ ...state, active: { ...state.active, [rule]: !state.active[rule] } });
+  };
+  const setSev = (rule: string, sev: 1 | 2 | 3 | 4 | 5) => {
+    onChange({ ...state, sev: { ...state.sev, [rule]: sev } });
+  };
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-semibold text-white">Signal Board</h1>
-        <p className="mt-1 max-w-3xl text-sm text-slate-400">
-          50 synthetic rule IDs across 8 categories. Toggle any on/off, link person-level rules to a specific person, and
-          everything downstream (Thermodynamics, CAS Engine, Risk Register) recomputes live. Direct manual control keeps
-          every computation auditable rather than hidden behind an opaque generator.
-        </p>
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-lg font-semibold text-white">Signal Board</h1>
+          <p className="text-sm text-slate-400">
+            {activeCount} of {RULES.length} synthetic rules active. Toggle findings on/off and
+            adjust severity — the Attention Optimizer reads this live.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={onReset} className="rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-500">
+            Load busy-week preset
+          </button>
+          <button onClick={onClear} className="rounded-md border border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-slate-800">
+            Clear all
+          </button>
+        </div>
       </div>
 
-      <Card title="Scenario Presets" subtitle="One click to load a coherent combination for exploring the CAS / Risk views">
-        <div className="flex flex-wrap gap-2">
-          <PresetButton label="Burnout loop (R7+R4, same person)" onClick={() => setState(applyPreset(state, ["R7", "R4"], "p1"))} />
-          <PresetButton label="Velocity death spiral (R73+R17)" onClick={() => setState(applyPreset(state, ["R73", "R17"]))} />
-          <PresetButton label="Talent virtuous cycle (R10+R11)" onClick={() => setState(applyPreset(state, ["R10", "R11"]))} />
-          <PresetButton label="Trust collapse (R88+R60)" onClick={() => setState(applyPreset(state, ["R88", "R60"]))} />
-          <PresetButton label="Austerity trap (R30+R4)" onClick={() => setState(applyPreset(state, ["R30", "R4"]))} />
-        </div>
-      </Card>
-
-      <Card title="Financial Runway" subtitle="Drives the FINANCIAL bifurcation check directly (independent of R30 toggle)">
-        <div className="flex items-center gap-4">
+      <Card title="Runway" subtitle="Drives urgency pull-forward for finance findings below 6 months (disclosed heuristic).">
+        <div className="flex items-center gap-3">
           <input
             type="range"
             min={0}
             max={24}
             value={state.runwayMonths}
-            onChange={(e) => setState(setRunway(state, Number(e.target.value)))}
-            className="w-64"
+            onChange={(e) => onChange({ ...state, runwayMonths: Number(e.target.value) })}
+            className="w-64 accent-indigo-500"
           />
-          <span className="font-mono text-sm text-white">{state.runwayMonths} months</span>
-          {state.runwayMonths < 6 && <Badge tone="rose">bifurcation threshold crossed</Badge>}
+          <span className="text-sm font-medium text-slate-200">{state.runwayMonths} months</span>
+          {state.runwayMonths < 6 && <Badge tone="rose">Urgent: runway &lt; 6mo</Badge>}
         </div>
       </Card>
 
       {CATEGORIES.map((cat) => (
-        <Card key={cat} title={cat} subtitle={`${byCategory[cat].length} rules`}>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {byCategory[cat].map((rule) => {
-              const sig = state.signals[rule.id];
-              return (
-                <div
-                  key={rule.id}
-                  className={`flex items-center justify-between gap-2 rounded-lg border p-2.5 text-xs ${
-                    sig.active ? "border-indigo-700/60 bg-indigo-950/30" : "border-slate-800 bg-slate-900/40"
-                  }`}
-                >
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-mono text-slate-400">{rule.id}</span>
-                      {rule.polarity === "positive" && <Badge tone="emerald">positive</Badge>}
-                      <Badge tone={CATEGORY_COLOR[cat]}>sev {sig.sev}</Badge>
-                    </div>
-                    <div className="mt-0.5 truncate text-slate-300">{rule.title}</div>
-                    {rule.personLinkable && sig.active && (
-                      <select
-                        className="mt-1 rounded border border-slate-700 bg-slate-800 px-1 py-0.5 text-[10px] text-slate-300"
-                        value={sig.personId ?? ""}
-                        onChange={(e) => setState(setPersonLink(state, rule.id, e.target.value))}
-                      >
-                        <option value="">no person linked</option>
-                        {state.people.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.name}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                  </div>
-                  <div className="flex shrink-0 flex-col items-end gap-1">
-                    <button
-                      onClick={() => setState(toggleSignal(state, rule.id, state.people[0]?.id))}
-                      className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${
-                        sig.active ? "bg-indigo-500 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700"
-                      }`}
-                    >
-                      {sig.active ? "ON" : "OFF"}
-                    </button>
-                    <button
-                      onClick={() => setState(simulateRecurrence(state, rule.id))}
-                      className="text-[9px] text-slate-600 underline hover:text-slate-400"
-                      title="Toggle on/off 3 times to test attractor detection"
-                    >
-                      simulate 3x recurrence
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </Card>
+        <CategoryBlock key={cat} category={cat} state={state} onToggle={toggle} onSev={setSev} />
       ))}
-      <Label>
-        Rule titles and category assignments are this delivery's own invented, illustrative labels — not sourced from any
-        real rule engine. R1, R4, R7, R17, R73 and R88 specifically are reused IDs from the task's pasted "pt-L" brief so
-        the CAS/Risk examples below line up with that brief's own named scenarios; everything else is filler to make an
-        8-category board explorable.
-      </Label>
     </div>
   );
 }
 
-function PresetButton({ label, onClick }: { label: string; onClick: () => void }) {
+function CategoryBlock({
+  category,
+  state,
+  onToggle,
+  onSev,
+}: {
+  category: Category;
+  state: SignalState;
+  onToggle: (rule: string) => void;
+  onSev: (rule: string, sev: 1 | 2 | 3 | 4 | 5) => void;
+}) {
+  const rules = RULES.filter((r) => r.category === category);
   return (
-    <button onClick={onClick} className="rounded-md bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-slate-700">
-      {label}
-    </button>
+    <Card title={CATEGORY_LABEL[category]} subtitle={`${rules.filter((r) => state.active[r.rule]).length} active`}>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {rules.map((r) => {
+          const on = !!state.active[r.rule];
+          const sev = state.sev[r.rule] ?? r.baseSev;
+          return (
+            <div
+              key={r.rule}
+              className={cn(
+                "flex items-start justify-between gap-3 rounded-lg border px-3 py-2 transition",
+                on ? "border-indigo-500/40 bg-indigo-500/5" : "border-slate-800 bg-slate-900/40"
+              )}
+            >
+              <button onClick={() => onToggle(r.rule)} className="flex flex-1 items-start gap-2 text-left">
+                <span
+                  className={cn(
+                    "mt-0.5 h-4 w-4 flex-shrink-0 rounded border",
+                    on ? "border-indigo-400 bg-indigo-500" : "border-slate-600 bg-transparent"
+                  )}
+                />
+                <span>
+                  <span className="block text-xs font-medium text-slate-200">
+                    {r.rule} · {r.title}
+                  </span>
+                  {state.person[r.rule] && <span className="text-[11px] text-slate-500">linked: {state.person[r.rule]}</span>}
+                </span>
+              </button>
+              <div className="flex items-center gap-1">
+                <Badge tone={SEV_TONE[sev]}>sev {sev}</Badge>
+                {on && (
+                  <select
+                    value={sev}
+                    onChange={(e) => onSev(r.rule, Number(e.target.value) as 1 | 2 | 3 | 4 | 5)}
+                    className="rounded border border-slate-700 bg-slate-800 px-1 py-0.5 text-[10px] text-slate-200"
+                  >
+                    {[1, 2, 3, 4, 5].map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Card>
   );
 }

@@ -1,107 +1,65 @@
-// src/lib/store.ts — localStorage persistence + state mutations.
-// New storage key for this sandbox build (not continuing any other
-// session's key — this workspace had no prior app state).
-import { PEOPLE, buildSeedEvents } from "./seed";
-import { RULE_CATALOG } from "./rules";
-import type { AppState, SignalState } from "./types";
+/**
+ * src/lib/store.ts — append-only event log, Postgres-backed.
+ *
+ * AUDIT NOTE: the real repo's root `store.ts` is a localStorage-only
+ * implementation (`STORAGE_KEY = "leados-orgphysics-sandbox:data"`),
+ * which is exactly the "no persistence beyond localStorage" gap this
+ * Part 1 brief calls out as a problem to fix. This module keeps the same
+ * public shape (`load`, `append`, `appendAt`, `reset`, `hasData`) but
+ * backs it with the `events` table in Postgres via Drizzle, so the same
+ * log is readable from both the browser and every Next.js API route.
+ */
 
-export const STORAGE_KEY = "leados-sandbox:v1";
+import { asc, sql } from "drizzle-orm";
+import { db } from "@/db";
+import { events as eventsTable } from "@/db/schema";
+import type { LeadosEvent } from "./types";
 
-function defaultSignals(): Record<string, SignalState> {
-  const out: Record<string, SignalState> = {};
-  for (const r of RULE_CATALOG) {
-    out[r.id] = { ruleId: r.id, active: false, sev: r.sev, lastToggledAt: 0 };
-  }
-  return out;
-}
-
-export function defaultState(): AppState {
+function rowToEvent(row: typeof eventsTable.$inferSelect): LeadosEvent {
   return {
-    version: 1,
-    signals: defaultSignals(),
-    toggleLog: [],
-    people: PEOPLE,
-    runwayMonths: 14,
-    events: buildSeedEvents(),
+    id: row.eventId,
+    ts: row.ts.toISOString(),
+    type: row.type,
+    data: row.data,
+    meta: row.seeded ? { seeded: true } : undefined,
   };
 }
 
-export function loadState(): AppState {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return defaultState();
-    const parsed = JSON.parse(raw);
-    if (!parsed || !parsed.signals || !Array.isArray(parsed.events)) return defaultState();
-    // additive-field defaulting for any rules added after a user's last save
-    for (const r of RULE_CATALOG) {
-      if (!parsed.signals[r.id]) {
-        parsed.signals[r.id] = { ruleId: r.id, active: false, sev: r.sev, lastToggledAt: 0 };
-      }
-    }
-    if (!Array.isArray(parsed.toggleLog)) parsed.toggleLog = [];
-    if (typeof parsed.runwayMonths !== "number") parsed.runwayMonths = 14;
-    return parsed as AppState;
-  } catch {
-    return defaultState();
-  }
+let seq = 0;
+function nextId(): string {
+  seq += 1;
+  return "e-" + Date.now().toString(36) + "-" + String(seq).padStart(4, "0");
 }
 
-export function saveState(state: AppState) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+export async function load(): Promise<LeadosEvent[]> {
+  const rows = await db.select().from(eventsTable).orderBy(asc(eventsTable.ts));
+  return rows.map(rowToEvent);
 }
 
-export function toggleSignal(state: AppState, ruleId: string, personId?: string): AppState {
-  const cur = state.signals[ruleId];
-  const active = !cur.active;
-  const next: AppState = {
-    ...state,
-    signals: {
-      ...state.signals,
-      [ruleId]: { ...cur, active, personId: active ? personId : cur.personId, lastToggledAt: Date.now() },
-    },
-    toggleLog: [...state.toggleLog, { ruleId, active, ts: Date.now() }],
-  };
-  saveState(next);
-  return next;
+export async function append(type: string, data: Record<string, any>): Promise<LeadosEvent> {
+  const id = nextId();
+  const ts = new Date();
+  await db.insert(eventsTable).values({ eventId: id, ts, type, data, seeded: false });
+  return { id, ts: ts.toISOString(), type, data };
 }
 
-export function setSeverity(state: AppState, ruleId: string, sev: 1 | 2 | 3 | 4 | 5): AppState {
-  const next: AppState = { ...state, signals: { ...state.signals, [ruleId]: { ...state.signals[ruleId], sev } } };
-  saveState(next);
-  return next;
+/** Seed-only backdating path. Every event produced here is marked seeded=true. */
+export async function appendAt(type: string, data: Record<string, any>, ts: string): Promise<LeadosEvent> {
+  const id = nextId();
+  await db.insert(eventsTable).values({ eventId: id, ts: new Date(ts), type, data, seeded: true });
+  return { id, ts, type, data, meta: { seeded: true } };
 }
 
-export function setPersonLink(state: AppState, ruleId: string, personId: string): AppState {
-  const next: AppState = { ...state, signals: { ...state.signals, [ruleId]: { ...state.signals[ruleId], personId } } };
-  saveState(next);
-  return next;
+export async function reset(): Promise<void> {
+  await db.execute(sql`delete from ${eventsTable}`);
 }
 
-export function setRunway(state: AppState, months: number): AppState {
-  const next: AppState = { ...state, runwayMonths: months };
-  saveState(next);
-  return next;
+export async function hasData(): Promise<boolean> {
+  const rows = await db.select({ id: eventsTable.id }).from(eventsTable).limit(1);
+  return rows.length > 0;
 }
 
-export function applyPreset(state: AppState, ruleIds: string[], personId?: string): AppState {
-  let next = state;
-  for (const id of ruleIds) {
-    if (!next.signals[id].active) next = toggleSignal(next, id, personId);
-  }
-  return next;
-}
-
-export function resetState(): AppState {
-  const next = defaultState();
-  saveState(next);
-  return next;
-}
-
-export function simulateRecurrence(state: AppState, ruleId: string, cycles = 3): AppState {
-  let next = state;
-  for (let i = 0; i < cycles; i++) {
-    next = toggleSignal(next, ruleId); // on
-    next = toggleSignal(next, ruleId); // off
-  }
-  return next;
+export async function count(): Promise<number> {
+  const result = await db.select({ c: sql<number>`count(*)::int` }).from(eventsTable);
+  return result[0]?.c ?? 0;
 }

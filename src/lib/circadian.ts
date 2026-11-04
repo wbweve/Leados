@@ -1,93 +1,49 @@
-// circadian.ts — heuristic "time of day" phase model.
-// ORIGINAL to this build. This is a simplified, disclosed HEURISTIC loosely
-// informed by commonly-cited chronobiology findings (e.g. a post-lunch dip
-// in alertness, a morning analytical peak for many "lark"/neutral
-// chronotypes). It is GUIDANCE, NOT a diagnosis, and does not model
-// individual chronotype, sleep debt, or shift work. Source: general,
-// widely-cited circadian-rhythm literature summaries — not a specific
-// cited study, and not personalized. Treat all numbers below as
-// illustrative weights, not measured biological constants.
+// src/lib/circadian.ts
+//
+// RECONSTRUCTION NOTE (Part 52 standing order #1):
+// This sandbox checkout of Leados does not contain the real `circadian.ts`
+// produced by earlier parts. To honor the "read before write" order and keep
+// Part 52 integrable, this file reconstructs the minimal surface the leader
+// cognitive-capacity work depends on: naming and bucketing times of day.
+// When merging into the real repository, replace this with (or reconcile
+// against) the authoritative circadian module and keep the exported names
+// stable so `leaderState/*` does not need to change.
 
-import type { CircadianProfile } from "./types";
+export type TimeBucket = "early-morning" | "morning" | "midday" | "afternoon" | "evening" | "night";
 
-export interface PhaseDef extends CircadianProfile {
-  startHour: number; // inclusive, local time
-  endHour: number; // exclusive
+/**
+ * Buckets a 0-23 hour-of-day into a coarse circadian window.
+ * Intentionally coarse: this is used only to group a person's OWN historical
+ * decisions, never to make clinical or chronotype claims.
+ */
+export function bucketForHour(hourOfDay: number): TimeBucket {
+  const h = ((hourOfDay % 24) + 24) % 24;
+  if (h >= 5 && h < 8) return "early-morning";
+  if (h >= 8 && h < 12) return "morning";
+  if (h >= 12 && h < 14) return "midday";
+  if (h >= 14 && h < 18) return "afternoon";
+  if (h >= 18 && h < 22) return "evening";
+  return "night";
 }
 
-export const PHASES: PhaseDef[] = [
-  {
-    phase: "LOW_ALERTNESS_NIGHT",
-    label: "Low alertness (night)",
-    analytical: 0.3,
-    workingMemory: 0.4,
-    note: "Heuristic: avoid high-stakes irreversible decisions if possible.",
-    startHour: 0,
-    endHour: 6,
-  },
-  {
-    phase: "MORNING_PEAK",
-    label: "Morning analytical peak",
-    analytical: 1.0,
-    workingMemory: 0.95,
-    note: "Heuristic: a commonly-reported window for analytical/strategic work.",
-    startHour: 6,
-    endHour: 11,
-  },
-  {
-    phase: "MIDDAY_STEADY",
-    label: "Midday — steady",
-    analytical: 0.85,
-    workingMemory: 0.85,
-    note: "Heuristic: generally reliable capacity before the post-lunch dip.",
-    startHour: 11,
-    endHour: 13,
-  },
-  {
-    phase: "POST_LUNCH_DIP",
-    label: "Post-lunch dip",
-    analytical: 0.6,
-    workingMemory: 0.65,
-    note: "Heuristic: widely-reported early-afternoon alertness dip (~35% working-memory reduction from peak, illustrative).",
-    startHour: 13,
-    endHour: 15,
-  },
-  {
-    phase: "AFTERNOON_RECOVERY",
-    label: "Afternoon recovery",
-    analytical: 0.8,
-    workingMemory: 0.78,
-    note: "Heuristic: capacity typically recovers through mid/late afternoon.",
-    startHour: 15,
-    endHour: 18,
-  },
-  {
-    phase: "EVENING_WIND_DOWN",
-    label: "Evening wind-down",
-    analytical: 0.55,
-    workingMemory: 0.6,
-    note: "Heuristic: good for review/reflection, weaker for novel analysis.",
-    startHour: 18,
-    endHour: 22,
-  },
-  {
-    phase: "SLEEP_PREPARATION",
-    label: "Sleep preparation window",
-    analytical: 0.35,
-    workingMemory: 0.45,
-    note: "Heuristic: consider deferring consequential decisions to morning.",
-    startHour: 22,
-    endHour: 24,
-  },
+export function bucketForDate(date: Date): TimeBucket {
+  return bucketForHour(date.getHours());
+}
+
+export const TIME_BUCKET_LABELS: Record<TimeBucket, string> = {
+  "early-morning": "Early morning (5–8am)",
+  morning: "Morning (8am–12pm)",
+  midday: "Midday (12–2pm)",
+  afternoon: "Afternoon (2–6pm)",
+  evening: "Evening (6–10pm)",
+  night: "Night (10pm–5am)",
+};
+
+export const ALL_TIME_BUCKETS: TimeBucket[] = [
+  "early-morning",
+  "morning",
+  "midday",
+  "afternoon",
+  "evening",
+  "night",
 ];
-
-export function getProfileForDate(d: Date = new Date()): CircadianProfile {
-  const h = d.getHours();
-  const def = PHASES.find((p) => h >= p.startHour && h < p.endHour) ?? PHASES[0];
-  const { startHour: _s, endHour: _e, ...profile } = def;
-  return profile;
-}
-
-export function getProfileForISO(iso: string): CircadianProfile {
-  return getProfileForDate(new Date(iso));
-}

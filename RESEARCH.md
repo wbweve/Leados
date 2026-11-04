@@ -1,0 +1,6662 @@
+## §108 — Session 126 domain hunt: everyone ships "role-based dashboards"; nobody compiles disclosure (fetched 2026-11-04, [ADR-0086](docs/adr/0086-disclosure-compiler.md))
+
+Search-result/snippet-level scan (2026-11-04; vendor claims are benchmarks, not independently validated capabilities):
+
+- **Microsoft Viva Glint / Viva Insights** — role-based manager and leader dashboards on a hierarchy, with **aggregation thresholds** and small-cell suppression so a manager cannot infer an individual from a team cut. The pattern worth stealing: a floor is a product feature, not a legal footnote.
+- **Workday / Visier / ChartHop** — hierarchy-derived security: an object is visible because the org chart says so, and reporting rolls up by node ownership. Visier documents aggregate cuts; Workday's security groups are the market default.
+- **OneTrust / BigID / Collibra (data-governance)** — **field-level classification** and purpose-based access: fields carry sensitivity classes and access is computed from policy × purpose, not from a hand-written per-screen rule. This is the closest analogue to the compiler's manifest and the reason the design is a table, not an adapter per screen.
+- **Google Zanzibar / OpenFGA / SpiceDB (authorization)** — relationship-based access control as a *graph* of typed relations, evaluated centrally. LeadOS already has the graph; this session makes the release ledger a first-class node in it.
+- **Statistical disclosure control (FCSM cell suppression; complementary suppression)** — the standard practice for publishing tables without disclosing small cells, including the complementary suppression this session implements so a hidden cell cannot be recovered by subtraction. Named and implemented rather than re-invented.
+- **Cloverpop / Loom / decision-log vendors** — decision governance and an audit trail of *who decided what, why, with what authority*. They govern the decision, not the disclosure of the evidence behind it.
+
+**The gap in the searched material:** every vendor above either (a) filters data by role, or (b) publishes aggregates with a privacy floor. None makes **disclosure itself a compiled, per-screen, per-altitude posture that a leader can read, request an exception to, and have the owning span consent to for a bounded window.** That is the shipped slice, and the leak oracle is what lets it be claimed rather than asserted.
+
+**Implemented [all altitudes]:** module manifests × compiler × leak oracle; aggregate posture replacing route refusals; complementary suppression; per-currency money; parity of rule contracts 64/64; consent-bound release contracts with expiry sweeps.
+**Planned [manager → CEO]:** temporal disclosure control (repeated-release differencing, decay), seat-scoped report reads for the analytic terminals, authenticated identity.
+**Rejected [all altitudes]:** differential-privacy claims (this is cell suppression and is labelled as such); a generic "roles & permissions" settings page (a table nobody reads); per-screen hand audits (the queue outgrows the capacity to drain it).
+
+## 2026-11-03 — authority is a contract, not a forwarded message
+
+- **Implemented [frontline → CEO] Decision Rights Exchange:** bounded authority over existing work with two-sided acceptance, capacity evidence, budget encumbrance, expiry/recovery and receiver-partitioned roll-up. ADR-0078, schema v84, `#/mandates`.
+- **Planned [manager → CEO] Complementary suppression:** exact root counts plus drill-down can difference a small child span; add Glint-style complementary suppression and reorganisation tests.
+- **Planned [all altitudes] Authenticated boundary:** local seat selection is not identity; server-side authorization and tenant isolation remain prerequisites for multi-user use.
+- **Rejected [all altitudes] Generic approval form / autonomous spending:** approval chains and delegation windows are commodity; the defensible slice is the closed-loop leadership contract, and no money moves without a human-recorded actual.
+
+## §101. 2026-11-03 — Everyone has approval chains; nobody closes the leadership handoff loop (Session 118, Schema v84, [ADR-0078](docs/adr/0078-decision-rights-exchange.md))
+
+Fresh search-result/snippet-level scan (2026-11-03; vendor claims are benchmarks, not independently validated capabilities):
+
+- **Workday** — business processes route by security group/org hierarchy with approval chains, consolidated approval and To Do; Extend business processes explicitly do *not* support delegation. Manager delegations are time-boxed, restricted to the supervisory org, ownership retained, unfinished tasks revert. https://doc.workday.com/ ; https://kb.lynn.edu/spaces/WDAYDOCS/pages/33425781/Delegations+for+Managers
+- **ServiceNow** — `sys_user_delegate` with active users, start/end dates, separate approval/assignment/notification rights, no delegation outside dates. https://www.servicenow.com/community/itsm-articles/delegates-in-servicenow/ta-p/2600517
+- **Microsoft Copilot Studio** — deterministic agent flows with human approvals, reminders, unavailable-approver delegation and multi-stage approval; autonomous-agent guidance stresses least privilege, scoped permissions, explicit decision boundaries and gradual autonomy expansion. https://learn.microsoft.com/en-us/microsoft-copilot-studio/flows-overview ; https://learn.microsoft.com/en-us/microsoft-copilot-studio/guidance/autonomous-agents
+- **Aera** — decision skills, authority/autonomy thresholds, human approval, policy enforcement, decision ledger/memory and outcome learning. Decision ledgers and governed automation are not unique. https://www.aeratechnology.com/technology/
+- **Cloverpop** — scenario modeling, decision flows, captured rationale/outcomes and structured playbooks. https://cloverpop.com/case-study-improving-new-product-launch-success-with-decision-intelligence
+- **Visier** — hierarchy-position-derived access, detail/aggregate cuts, export controls, inherited metric/security definitions. https://www.visier.com/blog/visier-data-security-model/
+- **Lattice / Culture Amp** — evidence-grounded review drafts and role-specific coaching; the general coach does not execute tasks or access internal systems. https://lattice.com/product-updates/spring-summer-2026 ; https://support.cultureamp.com/en/articles/12331162-ai-coach-in-performance
+
+**Synthesis.** Approval chains, delegation windows, AI coaching and decision memory already exist. The gap LeadOS can close is a *leadership-specific closed-loop handoff contract* that joins explicit rights, acceptance/return, expiry, capacity and hierarchy-aware disclosure to the same operational work graph — not another analytics score or generic approval form. Named frameworks encoded: principal–agent (Jensen & Meckling 1976), residual control rights (Grossman–Hart–Moore), Jaques time-span, LCA/span-of-consequence, commitment accounting, Little's Law capacity, small-cell suppression.
+
+## 2026-11-02 — hierarchy privacy and grounded agents
+
+- **[manager → CEO] Microsoft Viva Glint Continuous Engagement:** reports aggregate-only metrics in reporting scope and enforces the higher confidentiality threshold; hides a group and its parent when necessary to prevent inference. https://learn.microsoft.com/en-us/viva/glint/reports/continuous-engagement-workplace-metrics
+- **[manager → CEO] Viva Glint roles:** hierarchy-scoped reporting and cumulative role grants create a need to audit effective permissions. https://learn.microsoft.com/en-us/viva/glint/setup/set-up-user-roles
+- **[frontline → executive] Lattice AI Agent:** describes coaching and synthesis grounded in reviews, goals, feedback and 1:1s. https://lattice.com/platform/ai-agent (vendor claims, not independently validated).
+- **Gap:** LeadOS has browser-local analytical seats, not authenticated isolation, and lacks Glint-style complementary suppression. Stale lineage undermines hierarchy trust; this session reconciles generated links rather than presenting an unverified predictive score as intelligence.
+
+## §100. 2026-11-02 — Everyone sells a readiness colour; nobody can certify the work can be reabsorbed (Session 117, Schema v83, [ADR-0077](docs/adr/0077-succession-terminal.md))
+
+**The claim under test.** For two sessions the roadmap carried "succession as a measured quantity" as the top structural target. This session fetched the current category to find out whether the gap was real or already closed.
+
+- **[C/E] Workday** sells succession as a nomination + readiness rating + nine-box grid, aggregated into a "bench strength" view on an org chart.
+- **[C/E] SAP SuccessFactors** shipped a **Succession Planning Agent** in H1 2026 that "identifies critical positions, flags those with no successors or weak bench strength, and suggests potential successors" — an automation of the *same* nomination object. It scans for empty seats; it does not ask whether the departing holder's work can be held.
+- **[C/E] Oracle Fusion HCM** — "visual succession organization charts with readiness tracking and risk assessment", where "risk" is a rating a human typed.
+- **[C/E] TalentGuard** markets an **ESTRI Readiness Engine** producing "a continuous, auditable readiness score" — the most sophisticated readiness construction found, and still a score about a person rather than a feasibility result about a span.
+- **[D/E] ChartHop** — "color-coded org modeling to expose bench and coverage gaps": the strongest visual treatment in the category, and the colour is the deliverable.
+- **[M/D] PeopleFluent, Darwinbox, UKG Pro, PageUp, iMocha, TalentGuard** — same object, different pricing. Published prices cluster at **$3–10 per user/month** (TalentGuard, Lattice $10/seat with a $4k minimum, Leapsome $7 + $4/employee), with SMB point tools at **$2,995–6,345 per year** plus **$5,000–10,000 onboarding** and multi-year terms (SuccessionNow, SuccessionHR). **Five of twelve published no price at all.** Enterprise tiers are quote-only.
+
+**What nobody ships.**
+
+1. **Feasibility, not readiness.** A readiness rating answers "is this person good?" The question a chief is asked after a resignation is "does the work still get held?" That is a bipartite assignment problem with an exact answer, and it is answered by a maximum flow — and when it fails, by a **minimum cut** naming the specific obligations nobody can take. Not one platform in the category computes it, prints it, or makes it arguable.
+2. **The failure certificate.** Bench-strength dashboards report shortfall as a percentage or a colour. A percentage cannot be checked; a set of dated obligations with their eligible-survivor counts can be. The certificate is what makes the finding survive contact with the person who disagrees.
+3. **A price on an untested bench.** Every vendor treats "no data" as a neutral state or as green. Lindley–Smith single-sample acceptance puts it at **50%** — a coin flip — and that number changes a board conversation in a way a grey box never does.
+4. **Refusals as output.** The category hides gaps. Nobody publishes "this span cannot be measured because nobody has ever rated it, and here is why that is the finding".
+5. **The partition.** Every org-chart view double-counts: the same people appear at team, department and function level, so "coverage" climbs as you zoom out. Making the **direct-report span** the unit and the **peers** the survivor set is what makes the enterprise number roll up by exact addition instead of by impression.
+
+**Adjacent proof the problem is real.** The clearest vendor framing found (firsthr.app, "12 Tools Compared 2026", 2026-10-05) splits leadership succession ("who is ready to step up") from **key person risk** ("what breaks if this person leaves on Friday") and solves the second with *documentation*: "write down what one person knows, holds, and accesses… an afternoon per person". The advice is right and has no instrument. It also notes the problem is worse the smaller the organisation — which is exactly the user this workspace serves.
+
+**What shipped against it (ADR-0077).** `#/succession`: collective blanket (Haehling von Lanzenauer & Wright 1991), HHI + inverse-HHI concentration, **Dinic max-flow with a minimum-cut certificate** when the span's work cannot be reabsorbed, Lindley–Smith acceptance for an untested bench, a **bounds pair** instead of a point estimate at enterprise level, a diffusion index that refuses below its floor, per-currency declared deprivation cost with a coherent shortfall bound, and one governed DACI decision per span per 30-day bucket carrying the certificate into the shared propagation spine so a frontline gap reaches the CEO in one transaction.
+
+**Honest limits.** The overload rule is a declared convention, not a measured capacity (ADR-0018 holds the measurement and the two are not yet joined). Eligibility is only as good as the record of who has worked with whom; `unlinkedPairs` is printed on every span as the blind spot. And the terminal is an instrument with **no measured skill** until five readings are graded — which the surface states rather than hides.
+
+## §99. 2026-11-02 — The category has permissions; nobody has an acting position (Session 116, Schema v82 unchanged, [ADR-0076](docs/adr/0076-operating-seat.md))
+
+### The question
+
+ADR-0075 asked whether a hierarchy is a *filter* or a *model*. This session asks the harder one: **who is the product being operated BY, and can it prove why a record was withheld from them?** Every vendor below sells "granular permissions" and "RBAC". None of them names the position in the reporting tree the reader currently occupies, derives that position's scope from the same tree that routes the work, or prints the reason a record was refused. In a real org the expensive failure is not a missing checkbox; it is a director reading a private 1:1 note, a frontline lead drowning in enterprise analytics, or a CEO receiving a hand-typed status update that no longer matches the record.
+
+### What was newly fetched this session (snippet-level evidence, 2026-11-02)
+
+| Source | Verified claim as recorded | Altitude(s) served | What it implies |
+| --- | --- | --- | --- |
+| betterworks.com, *8 Top Performance Management Tools for Workday Users* (2026-05-12) | Cascading OKRs, a "full hierarchy view for senior leaders", granular permissions; Lattice pulls org hierarchy from Workday daily; Workday owns structure/payroll/headcount while dedicated tools add coaching, calibration, OKRs | frontline↔exec | Hierarchy is a **view** synced from an HR master. Permission is a checkbox on the view, not a computed property of the reader's position in the work graph. |
+| betterworks.com, *Best Performance Evaluation Software* (2025-10-22) and peoplebox.ai, *Top Performance Management Tools* (2026-09-29) | Enterprises above ~2,000 need cross-team calibration, multi-level alignment, global compliance and enterprise-grade RBAC; **goal cascading across multiple org levels and custom analytics are reported weak spots** | director, exec, chief | Multi-level roll-up is the acknowledged unsolved problem. Leadership digests are assembled, not derived. |
+| gitnux.org, *Best Performance Management Software* (2026-07-03) and wifitalents.com, *E-P Software* (2026-08-14) | RBAC + audit logging for workflow/config changes is a buying criterion; schema-aligned integrations preserve org attributes; stage-gated approvals and traceable artifacts; pitfall = assuming approval governance without audit coverage | exec, chief | Audit trails are for **configuration changes**, not for individual **access refusals**. Nobody logs "the director was denied this 1:1 note, and here is why". |
+| knowlee.ai, *People Analytics Platform Guide*, gowindmill.com, *Top AI People Analytics Tools* (2026-09-16), thrivesparrow.com, knowlee.ai, *HR vs People Analytics* (2026-04-25) | 2026 AI-native landscape: **Visier Vee answers only from permitted data**; **ChartHop** live org model/scenario planning respecting RBAC; **Windmill** ONA from work tools; Gloat, Eightfold/Beamery, One Model, Culture Amp, Qualtrics, Oracle HCM | manager↔chief | "Permitted data" is the closest the category gets. It is a filter over a warehouse, not an attribute decision over a work item's people, class, action and subtree scope. |
+| netwrix.com, *ABAC* (2025-08-25), datasurge.com, *ABAC for Databricks* (2025-12-19), techprescient.com, *ABAC* (2026-07-07), snowflake.com, *Row-Level Security* (2025-07-24), avigilon.com, *Access Control Models* (2026-07-24) | PDP/PEP separation, **deny-by-default on attribute-lookup failure**, need-to-know, row filters, column masking, governed tags, hierarchical inheritance, RLS for GDPR/HIPAA/FERPA | all five | The security engineering is mature and explicit. The people-analytics category has not applied it to the *work record* — it applies it to the warehouse row. |
+| iaec.online (2026-06-14), nveil.com (2025-12-19), metricgate.com (2026-06-03), timdietrich.me (2026-04-13), scienceinsights.org (2026-03-10), all on Simpson's paradox | Aggregate dashboards must permanently show subgroup breakdowns, **pooled/standardised rates beside naive means**, and stratified analysis; a reversal hidden by aggregation is a reporting defect | director, exec, chief | Confirms ADR-0075's pooled-vs-mean design and constrains any new roll-up: a top-level rate without its subgroup table is not a number, it is a story. |
+
+*Caveat: these are search-result snippets, not full-page reads; treat each as snippet-level evidence. A dedicated Jaques/stratified-systems page was not returned by this hunt — the 7/30/90/180/365-day facts remain from ADR-0075's in-repo sources, not from the 2026-11-02 web.*
+
+### The gap, stated as design rules (tagged by altitude)
+
+1. **[all]** **The reader is a position, not a login.** Declare the acting seat explicitly and append-only; derive its scope from `person.managerId`'s subtree. A static role flag cannot express "this VP may see the Ops subtree but not the peer's", and cannot explain a refusal.
+2. **[frontline → chief] Upward leakage.** Individual-detail records (1:1 notes, 360 feedback, conflict notes, pay) become **counts** above the manager rank. The level above must know that work exists without being handed the person.
+3. **[chief → frontline] Downward leakage.** Portfolio/enterprise material is denied below its floor rank. A frontline lead is not buried in CEO analytics; the nav itself is filtered, not just the screen.
+4. **[peer spans] Sideways leakage.** A record about people outside the seat's subtree is denied even when its class is permitted. Hierarchical inheritance without subtree scoping is a leak.
+5. **[all] Explain every refusal.** An ABAC decision that cannot print its reason is unauditable. This is the single most visible departure from the category and the cheapest to ship.
+6. **[chief, exec] Never re-type.** The roll-up is derived live from the same dated records and the same propagation spine, with pooled, mean-of-unit and directly standardised rates all printed. A status update is a copy that can drift; a digest is a reading.
+
+### What this rules out for LeadOS, permanently
+
+- **Authentication theatre.** One browser, one local store, no server: a seat is an auditable *declaration*, not an identity proof. The UI says so.
+- **A second schema version.** 191 hardcoded v82 assertions across 78 test files, and a stored digest is a second copy. Zero-migration derived layer wins on both correctness and no-regression.
+- **Per-altitude dashboards.** ADR-0075's rejection stands: one surface, altitude as a parameter, genuinely different *content*.
+- **Per-module permission glue.** One `RECORD_POLICIES` row per collection, one `SIGNAL_SOURCES` row per module, one shared post-commit spine.
+- **A composite "person score".** Risk heat is severity load × age over spans; above the detail ceiling individuals are counts.
+
+### Carried forward
+
+- **[chief, exec]** Cryptographic seat attestation: sign a handover with a Web Crypto key held by the departing operator so the append-only log becomes tamper-evident. This is the honest prerequisite for any multi-user deployment.
+- **[manager → chief]** Succession as a measured quantity (from §98): with `subtreeIds` and item ages, compute whether a span's loss leaves work with no altitude to hold it.
+- **[all]** Per-seat export redaction: apply the same projection to `exportRedactedJSON` so a board pack exported from a chief seat carries counts only.
+- **[all]** Real-browser assistive-technology walkthrough **[UNVERIFIED]** — JSDOM + axe covers the markup, not a human on a screen reader.
+
+## §98. 2026-11-02 — Hierarchy as a filter vs. hierarchy as a model (Session 115, Schema v82, [ADR-0075](docs/adr/0075-command-chain.md))
+
+### The question
+
+Every engagement, OKR and performance product ships a hierarchy. The question that decides whether a hierarchy is a **model** or a **filter** is narrow: *where does responsibility for cross-unit work come from, and what decides that a decision has left the level that owns it?* If the answer is "a person assigns it" and "an SLA someone typed", the hierarchy is a view over a list. If the answer is "the tree" and "each level's own time span", it is a model that can compute things the leader did not type.
+
+### What was read (fetched 2026-11-02)
+
+| Source | Verified claim as recorded | What it implies |
+| --- | --- | --- |
+| workday.com, *Organizational Management* product pages (US + UK) | Org charts carry hierarchies and **span of control**, allow modelling of past/present/future structures, and run reports "across any organization type" with "key metrics such as headcount or span of control" shown in chart context; security can be inherited up the hierarchy | The category's hierarchy work is **structural visualisation + metrics in chart context**. Span of control is a *number on a dashboard*, not the input to a routing computation. |
+| devopsschool.com, *Top 10 AI Org Design & Span-of-Control Analytics Tools* (page dated 2026-05-19) | The market segment is named and crowded: **Workday, Orgvue, Visier, ChartHop, Mercer, Coworker.ai**, scored on "Span of Control Analysis", "Org Simulation", "AI Depth". Workday scores 9.3 on core features and 8.8 overall | Org-design tooling is a **modelling** exercise run occasionally by HR/transformation teams. It answers "what shape should we be?", not "which decision is currently sitting at the wrong level?" |
+| gitnux.org, *Best Organizational Charting Software 2026* (2026-10-07) | Workday regenerates charts from HR transactions so hierarchy changes propagate to reporting views; charting tools (Miro, Factorial) are compared on how well they mirror HR master data | Even the best implementation is a **mirror of HR records**. Nothing in the comparison is about work items, dated records, or escalation. |
+| ninety.io, *Stratified Systems Theory and Time Span of Discretion* (framework article + PDF) | Jaques' SST: **five strata** defined by the longest period work can run without close supervision; "front-line employees focus on daily tasks; middle management on monthly or quarterly goals; senior leaders on yearly plans"; SST was explicitly built "as an alternative to antiquated, **title-based hierarchies**" | The theory that defines altitude by time span is 60+ years old, commercially taught — and **absent from every product in the segment above**, all of which assign level from the HR record. |
+
+### The gap, stated as a design rule
+
+1. **Derive responsibility; never ask for it.** If the workspace already knows who reports to whom and which people an item touches, then the item's owner is the lowest common ancestor of those people's managers. Every "assign an owner" field is a tax that also produces a number about the assigner's diligence rather than the organisation's shape.
+2. **A level is its time span, not its title.** Title-based level assignment is precisely what SST was invented to replace, and it is what every tool in the segment does. Computing required altitude from *the age of the work* is the one operation that turns a hierarchy into a clock — and it is unavailable to any product that does not hold dated records.
+3. **Print the roll-up twice.** Span-of-control dashboards report an average. A pooled rate and the mean of unit rates differ whenever units carry different mixes, and only one of them is what any person experienced (Simpson 1951; Greenland, Robins & Pearl 1999). No tool in the segment prints both, so no buyer can see the difference.
+4. **An empty rung is the finding.** Competitors model future structures; none of them will show a leader "the work in front of you demands a level your organisation does not contain". That sentence requires refusing to invent an incumbent.
+
+### What this rules out for LeadOS, permanently
+
+- **No org-chart editor as the product.** An editor is the competitor's feature and it is the wrong artefact: it lets a leader redraw the organisation instead of measuring it. `#/chain` reads `person.managerId` and reports defects; the roster stays the leader's to change in People.
+- **No universal escalation SLA.** One SLA makes a 7-day question answered in 10 days "late" — a fact about the SLA. The horizon *is* the altitude.
+- **No per-level dashboard set.** Five routes duplicating five layouts would make hierarchy a theme. One surface, six panels, altitude as a parameter, and the ladder printed with its duties.
+
+### Carried forward
+
+The unbuilt question this opens: **succession as a measured quantity.** `#/readiness` records readiness ratings; the chain now knows each span's subtree and altitude. Nothing yet computes whether a span's loss would leave work with no altitude to hold it — i.e. a *bench* figure computed from the tree and the item ages rather than from self-assessed ratings. That is the natural next structural instrument, and its evidence already exists.
+
+## §97. 2026-11-02 — The category publishes findings; the audit profession publishes error rates (Session 114, Schema v81, [ADR-0074](docs/adr/0074-cross-examination-terminal.md))
+
+### What was newly fetched this session (all three are fresh 2026 pages, unlike §96)
+
+The question asked was narrow: **does any product in this category disclose how often its own findings are wrong, measured on the customer's own resolved history?** Three pages were read; between them they answer it, and the answer is asymmetric in a way that is exploitable.
+
+| Source (fetched 2026-11-02) | Verified claim as recorded | What it implies |
+| --- | --- | --- |
+| financialauditexpert.com, *Best AI audit tools in 2026* (page dated 2026-09-04) | A 2026 *Journal of Accountancy*-cited study gives AI audit tools a **median false-positive rate of 12%**; a University of Illinois study found AI missed **3%** of known fraudulent transactions against **5%** for human auditors, while generating **15% more false positives** | In financial audit, the error rate is a **headline number**. The profession treats "flags" as a measured instrument, not an oracle |
+| supervizor.com, *AI audit software 2026* (2026-10-26) | Procurement advice: "ask vendors for their **confirmed false positive rate on a representative dataset**"; **rates above 20–30% typically indicate generic training**; prefer 200 exceptions at 80% true-positive over 1,000 at 5% | A buyer-side **threshold** exists (20–30%) and a **test** exists (closed period with a known answer). Both are absent from every people-management product |
+| aihr-institute.com, *People Analytics in 2026* (2026-05-11) | A published attrition-model confusion matrix at a chosen threshold: **124 TP / 178 FP / 76 FN / 3,622 TN → precision ≈ 0.41, recall ≈ 0.62** | The best-documented people-analytics model in the market is **wrong about three of every five people it flags** — and that figure is published by analysts, never by the product that acts on it |
+| redbranchmedia.com, *AI in HR Tech 2026* (2026-07-02), citing SHRM *State of AI in HR 2026* | Only **39%** of HR functions have formally adopted AI; predictive turnover models are marketed at "**accuracy above 80%**"; a March 2026 JFF survey of 3,020 workers found **44%** now say AI does more harm than good vs **38%** good, and **56%** say their employer has not consulted them | Vendors sell **accuracy**; buyers are suspicious; nobody sells **calibration on your own record**, which is the only version a leader can check |
+
+### The gap this opens, stated as a design rule
+
+The audit profession has already won this argument for itself: a flag is an instrument, an instrument has a false-positive rate, the rate must be confirmed on a dataset with a known answer, and a rate above 20–30% means the instrument is generic. Every other part of enterprise software that emits findings — engagement insight cards, attrition risk lists, OKR "at risk" flags, burnout alerts — skips all four steps. LeadOS v81 takes the fourth step the audit world cannot take either: it measures the instrument **on the customer's own resolved history, inside the product, and refuses to price a claim when the history is too thin to say anything**.
+
+Three consequences were designed in deliberately rather than discovered later:
+
+1. **The 41%-precision benchmark is the honesty test.** If LeadOS's own family rates sit near 0.41 precision (i.e. ~59% of refutable findings are refuted), the terminal is behaving exactly like the best-documented model in the market, and the screen must say so rather than hide it. The demo's assessment family reads **68.8% doubted [40.7, 91.2]** — a number that is *allowed* to look bad, because it is a measurement of the instrument, not of the leader's people.
+2. **The 20–30% procurement threshold is applied to LeadOS itself.** The Clopper–Pearson bound on the terminal's false-alarm rate prints **100%** when nothing has been examined and states that **29 examinations** are needed to bound it below 10% (11 for 25%). The product therefore publishes the number a buyer would use to reject it, before the buyer asks.
+3. **The audit test becomes a product artefact.** "Pilot on a closed period with a known answer" is the freeze → later → grade loop: a round is priced only from measured families, frozen, and graded only on verdicts recorded *after* the freeze, with the score against the round's own base rate. The demo round loses (Brier 0.2233 vs 0.2222), which is the point — an instrument that has never been shown to lose has not been tested.
+
+### What this rules out for LeadOS, permanently
+
+- **No "insight cards" without a refuter.** A finding whose settlement condition cannot be written down is not shipped, because it can never be scored and therefore can never be wrong — and an unfalsifiable finding is marketing.
+- **No accuracy claim without a bound.** "82% accurate" is not printable here; "refuted in 7 of 9 examined, 90% interval [45.3%, 93.7%] on precision" is.
+- **No person-level instrument.** The 41% precision figure is about *people*; LeadOS measures *claims*. That is the difference between an instrument a leader can defend to a works council and one they cannot.
+
+### Carried forward
+
+The next genuinely new question for the competitive file: does any vendor in the OKR/performance category publish **calibration** (predicted-confidence vs realised-outcome reliability diagrams) for the confidence scores users type? None of the four sources above does; the aihr confusion matrix is the closest artefact found, and it is a static published analysis rather than a live product feature. That is the next hunt.
+
+## §96. 2026-11-02 — Everyone tracks the promise; nobody prices the book (Session 113, Schema v80, [ADR-0073](docs/adr/0073-promise-solvency-terminal.md))
+
+### Market scan
+
+**Method note (honesty first):** no new vendor pages were fetched for this section. The vendor claims below are **carried from the scans already recorded in this file** (§40–§95, each with its URL and date), re-read against the one question this session asked; they are labelled as carried rather than re-verified, and nothing here should be quoted as a fresh 2026-11-02 observation. What *is* newly observed is the gap between the two columns: every product in the category publishes a completion metric, and none publishes a forward price.
+
+| Source (carried; see earlier sections for URLs) | Verified claim as recorded | What it measures | Gap converted into LeadOS (`#/solvency`) |
+| --- | --- | --- | --- |
+| Asana / Monday / ClickUp / Notion / Linear — project & task suites (§40, §57) | On-time completion rate, burndown, velocity, workload views; "on track / at risk / off track" statuses set by a human | The **past** book: what finished, and a human's present-tense opinion about the rest | A forward distribution: `E[N] = Σ PD_i` and `P(N = k)` from the workspace's own settlement record, so "at risk" stops being an opinion |
+| Lattice / 15Five / Leapsome / Culture Amp — goal & OKR suites (§93, §95) | OKR progress percentages, confidence scores a user types, check-in cadence; calibration and review-cycle analytics | Self-reported confidence, not a calibrated probability | A copula joint distribution with an assumption-free interval beside it, and a grade for every frozen claim |
+| Workboard / Perdoo / Viva Goals / Ally (§45, §52) | OKR roll-ups, alignment trees, outcome scoring; "commitment vs aspiration" framing borrowed from Doerr | Alignment and roll-up correctness | **Solvency**: whether the commitments, rolled up, are deliverable at the capacity that actually exists (v80 prints coverage 0.56× where every roll-up in the category would print green) |
+| Visier / Perceptyx / Glint (§94) | Attrition risk scores, engagement drivers, benchmarking | Person-level risk and sentiment | **Portfolio-level** breach risk that never scores a person: a counterparty is a class, and no individual is named anywhere in the module |
+| Finance reference class: Basel II IRB, Vasicek (1987), Merton (1974), CreditMetrics, Tasche (1999/2008), Little (1961), Fréchet (1951) / Hoeffding (1942), Epstein (1969), Brier (1950) / Murphy (1973) | Standard, decades-old, well-tested machinery | The credit portfolio of a bank | Applied, unchanged in form, to a leader's dated promises — and reported with the same discipline: bounds beside models, a proper scoring rule, and a term structure of exposure |
+
+### The one number nobody publishes, and why
+
+The obvious headline for this surface — *P(at least one promise breaks)* — is arithmetic theatre and was rejected **inside** the build session. For sixteen promises averaging 30%, independence reads 99.9% and the declared copula reads 97.7%: the number saturates for any book large enough to matter, so it cannot improve, cannot discriminate, and would have made the terminal look rigorous while saying the same thing every week. The same trap sits on the assumption-free side: the Fréchet ceiling `min(1, Σpᵢ)` is 100% for this book, and scoring a constant 100% against a book that broke yields a **perfect Brier score of zero** — a grader that flatters the assumption-free bound is worse than no grader, because it makes the safe answer look predictive. Both were built, observed, and reversed in the same session (ADR-0073 "Reversals recorded this session"). The figure that survives the test is the **count**: it does not saturate, it is what a leader actually signs, and it can be scored with strictly proper rules (RPS, log score) against the model the leader refused.
+
+### What this implies for the next three sessions
+
+- **ρ has to earn its keep.** One graded reading in the demo already shows the declared copula *losing* to independence on RPS (1.136 vs 0.826). A terminal that reports that honestly has to close the loop: print the skill of the declared ρ against the independence benchmark across all graded readings, and let the leader re-declare on evidence rather than taste.
+- **Promises are cross-module objects.** The same obligation appears as a delegation, a case SLA and a hiring start date; the next leap is de-duplication with a declared tolerance, then refusal to price a duplicate twice.
+- **Slippage is a stock, not a count.** A move cap counts apologies; a slip budget (days slipped per counterparty per quarter) prices serial slippage, which is the quantity that actually destroys credibility (Robinson & Morrison 1995; Kim et al. 2004).
+
+## §94. 2026-11-01 — Everyone audits the person; nobody audits the instrument (Session 109, Schema v77, [ADR-0069](docs/adr/0069-measurement-reliability-terminal.md))
+
+### Market scan (queried 2026-11-01): what the category measures, and what it refuses to
+
+| Source | Verified 2026 claim | What it measures | Gap converted into LeadOS (`#/reliability`) |
+| --- | --- | --- | --- |
+| [HR Tools Nav — Lattice vs 15Five vs Culture Amp vs Betterworks 2026](https://hrtoolsnav.net/blog/lattice-vs-15five-vs-culture-amp-vs-betterworks-2026) | Culture Amp "robust, bias-mitigation tools, multi-rater calibration"; Lattice calibration "lightweight, no forced ranking"; "no algorithmic weighting" in Lattice/15Five | Distributions, cross-manager comparisons, consensus conversations | Nothing about the *variance inside one manager's ratings*: no ICC, no occasion-error share, no decision study |
+| [HR Tools Nav — running four cycles in parallel, 2026](https://hrtoolsnav.net/blog/performance-management-software-2026-15five-vs-lattice-vs-culture-amp-vs-leapsome) | Culture Amp "flags outliers that may indicate bias patterns (e.g. a manager consistently rating direct reports higher than peers)"; Leapsome enforces "if a manager's department-average rating deviated more than 0.5 points from the company average, the platform flagged it" | **Between-manager** leniency, relative to a company mean | A 0.5-point spread between two managers is *exactly* the quantity a variance decomposition explains: LeadOS prints how much of that spread survives the instrument's own error, and how many observations would make a 1-point claim defensible |
+| [Future Picker — Culture Amp vs Lattice 2026](https://futurepicker.com/en/culture-amp-vs-lattice-employee-engagement-2026-2/) | Culture Amp "applies psychometric validation automatically, flagging straight-line responses and suspiciously fast completions"; driver analysis as a correlation with engagement | **Survey** psychometrics (data quality + driver correlations) | Psychometrics applied to surveys but never to the performance rating that decides pay — the one instrument with a human consequence |
+| [RFP.wiki — Culture Amp performance profile](https://www.rfp.wiki/hr-office/performance-management-software/culture-amp) | Calibration support 4.2/5, performance analytics 4.4/5, auditability 4.0/5; "closed cycles become read-only" | Workflow, audit trail, benchmark context | Auditability of the *process* is solved; auditability of the *measurement* is not addressed anywhere in the scorecard |
+| Prior-session scans (RESEARCH §93) | Lattice AI Agent on all tiers, Lattiverse 1:1 agents, attrition analytics; 15Five Predictive Impact Model, dynamic heat maps, AMAYA; Visier Vee; Perceptyx; Leapsome; Glint; Peakon | Generation, summarisation, sentiment, attrition risk, skills inference, OKR tracking, benchmarking | Still zero published reliability coefficients for ratings in the searched material |
+
+**Conclusion of the scan (2026-11-01):** the category has industrialised *bias detection* and *causal inference* language, and both operate on people or on managers. Neither operates on the reliability of the measurement itself. A vendor that told a customer "your ratings carry 52% between-person variance, 95% CI 0–84%, and two of your four adjacent pairs are indistinguishable" would be publishing something no competitor publishes — and something that constrains its own product. That is precisely why it is worth building.
+
+### Methodological sources that shaped the engine
+
+- **Shrout & Fleiss (1979)** — the ICC family (1,1) / (2,1) / (3,1) and the case definitions behind them. LeadOS uses the one-way ICC(1) form because one manager rating each person once per cycle *is* a one-way design; the two-way mixed form is deliberately shown only as the flattering alternative it rejects.
+- **Revelle & Condon, *Reliability* (personality-project chapter)** — reliability is a property of a **decision study**, not of an instrument: "one rater" and "the mean of k raters" are different coefficients. Hence the module prints Spearman–Brown beside the single-rating coefficient, and the decision study is a first-class panel rather than a footnote.
+- **Murphy & DeShon (2000), "Interrater correlations do not estimate the reliability of job performance ratings" (Wiley)** — systematic rater effects are not random error. This is why the module refuses to present disagreement as noise-only and why the caveats card names the pooled cycle effect as a limitation rather than selling it as precision.
+- **Gerhart / Wright et al., *Personnel Psychology* (2001)** — a worked multi-source G-theory example in which item reliability .71 and rater ICC .61 still produce a generalisability coefficient of **.418**. A useful antidote to single-error-source reporting, and the reason the convergence panel exists at all.
+- **[Globis — Statistical and Research Standards for Vetting HR Analytics Tools (Oct 2026)](https://globis.com)** — the accepted evidence stack is ICC + Bland–Altman + test–retest; alpha alone is insufficient, and changing a scale or its labels invalidates prior reliability evidence. This is why the module reads the four-level ladder it was written on and never recodes it silently.
+- **[MCP Analytics — ICC forms, Pingouin & reporting (Oct 2026)](https://mcpanalytics.ai/articles/intraclass-correlation-icc-practical-guide-for-data-driven-decisions)** — the agreement-vs-consistency worked example is the clearest published illustration of the Murphy–DeShon point: a rater who reads "+1" systematically drops absolute-agreement ICC from 0.87 to 0.72 while consistency ICC stays 0.87. It also states the reporting rule the module follows literally: a point estimate without its interval conceals precision, and 0.75 [0.70, 0.80] is a different claim from 0.75 [0.45, 0.90].
+- **[Simply Psychology — Reliability in psychology (Oct 2026)](https://www.simplypsychology.org/reliability.html)** — chance-corrected agreement (κ) for categories, ICC for continuous ratings (LeBreton & Senter 2008). LeadOS uses neither κ nor percent agreement for the ladder because both discard the interval structure the ANOVA needs; that choice is written down in the ADR.
+
+### What this session deliberately did not claim
+
+That an ICC is a fairness measure (it is not — it is silent about bias against a group); that a wide interval is a product defect; that a refusal means "no difference" rather than "unmeasured"; that the coefficients generalise to other scales, populations or cadences; or that the convergence test can certify agreement at n = 5. The demo's own numbers show the last one: goal attainment and review ratings order the same five people almost identically (ρ = 0.90) and the exact permutation test still returns p = 0.083 — three to four people' worth of samples and one swapped pair. That result is reported as *uncertified agreement*, because calling it disagreement would be a lie and calling it agreement would be one too.
+
+---
+
+## §93. 2026-11-01 — Would a rule have beaten this manager? Counterfactual policy evaluation on the leader's own records (Session 108, Schema v76, [ADR-0068](docs/adr/0068-counterfactual-policy-terminal.md))
+
+### Market scan (queried 2026-11-01): what the 2026 performance-management category actually ships
+
+| Source | Verified 2026 capability | Gap vs. the counterfactual question | Converted into LeadOS (`#/counterfactual`) |
+| --- | --- | --- | --- |
+| [Betterworks — Best Performance Evaluation Software 2026](https://www.betterworks.com/magazine/best-performance-evaluation-software) | The 2026 AI claim is explicitly summarising 1:1 histories, suggesting goal language, flagging at-risk team members from engagement signals, and improving review tone. | All of it improves the *writing* of an evaluation. None of it asks whether the manager's own standing rules outperformed their judgement. | Policy race over four harvested decision-point families: the leader's actual behaviour is scored against four named alternatives, not described. |
+| [PerformSpark 2026 buyer's guide](https://performspark.ai/blogs/employee-management-software-guide) | "What specific decisions does this AI improve" — calibration bias detection, manager coaching participation, development-plan engagement. | Decision *support* stops at surfacing an outlier; it never evaluates the rule that produced the decision. | Manski worst-case bounds + refusal: the terminal says "this record cannot answer that" rather than surfacing an outlier and letting the reader infer a cause. |
+| [abloomify — Best Performance Management Software 2026](https://www.abloomify.com/blog/best-performance-management-software-for-2026) | "Almost everything Lattice knows about performance is what someone typed into Lattice." | The evidence base is self-reported narrative, so no counterfactual over the decision record is even expressible. | Zero new data entry: arms, rewards and covariates are read from records the workspace already keeps (premise outcomes, DACI reviews, delegation delivery, case actuals). |
+| [Performance Magazine — AI in performance management](https://www.performancemagazine.org/ai-in-performance-management-what-it-actually-does-and-what-the-evidence-says/) | AI automates drafting, feedback synthesis, goal-quality checks and attrition risk scoring; 90% of US managers have access to at least one algorithmic management tool (OECD). | Risk scoring is about *people*; the object of evaluation here is a *policy*, never a person. | No person is a unit anywhere in the module; the engine provably never reads `conflicts`, `pulses`, `candidates` or `messages`. |
+
+**Conclusion of the scan:** across four independent 2026 category sources, every vendor capability clusters on drafting, summarising, sentiment/attrition scoring, skills inference, OKR tracking and benchmarking. **None offers counterfactual policy evaluation, hidden-bias sensitivity, or partial identification on a manager's own decisions.** That is the ahead-of-market gap ADR-0068 claims.
+
+### Methodological sources the engine is built on
+
+- **[Off-Policy Evaluation for Sequential Decisions Under Unobserved Confounding](https://lacuna.tiptreesystems.com/work/off-policy-policy-evaluation-for-sequential-decisions-under-unobserved/wrk_48de8c43cd4e41215c1962e1d51e17b2)** — the *curse of horizon*: if hidden bias is allowed at every step, the worst-case error compounds exponentially and OPE becomes useless. Their remedy is a single-decision confounding model plus **certificates of robustness** — "the exact level of confounding Γ at which the conclusion would flip." LeadOS adopts both: one decision point, one arm, one reward per record, and Γ\* solved by bisection rather than asserted.
+- **[Off-Policy Evaluation Under Nonignorable Missing Data (arXiv 2507.06961)](https://pith.science/paper/2507.06961)** — complete-case and IPW estimators are consistent under MAR and **biased under MNAR**. Consequence for the terminal: an unharvested decision point is a declared absence, never an imputed zero and never an imputed reward.
+- **[OPE with Rewards Missing Not At Random (arXiv 2606.20206)](https://arxiv.org/html/2606.20206v1)** — naive imputation and importance weighting both degrade under heavy missingness; `scope` "produces degenerate estimates due to near-zero importance weight overlap" and is excluded. Consequence: the terminal prints the effective sample size and refuses below it instead of reporting a degenerate weighted estimate.
+- **[Counterfactual and time-sensitive tests of managerial ability (Int. J. Business & Management Sciences, 2026)](https://ijbmsjournal.com/index.php/jbmis/article/download/1140/611/1705)** — proposes a counterfactual, time-sensitive test of managerial ability and warns explicitly that an assisted/unaided difference must not be equated with deskilling. The academic framing exists; no shipping product implements it.
+- Prior canon reused: Dudík, Langford & Li (2011) doubly robust OPE; Hájek (1971) self-normalised IPS; Swaminathan & Joachims (2015) counterfactual risk minimisation; Manski (1990, 1995) partial identification; Rosenbaum (1987, 2002) sensitivity & design sensitivity; McNemar (1947); Stuart (2010) matching & ASMD; Hoeffding (1963); Dawid (1984) prequential.
+
+### Design decisions forced by the literature (and by failure, not theory)
+
+1. **Bounded headline, not doubly robust.** In testing, one decision point on a rarely-taken arm moved the doubly-robust estimate by 8pp (spread across DM/IPS/SNIPS/DR reached 14.8pp). Self-normalised IPS is bounded by the reward range, so it leads; DR/IPS/DM are printed beside it and their **spread is the fragility diagnostic** (>10pp ⇒ fragile).
+2. **Pre-treatment covariates only.** An earlier iteration matched on observation counts and `ageDays` — both functions of the treatment or its downstream. Overlap collapsed to zero and the terminal refused everything. Matching now uses declared horizon and prior only.
+3. **The behaviour policy is exactly identified, so it is never modelled.** Running estimators on `policyId === 'observed'` would dress the plain mean in a model's assumptions. It is reported as the plain mean, agreement 100%, no interval.
+4. **A refusal keeps its interval.** A `refused-unidentifiable` row still prints its (wide) bootstrap interval — the width *is* the evidence of the refusal. Only an `insufficient` row has its interval withheld.
+
+**Rejected:** claiming a causal effect from observational records; matching on post-treatment covariates; extrapolating a policy value the record never identified; imputing a missing reward or arm; per-person policy scoring of any kind; adopting a policy without the leader's ruling.
+
+---
+
+## §92. 2026-11-01 — Closing the execution-to-epistemic loop: Earned Schedule, clearance separation, and 2×2 outcome attribution (Session 107, Schema v75, [ADR-0067](docs/adr/0067-outcome-attribution-loop-settlement.md))
+
+### Fresh public-source hunt (queried 2026-11-01 via GitHub REST API, `pushed:>2026-01-01`)
+
+| Public source | Verified public capability (2026) | Gap vs. first-time manager need | Converted into LeadOS (`#/attribution`) |
+| --- | --- | --- | --- |
+| [`py-why/EconML`](https://github.com/py-why/EconML) (★4,835, pushed 2026-10-28) | Orthogonal ML / doubly robust conditional treatment-effect estimation with explicit confounding assumptions. | Requires large offline Python datasets; absent from day-to-day operational management tools. | Enforces strict confounding discipline in small-$n$ operational loops: when execution $< 80\%$ and the case/premise fails without independent falsification, LeadOS outputs `confounded-refused` instead of fabricating cause. |
+| [`0xNyk/council-of-high-intelligence`](https://github.com/0xNyk/council-of-high-intelligence) (★4,734, pushed 2026-10-26) & [`Exponential-OS/prompt-engineering-in-action`](https://github.com/Exponential-OS/prompt-engineering-in-action) (pushed 2026-10-28) | Multi-perspective deliberation and sycophancy / confirmation-bias challenges during review. | Text-only prompt workflows with no connection to live operational gates, budgets, or premise outcomes. | Deterministic 2×2 attribution & Type-III error guard challenge post-hoc rationalisation against recorded gate clearance and premise verdicts. |
+| [`brayonpi/hexstellar`](https://github.com/brayonpi/hexstellar) (★1,453, pushed 2026-08-27) & [`winstonkoh87/Athena-Public`](https://github.com/winstonkoh87/Athena-Public) (★620, pushed 2026-11-01) | Local-first governance harnesses with verifiable execution receipts and explicit certainty tags ("Own the state"). | Session/agent receipts do not decompose schedule pace, leader vs delegate clearance, or Brinson cost variance. | Immutable prospective forecast freeze (`frozenAt`), one-shot out-of-sample Brier grading, and locked calibration ledger (`archiveLoopSettlement` refuses Brier-graded rows). |
+| [`weeeha/Super-Design-Lead`](https://github.com/weeeha/Super-Design-Lead) (pushed 2026-10-31) & [`VioletScar-Hui/aipm-coach-plugin`](https://github.com/VioletScar-Hui/aipm-coach-plugin) (pushed 2026-07-26) | File-backed first-line manager skill packs and closed-loop review-check cycles. | Pure markdown prompt templates; zero quantitative schedule, clearance, or variance math. | Executable Lipke Earned Schedule, Goldratt Fever Chart, Pressman–Wildavsky clearance split, and automated `RULE-STL-01..05` cascade into 1:1s, DACI, AARs, and assumptions. |
+| [`seonglae/openportfolio`](https://github.com/seonglae/openportfolio) (pushed 2026-10-29) & [`donizetiferr/forecast-calibration-kit`](https://github.com/donizetiferr/forecast-calibration-kit) (pushed 2026-11-01) | Flow-vs-price portfolio return attribution and zero-dependency Brier/Murphy calibration scoring. | Financial-only / standalone CLI; disconnected from operational cases, delegations, and assumptions. | Brinson–Fachler 3-way additive loop cost variance (schedule, rate/spend, interaction) + Cromwell-clamped $[5\%, 95\%]$ Brier/Wilson calibration inside the operational graph. |
+
+*(Commercial HR/OKR/decision SaaS internals not inspectable via open source remain **[UNVERIFIED]** beyond public documentation.)*
+
+### Named cross-domain frameworks implemented
+- **Engineering & Operations:** Lipke (2003) Earned Schedule ($ES, SPI(t), SV(t), IEAC(t)$) and Goldratt (1997) Critical-Chain Buffer Fever Charts.
+- **Political Science & Implementation:** Pressman & Wildavsky (1973) Sequential Clearance Points separating leader-owned governance bottlenecks from delegated work.
+- **Strategy & Implementation Science:** Argyris (1977) Single- vs Double-Loop Learning and Fixsen et al. (2005) Implementation Fidelity / Type-III Error guard.
+- **Economics & Principal–Agent Theory:** Holmström (1979) Informativeness Principle & Kerr (1975) Anti-Scapegoating (team exoneration when execution $\ge 80\%$ and a strategic premise fails).
+- **Finance & Decision Theory:** Brinson & Fachler (1985) 3-Way Additive Variance Attribution and Savage (1951) Ex-Post Policy Regret.
+- **Statistics:** Brier (1950) Strictly Proper Scoring Rule, Cromwell's Rule $[5\%, 95\%]$, and Wilson (1927) Score Intervals ($n \ge 5$ skill gate).
+
+**Rejected:** turning loop settlement into an employee performance score; silently converting mixed-currency budgets/cases; treating unspent encumbrances as realized spend; guessing causal attribution when both execution and outcome fail; breaking untouched Action Bundle withdrawal via unsolicited background mutations.
+
+---
+
+## 2026-11-01 — Dimensional safety in workforce decisions (bounded fresh hunt)
+
+- [Visier workforce intelligence / 2026 tools overview](https://www.illoominus.com/best-people-analytics-tools-in-2026): workforce intelligence combines operational and people data for scenario planning. Implication: a joined answer needs a units gate, not just more inputs.
+- [2026 people analytics comparison](https://gowindmill.com/resources/lists/top-ai-people-analytics-tools-early-stage-companies/): identifies One Model's explainable predictive modeling, ChartHop's organisational planning, Culture Amp's benchmarks and Workday Peakon's continuous listening. This is a vendor-authored comparison, not independent validation; competitors' current detailed capabilities **[UNVERIFIED]**.
+- Implemented: explicit refusal of cross-currency capacity prioritisation and vacancy aggregation, including the rule-generated decision and scenario handoffs. This follows dimensional analysis: comparing USD/day with EUR/day requires an exchange rate with provenance and an as-of date.
+- Planned: auditable, dated FX evidence with explicit freshness and uncertainty; surface historical decisions created before the guard for review. Rejected: silently assuming parity or pulling live rates without user consent.
+- Market-wide novelty and outcome impact **[UNVERIFIED]**; this is a bounded scan, not a complete competitive survey.
+
+---
+
+## §91. 2026-11-01 — Portfolio valuation that refuses to invent a unit (Session 105)
+
+Fresh bounded web research (vendor claims, not independent product testing):
+
+- [Orgvue’s 2026 comparison](https://www.orgvue.com/resources/articles/orgvue-vs-visier/) describes workforce scenario modeling across structure, cost and capacity; Visier emphasizes workforce analytics and planning. LeadOS already has cross-ledger scenarios, but its totals could silently mix units, undermining the premise of trustworthy comparison.
+- [Windmill’s 2026 comparison](https://gowindmill.com/resources/lists/top-ai-people-analytics-tools-early-stage-companies/) describes AI-native collaboration analysis, One Model’s explainable predictive modeling, Culture Amp’s engagement analytics, and Workday Peakon’s listening. These are marketing/comparison claims; exact functionality is **[UNVERIFIED]** by hands-on testing.
+- [Windmill’s coaching comparison](https://gowindmill.com/resources/lists/ai-coaching-tools-manager-feedback/) describes Betterworks feedback assistance and Culture Amp role-play. [Engagedly’s 2026 roundup](https://engagedly.com/blog/best-performance-management-systems/) describes 15Five check-ins/360 and Betterworks OKRs. LeadOS already routes cases into coaching; trusted scenario economics is the more urgent gap than another generic coaching screen.
+- [Portfolio-risk methods](https://www.midhafin.com/portfolio-risk-methods) explains the dependence of portfolio variance on covariance. Individual quantiles are not generally additive: a sum of P90 estimates is not a portfolio P90. We do not infer a dependence structure or claim a confidence interval.
+
+**Implemented:** dimensional-analysis guard on case portfolio and multi-ledger scenario valuation; per-currency presentation; withheld Pareto and decision-handoff claims; truthful sum-of-quantiles labeling; numeric vacancy-cost fix. Connected existing case automation is exercised with decisions, delegated mitigation, capacity reserve and coaching.
+
+**Planned:** currency-aware ranking throughout capacity and hiring; explicit dated FX assumptions with sensitivity and provenance; dependence-aware joint case simulation with calibration; real-browser/assistive-tech validation; durable action-bundle outbox.
+
+**Rejected:** silently using today's FX without provenance; calling a sum of P90s a portfolio percentile; a plausible-looking merged number; claiming this narrow guard fixes every financial calculation. No category-first claim is supported.
+
+---
+
+## §90. 2026-11-01 — Review-before-apply becomes a cross-module transaction (Session 104)
+
+### Fresh public-source hunt
+
+Retrieved via GitHub REST API on 2026-11-01 (bounded source scan, not exhaustive vendor coverage):
+
+| Project | Verified public capability | Converted into LeadOS |
+| --- | --- | --- |
+| [Temporal](https://github.com/temporalio/temporal) | Durable execution with automatic retries; workflows survive intermittent failures. | Expose the gap honestly: this slice is atomic within one browser transaction, not durable across sessions. Durable outbox is next. |
+| [Restate](https://github.com/restatedev/restate) | Durable building blocks, workflows-as-code and resilient orchestration without heavy infra. | Keep orchestration in application code and reuse existing validated APIs; no backend added. |
+| [Inngest](https://github.com/inngest/inngest) | Durable step functions replace queues/state/scheduling; local dev parity. | Typed command steps and one shared executor for rehearsal and live adoption. |
+| [n8n](https://github.com/n8n-io/n8n) | AI-native multi-step workflows, human approvals and observability. | Explicit human review gate plus collection/relationship diff and immutable receipt. |
+| [Windmill](https://github.com/windmill-labs/windmill) | Workspace fork with live preview/diff review and protected promotion to production. | Disposable-store rehearsal, stale-gated promotion and actual-vs-preview equality. |
+
+### Named frameworks converted into code
+
+- **PDCA (Deming):** decision → delegated verification → dated review checkpoint closes a delivery loop rather than creating disconnected records.
+- **Assumption-Based Planning (Dewar/RAND):** each bundle can pre-register a falsifiable recovery premise with a signpost and review date; the existing Premise Sentinel grades it later.
+- **Mendelow power/interest:** stakeholder briefs are produced only for the existing salience audience; no invented recipient.
+- **DACI / human-in-the-loop:** adoption creates an unchosen decision and unsent drafts; the leader still chooses and sends.
+- **Opportunity cost / encumbrance accounting:** a budget commitment is distinct from actual spend; compensation releases only unspent commitments.
+- **Saga compensation (Garcia-Molina):** reverse-order compensators run only after frozen fingerprint checks; this is guarded compensation, not a claim of distributed ACID across external systems.
+
+### Implemented / planned / rejected
+
+**Implemented:** Action Bundles, six adapters, worker rehearsal, multi-event rule transaction, stale gates, footprint equality, rollback, untouched-only withdrawal, typed provenance, review checkpoint, Settings, Signals/Today, CSV #64, v74 migration, standalone worker.
+
+**Planned:** durable outbox/retry across reloads; outcome grading against frozen intent; real-browser/AT CI; richer per-command editing of options/signposts; conflict-safe multi-tab adoption.
+
+**Rejected:** autonomous manager persona; arbitrary code/API execution; silent send/spend/choice; erasing touched work; a second module-specific automation engine; a network workflow backend; causal-effect claims from a software diff.
+
+**[UNVERIFIED]:** whether any competitor ships this exact local-first leadership bundle; real-browser/AT behavior; usefulness of default priors and review cadences on real incidents.
+
+---
+
+## §89. 2026-11-01 — From agentic orchestration to a rehearsed, adoptable leadership response (Session 103)
+
+### Fresh public-source hunt
+
+Sources were retrieved on 2026-11-01. This is a bounded GitHub-source scan, not a claim of complete vendor coverage.
+
+| Tool / project | Verified capability or change | Product implication |
+| --- | --- | --- |
+| [Microsoft AutoGen](https://github.com/microsoft/autogen) | The repository now explicitly says it is archived and no longer maintained; new users are directed to Microsoft Agent Framework. | Do not add an abandoned agent dependency. Durable action contracts matter more than the name of an orchestration framework. |
+| [Microsoft Agent Framework](https://github.com/microsoft/agent-framework) | Successor framework for agent and multi-agent workflow orchestration; the public repository describes stable APIs and cross-runtime interoperability. | Borrow the separation between a typed action contract and its executor, not an autonomous-manager persona. A network/model dependency is not justified for this local-first slice. |
+| [Camunda](https://github.com/camunda/camunda) | Public positioning is an agentic orchestration platform, alongside its process-orchestration lineage. | LeadOS already has an event spine; the missing product bridge is a human-reviewable response bundle and an auditable adoption boundary. |
+| [PyWhy DoWhy](https://github.com/py-why/dowhy) | Explicit causal assumptions, potential outcomes, interventions/counterfactuals and a refutation/falsification API. | A deterministic replay of software rules is not a causal estimate of employee behaviour. Name the distinction and expose assumptions; do not dress a diff as an identified treatment effect. |
+| [Frappe HR](https://github.com/frappe/hrms) | Goals/KRAs, self-evaluation and appraisal cycles inside an employee-lifecycle HR product. | The baseline category connects records and cycles. LeadOS should differentiate on rehearsing the cross-module consequences of one leadership response before committing it. |
+
+### Framework synthesis converted into this session’s build
+
+- **Potential-outcomes discipline (Neyman–Rubin):** compare explicitly declared policy alternatives from the same frozen workspace and clock. The result is an action-level software counterfactual, not an identified causal effect on people.
+- **OODA loop (Boyd):** observe the intake evidence, orient through the existing case graph, decide between response policies, act through the same validated command boundary. The human remains the decision-maker.
+- **Cost of delay / PERT:** the delayed branch carries an explicit low/mode/high weekly exposure price. Its range is a scenario range, not a confidence interval; no delay cost is invented when the leader supplies none.
+- **Value of information:** evidence-first response has a carrying cost and a break-even probability of avoiding unnecessary mitigation spend. This is a threshold, not an EVSI estimate from an unidentified outcome model.
+- **Human-in-the-loop / contextual integrity:** high-stakes cases require explicit review; delayed response is refused for safety/legal signals; interpersonal conflict stays behind the existing privacy wall.
+
+### Gap and ambition
+
+The verified tools orchestrate work, estimate causal effects, or manage performance records. LeadOS had the ingredients but forced a new manager to assemble them. The shipped target is a single guided path from a situation note to a reviewed, costed, rehearsed and atomically adopted cross-module response, with a durable receipt and follow-up. Whether any commercial vendor offers an equivalent combination remains **[UNVERIFIED]**; no category-first claim is made.
+
+### Deliberately rejected
+
+- An LLM that silently assigns owners, probabilities or root causes.
+- A claimed causal prediction of morale, attrition or delivery from a software replay.
+- A new backend or agent-framework dependency without a measured need.
+- Another specialist terminal disconnected from intake and action.
+
+### Next hunt targets
+
+Prospective grading of response-policy choices; reversible multi-command bundles beyond the case boundary; competitor verification in Lattice, Leapsome, Workday, Visier and Culture Amp beyond public marketing; and real-manager usability testing of the guided response journey.
+
+---
+
+## §88. 2026-11-01 — Your probability words are an instrument, and an instrument can be calibrated (Session 102, [ADR-0064](./docs/adr/0064-confidence-transport.md))
+
+### The question
+
+Every terminal in LeadOS asks the leader to write a probability, and then *uses that
+number as an input*: expected value, cost of carry, value of information, queue
+forecasts, discounting of a wait. If "80%" actually resolves 45% of the time, every
+number built on it is wrong in a direction that nobody can see. A calibration chart
+that shows the bias but never changes what the product does is a diagnosis with no
+treatment; a product that silently corrects the number destroys the record it is
+measuring. The design question is therefore: **what can be done with a
+miscalibrated probability that is neither cosmetic nor dishonest?**
+
+### What the literature says, and what was implemented
+
+| Source | Claim | What it changed here |
+|---|---|---|
+| Brier (1950); Murphy (1973) | Mean squared error on probabilities is strictly proper; it decomposes into reliability − resolution + uncertainty | Brier is the only score the verdict uses, against the *declared* numbers as the incumbent. The three-term decomposition is printed on the Method panel and on the reliability table |
+| Dawid (1984), prequential evaluation | A forecaster is scored on predictions made from the past only; the in-sample fit is not a forecast | Every test settlement is predicted by a map fitted only on settlements before it. The screen says plainly that the prequential score still cannot remove model-selection bias |
+| Platt (1999); Niculescu-Mizil & Caruana (2005) | A two-parameter sigmoid maps scores to calibrated probabilities and is hard to overfit; isotonic is more flexible and overfits small records | Both are fitted and raced out of sample. The sigmoid is preferred on ties, and the sigmoid carries a Gaussian prior toward the identity map so a separable seven-point record cannot produce a 0%/100% step |
+| Barlow, Bartholomew, Bremner & Brunk (1972); Zadrozny & Elkan (2002) | Isotonic regression by pool-adjacent-violators is the monotone least-squares calibration map; bin, then pool | Binned PAV with a Beta(1,1) pseudo-count per occupied bin, so a bin holding one observation reads 33% rather than 0% or 100%; the reported weight is the observed count, never the pseudo-observations |
+| Wilson (1927) | Score interval for a binomial proportion, usable at small n | Every observed rate on the page carries one; a band with no settlements is omitted rather than drawn at zero |
+| Lichtenstein, Fischhoff & Phillips (1977); Keren (1991); Moore & Healy (2008) | Overconfidence is the robust finding; it is task-dependent and best measured as a frequency, not a trait | The unit is a *declaration*, never a person. There is no per-person calibration anywhere, and no control that would produce one |
+| Kahneman & Tversky (1992) probability weighting; Satopää et al. (2014) extremizing; Mellers et al. (2015); Tetlock & Gardner (2015) | People under-weight moderate probabilities and over-weight extremes; top forecasters are better calibrated and their odds can be usefully extremized by aggregation | The isotonic map *is* the empirical probability-weighting function for this leader's own words, fitted rather than assumed, and it is applied to open promises as a second reading — never as a rewrite |
+| Kerr (1975) "on the folly of rewarding A"; Goodhart's law | A measure used as a target stops being a measure | The declared number is never rewritten. If the product corrected declarations, "declare 40%, mean 80%" would be the rational strategy and the calibration read would become its own target |
+
+### What the market does
+
+No vendor documentation reviewed this session publishes an out-of-sample calibration
+test of a manager's own probability language, a frozen calibration certificate graded
+prospectively, or a transported reading of an *open* decision shown beside the
+declaration **[UNVERIFIED — search limit; absence of evidence, not evidence of
+absence]**. People-analytics suites (Lattice, 15Five, Culture Amp, Confirm) publish
+ratings, engagement, sentiment and flight-risk inference; forecasting platforms
+publish calibration for *their* forecasters, aggregated over a crowd, not for the
+manager's own vocabulary across the tools they already use. The narrow, testable
+claim is not "nobody else does calibration" — it is that **the calibration is
+measured on the leader's own seven ledgers, raced out of sample against not
+translating at all, and then frozen and graded prospectively** — and that the
+declaration survives all three.
+
+### Where LeadOS is narrower than the claim it might appear to make
+
+- A prequential score removes look-ahead but not the fact that the instrument was
+  chosen on the record it is scored on. The screen states this; only the frozen
+  certificate is a prospective test, and one grade is one window.
+- Seven source ledgers are *treated as one instrument*. That is an assumption about
+  the leader, not a finding: it is right when "my 80%" means the same thing across
+  modules and wrong when it does not — which is exactly what the horizon bands and
+  the per-source table exist to expose.
+- Transported figures are decision support from a fitted instrument, not a
+  measurement of the specific promise, and not a forecast of it.
+- The demo's record is synthetic and deliberately overconfident; whether real
+  leaders' records bend monotonically, or per horizon band, is unmeasured here.
+
+### Rejected and queued
+
+- **Rejected:** rewriting declared probabilities; a per-person calibration score;
+  choosing the map by AIC/BIC; reporting an in-sample curve as a forecast; treating
+  "mixed" and "partially met" as coin flips; applying a band map that has not cleared
+  its own floors.
+- **Planned:** calibrating the map per horizon band once each band clears its floors;
+  an intercept-only versus covariate comparison for *who* the declaration was
+  written for; and a two-instrument extreme (aggregate the leader's own words with a
+  second, independent reading) once the certificate ledger has five grades.
+
+---
+
+## §87. 2026-11-01 — Covariates, not just cohorts: a governed regression preview (Session 101)
+
+### Fresh competitor hunt
+
+| Source | Verified product statement | Status / design implication |
+|---|---|---|
+| [Lattice AI Agent](https://lattice.com/platform/ai-agent) | Lattice positions an AI agent inside performance workflows for review summaries, 1:1 talking points and coaching prompts. | Vendor page; capabilities are not independently audited here. The crowded surface is drafting-in-context, not quantified small-sample uncertainty. |
+| [Confirm Perform](https://www.confirm.com/scale-up/products/perform) and [Confirm press center](https://www.confirm.com/press) | Company describes Manager Coach, HRBP Advisor, People Analytics and Cycle Copilot agents in Slack/Teams, with organizational-network analysis and review/calibration workflows; its press page identifies it as part of Learning Pool. | Vendor claims. This materially raises the bar for in-workflow coaching and ONA; LeadOS should not frame itself as uniquely AI-enabled. |
+| [Nakisa Decision Intelligence launch](https://nakisa.com/blog/introducing-nakisa-decision-intelligence-for-org-design-and-workforce-planning/) | Nakisa describes natural-language workforce/org-design analysis with what-if scenarios, cost effects and internal-candidate exploration. | Vendor claims. Scenario intelligence and workforce-cost linkage are actively emerging, not a vacant category. |
+
+### The design delta
+
+- **Implemented preview:** authority class was already a registered ordered contract, but the engine treated it only as four unrelated rates. A one-covariate Beta-binomial logistic regression now estimates an observational authority slope, with posterior uncertainty and class forecasts. The prior is stated, the estimate is lazy, and the model cannot alter the base report or rules.
+- **Cross-domain link:** this reads dated delegation completion/return/overdue outcomes via the existing delegation adapter and authority semantics. Existing checkpoint automation remains the event-driven downstream path; this preview itself writes no state. This is intentionally different from an autonomous HR agent: it exposes the evidence behind a claim and refuses to act on a merely exploratory correlation.
+- **Why not more covariates:** session 96 and 100 identified mutable historical fields as a transport risk. Without immutable intake-time covariates, a declared horizon/size can be rewritten after outcome. The adapter is therefore limited to a stable, product-defined ordinal contract and is not generalized to case severity/horizon yet.
+
+### Statistical and governance boundaries
+
+The covariate model uses a deterministic grid over logit intercept, slope, and log concentration; a proper Normal(0, 1.5²) slope prior; Jeffreys intercept measure; and the existing BDA3 concentration prior. Per-class Beta-binomial predictive means and moment-matched 90% intervals integrate parameter uncertainty. The plotted association is **not causal**: delegation authority is selected rather than randomized; there are four levels; repeated observations may be dependent; and latent confounders are unmeasured. The model is not included in policy verdicts, checkpoints, insight scores, or stored snapshots. The panel only appears when the governed pool is permitted and at least three levels have outcomes and varied covariate values; all other conditions refuse.
+
+### Decision and rejection record
+
+This session chose a **visible research preview** over the more aggressive but unsafe auto-routing choice. Lattice/Confirm show that assistants are becoming embedded in manager workflows; Nakisa shows org-design what-ifs. LeadOS's credible differentiator to pursue is not another natural-language wrapper, but a model whose assumptions, uncertainty and later performance are inspectable. The next stage is a prospective frame/grade for this candidate before it can influence policy.
+
+- **Rejected:** causal interpretation or individual-level inference; converting a class-level association into advice about a person's autonomy; silently replacing the production pooled rates; computing the model during every render/automation trigger; additional covariates from mutable fields.
+- **Planned:** immutable intake-time covariates; prospective Brier comparison against the current intercept-only model; operation and hiring adapters; governed exchangeability proposals. These are not implemented by this session.
+
+## 98 — 2026-10-31: What fails together — pricing the book, not the call
+
+**The gap this hunt had to close.** Session 97 priced one call's option to wait. But a leader holds a *book* of open calls, and the per-call arithmetic is blind to the only thing that makes a book different from a list: correlation. Under independent exercise the expected total is the sum of the per-call premiums under any correlation — so an expected-value tool has nothing to say about what correlation moves: the joint tail, its concentration, and how often coupled calls lapse together.
+
+1. **The method is decades old and lives in two places, neither of them a manager's screen.** On the academic side, Gamba's Monte-Carlo treatment of *portfolios* of real options (correlated GBM underlyings, per-option optimal exercise, expand/abandon/stage interactions) and Schwartz's least-squares-Monte-Carlo R&D abandonment work are the standard references ([Gamba 2002, MC approach](https://mx.nthu.edu.tw/~jtyang/Teaching/Options_Corp_Finance/Downloaded_Papers/SSRN_ID302613_MC_approach.pdf); [Schwartz, NBER w10114](https://www.nber.org/system/files/working_papers/w10114/w10114.pdf)). On the tool side, portfolio-CVaR with component contribution is *investment* software: Portfolio Visualizer, PortfoliosLab and Asset Lens run CVaR, concentration decomposition and correlated Monte Carlo on securities ([portfoliovisualizer.com](https://www.portfoliovisualizer.com/analysis), [portfolioslab.com](https://portfolioslab.com/), vendor material [UNVERIFIED]). Nothing searched prices a leader's **own decisions** as a correlated book.
+2. **The nearest conceptual neighbour is the risk-register calculator, and the difference is state.** AI tool directories now list one-shot calculators — "aggregate risk-register occurrence and lognormal severity marginals through a validated Gaussian copula into expected loss, VaR, CVaR, dependence amplification and tail shares", "estimate engineering portfolio VaR with initiative tail attribution", "estimate portfolio diversification benefit … reconciling Euler tail-risk contributions" ([gitrev.io risk & tails directory](https://gitrev.io/tools/domain/risk-tail), directory text [UNVERIFIED]). Those are exactly the right *quantities* (we print the same ones) computed once over a register the user retypes. The LeadOS binding is different in kind: the correlation topology is **discovered from the premise graph the leader already keeps**, ρ is declared against named pairs, the book re-prices itself from workspace records, the forecast is **frozen and Brier-graded**, and premise movement propagates into the ledger on the event spine.
+3. **Attribution has to be exact, or it is decoration.** Finance's component VaR discipline — the position's fair, diversification-adjusted share of the total, with components summing to the total by Euler's theorem — is the reason a tail number becomes a decision ([riskhub.org, Component VaR](https://riskhub.org/blogs/component-var-explained)). We use the Tasche (1999) conditional-mean form: contribution_i = E[Payoff_i | total in its own worst tail], which partitions CVaR **exactly** by construction — no Euler approximation, no small-position assumption — and the partition is pinned by test.
+4. **Correlation discipline is where the honesty lives.** The finance simulators are explicit that a fixed correlation matrix is a simplification that can miss tail dependence ([simulations4all.com](https://simulations4all.com/simulations/monte-carlo-portfolio-simulator), tool documentation). Our posture is stricter than a default: the graph names the pairs, the leader declares the magnitude, a sharing pair without a declaration **refuses the joint tail**, and an inconsistent set of declarations is refused rather than projected onto the nearest valid matrix. Deriving ρ from co-movement would be an invented fact; refusing to guess is the feature. What we do NOT have: tail dependence beyond Gaussian correlation, time-varying ρ, and ρ calibrated from graded outcomes (queued below five-reading calibration).
+
+**Gap to shipped code.** The demo book makes the additivity theorem visible in one screen: the exact Σ premium (USD 742.42) is unchanged from ρ = 0 to ρ = 0.9, while the tail, the concentration and the joint lapse all move; the reference fixture pins mean-invariance within the MC's own standard errors, monotone joint lapse in ρ, the CVaR partition to the cent, and the commit rate against the lattice to 1.5pp. The simulation follows each member's **own** frozen lattice policy — the marginal behaviour of every call is the per-call terminal's behaviour, so only the joint distribution is new. Signals read frozen records rather than live renders, so the nav badge never runs a simulation and every signal cites a reading id and a freeze date.
+
+**Still [UNVERIFIED].** Full competitor coverage (focused hunt only); whether declared ρ survives contact with leaders who have never correlated anything; whether the 60%/10pp concentration and joint-lapse conventions are useful thresholds; real-browser and assistive-technology behaviour of the panel.
+
+**Next.** (1) ρ calibration from graded readings once five books exist — the Brier ledger already stores what a recalibration would need. (2) The repeated-look error budget, still owed from §95/§96. (3) Tail dependence beyond the Gaussian copula — only if a leader's own record can support identifying it; otherwise it is decoration.
+
+## 97 — 2026-10-31: What is the flexibility to wait worth?
+
+**The gap this hunt had to close.** LeadOS could price a delay four ways and could not price the *right to delay*. Decision Tempo derives a carrying cost; the Cost of Waiting terminal prices the queue and freezes exposure certificates; the Consequence Lab integrates the conditional survival curve into an expected carrying cost; Information Value prices a study. Every one of them assumes that waiting is a cost to be minimised. None of them can say "this call is worth waiting for, and here is the stake at which that stops being true".
+
+1. **Real-options analysis is a mature *finance* discipline that has not reached the management surface.** "The option to defer (timing option) allows managers to wait before committing capital… valuable in uncertain environments" is textbook; the standard toolkit (Black–Scholes for simple deferred options, lattices for exercise boundaries) is taught in capital budgeting ([AccountingTute](https://www.accountingtute.com/real-options-valuation-in-capital-budgeting-decisions/), practitioner material). Commercial tooling exists and is specialised: Mun's Real Options SLS / Risk Simulator advertises deferment, abandonment, expansion, chooser and compound lattices ([book listing](https://www.researchgate.net/publication/243786064_Real_Options_Analysis_Tools_and_Techniques_for_Valuing_Strategic_Investments_and_Decisions)); the 2026 decision-analysis software comparison describes DPL and TreeAge Pro as carrying real-options analysis inside decision trees, explicitly because "a static cost comparison leaves that waiting value qualitative" ([analytica.com](https://analytica.com/blog/best-decision-analysis-software)). So the *method* is not novel. What is absent from the searched material is any leadership workspace that prices the deferral of an **ordinary managerial call** from the leader's own recorded numbers.
+2. **Delay tooling is one-sided by construction.** The public cost-of-delay calculators multiply a run-rate by months parked and stop there — "parking a decision is not free" ([Digital Advisory](https://www.digitaladvisory.com/resources/calculators/cost-of-delay-calculator)). That is exactly LeadOS's existing posture, and it is half an argument: the missing half is the value of the option that parking preserves. Search-limited, but the asymmetry was consistent across every calculator and CD3/WSJF framing we found.
+3. **Decision-intelligence vendors sell the audit trail, not the option price.** 2026 vendor writing frames decisions as assets with logged choices, scenario testing and governance/explainability, alongside "continuous model retraining" ([bteanalytics](https://bteanalytics.co/knowledge/what_is_a_decision_intelligence_operating_model_and_how_can_b2b_growth_and_operations_teams_implement_it_in_2026.php), vendor material [UNVERIFIED]). None of the described surfaces prices the flexibility of not deciding yet. "Retrain" is also the move this codebase refuses — frozen forecasts are labelled, never re-based.
+4. **Naming discipline.** This is not EVSI and it is not a market price. Value of information prices learning about an unobservable state; an American deferral option has value even when nothing can be learned, because committing sinks money into a call the world can still invalidate. LeadOS runs the lattice on the **real-world measure** with the leader's declared drift (default 0) and no replicating portfolio, so the output is a decision-analysis expected value. The UI, brief and [ADR-0059](./docs/adr/0059-deferral-option-terminal.md) carry both non-claims; the premium is never added to EVSI or to the Cost of Waiting's integrated carrying cost.
+
+**Gap to shipped code.** The shipped terminal differs from a real-options spreadsheet in four ways that are testable rather than rhetorical. (a) **σ is measured, not typed**: the robust log-scale dispersion (1.4826 × MAD) of the workspace's own settled realised ÷ assessed ratios, annualised from the median observed horizon, withheld below the observation and σ floors, with a declared σ accepted only when labelled. (b) **`K` comes from the record**: budget lines pointed at the decision are the commitment cost; a reversible call is pinned to `K = 0` and told to decide now. (c) **Carry is the workspace's own delay price**, entered as a cash outflow rather than smuggled into the drift, with break-even carry and break-even σ solved by bisection on the same tree. (d) **The frozen frame is a prospective timing forecast** — `P(commit by deadline)` — graded once against the decision's recorded date, never back-filled, never re-graded. No category-first or market-first claim is made; the differentiation is narrow, auditable and local.
+
+**What the number says, bluntly.** With carry at the workspace's 12-week erosion convention, most demo frames read `commit-now` or `indifferent`: the honest finding is that **waiting usually does not pay its own carrying cost**, and the value of the terminal is the break-even column that says how low the carry (or how high the σ) would have to be before it did. That is a deliberate inversion of the product's instinct to nag, and it is the first surface in LeadOS that can tell a leader to slow down with arithmetic behind it.
+
+**Next.** (1) Portfolio deferral — a set of calls whose values are correlated cannot be priced one at a time, and the graph already knows which decisions share premises. (2) A repeated-look error budget, still owed from §95/§96, which also disciplines the weekly scan. (3) Beyond the single-name GBM: a jump term or a declared regime, only if a leader's own record can support identifying it — otherwise it is decoration. Full competitor coverage, real-world usefulness and market positioning remain **[UNVERIFIED]**.
+
+## 96 — 2026-10-31: Case-mix overlap before forecast confidence
+
+**Fresh hunt.** [Visier Workforce Planning](https://www.visier.com/workforce-ai/product/workforce-planning/) describes comparing workforce structures, costs, skills and risks against connected workforce and financial data (vendor description, not independently validated). [Valence](https://www.valence.co/) describes AI leadership coaching, deliberate judgment practice, and retrospective loops (vendor description; feature access and efficacy **[UNVERIFIED]**). [Orgvue comparison](https://soteriahr.com/workforce-planning-solutions/) describes organization-design scenario modelling; [Coachello’s 2026 survey](https://coachello.ai/blog/5-best-ai-coaching-companies-for-leadership-development-2025/) describes Valence, Torch, CoachHub and other AI coaching entrants (competitive survey, not an independent feature audit).
+
+**Method and boundary.** [Zhu et al., 2021](https://onlinelibrary.wiley.com/doi/10.1002/pds.5338) explain why missing covariate overlap threatens causal inference. This product does **not** estimate a transported causal effect, propensity score, or statistical positivity. It borrows the practical question “does the historical reference include work of this observed type?” and uses descriptive total variation on current case types (half the sum of absolute cohort share differences), plus a finite-sample missing-category flag. Eight observations per group and 25 percentage points are product conventions, not calibrated inference. Other factors may differ; observed overlap does not establish exchangeability. Older normalized cases may have an imputed risk type and labels may be edited after intake. Tiny categories can trigger noisy alerts.
+
+**Gap to shipped code.** Unlike a static case-mix table, the warning changes waiting-cost confidence, creates an auditable review with typed links on explicit scan, challenges frozen artifacts, and leaves frozen estimates and prices untouched. This is a local design hypothesis, not demonstrated superiority or a market-first claim. The high-leverage next step is immutable intake-time covariates and date integrity, not a new dashboard. Full competitor coverage, efficacy, market positioning, and real-world outcomes remain **[UNVERIFIED]**.
+
+## §95. 2026-10-31 — Transport, decomposed: which numbers stop being quotable, and when (Session 95, [ADR-0058](./docs/adr/0058-transport-decomposed.md))
+
+**The hunt.** This session closes planned ideas (2) and (3) from §94 — decomposition-aware forecast confidence and a fixed multi-landmark grid — and one live defect the hunt surfaced in our own code: `waitCost.rowConfidence` dropped a row to low confidence on *any* `drift.changed`, punishing timing arithmetic for a completion-mix shift, while a pure mix shift (drift false) downgraded nothing anywhere.
+
+1. **The delivery-analytics mainstream still averages over completed work, and is starting to notice.** CircleCI's Q3 2026 reportage claims active projects +16% and active branches per contributor 7→9 with median main throughput flat at 1.7 runs/day — WIP inflation invisible to any completed-only average ([daily.dev summary](https://daily.dev/posts/work-in-progress-wip-is-the-new-software-delivery-bottleneck-7xif44njt); vendor figures [UNVERIFIED]). Practitioner writing now says the quiet part aloud: a completed-items cycle-time average hides the distribution (median 4 days vs 85th percentile 19 in the given example) and drops the open tail entirely ([The Agility Matrix](https://theagilitymatrixpodcast.substack.com/p/your-cycle-time-is-lying-to-you-heres)). LeadOS's censored, competing-risk framing was built for exactly this; the hunt confirmed the differentiation is still real but the window is narrowing as vendors add percentiles. Percentiles of completed items still cannot see a substitution.
+2. **ML monitoring has the drift vocabulary but not the downstream discipline.** Vendor framings converge on detect → diagnose → retrain and warn that accuracy can decay while inputs look stable ([Lumenova](https://www.lumenova.ai/blog/model-drift-concept-drift-introduction/), [SentryML taxonomy](https://sentryml.com/posts/ml-monitoring-metrics-taxonomy-drift-data-quality-decay/); both vendor material [UNVERIFIED]). "Retrain" is the step LeadOS deliberately refuses for a leader's reference class: the local equivalent — silently re-basing forecasts on the recent cohort — would destroy the audit trail frozen readings exist to create. What transfers is the refusal to let a stale reference keep speaking unlabelled. SentryML's insistence on sane, non-frozen reference windows maps directly onto our fixed start cohorts.
+3. **Multi-landmark reading is standard in the survival literature (landmarking, van Houwelingen 2007) and absent in delivery tooling we could find.** A shift significant only at day 14 (intake volatility), only at day 60 (structural), or in opposite directions across landmarks (crossing) are three different operational facts with three different interventions; a single-τ verdict collapses them. Focused-hunt caveat as usual: absence is a search result, not a proof, and no category-first claim is made.
+4. **Naming discipline: this is not transportability.** Bareinboim & Pearl's transportability concerns causal estimands across populations under a selection diagram. LeadOS transports nothing causal; it stability-audits a descriptive reference class (Flyvbjerg's outside view) against its own recent cohorts and labels which pooled-curve outputs may still be quoted. The ADR and UI both carry the non-claim.
+
+**Shipped from this hunt:** `driftCohortsAt` generalizing the fixed cohorts to any τ (day 30 byte-identical, test-pinned); the 14/60 landmark profile under its own 24-test Holm family with a named shape vocabulary (`flat`, `early-only`, `mid-only`, `late-only`, `multi-landmark`, `sustained`, `crossing`, `not-assessed`); `classTransport` reading timing/completion axes with `favorable-shift` never counted as failure; axis-aware `waitCost.rowConfidence`; Consequence Lab transport banners and freeze-time axis stamps in `graphSnapshot`; SURV-11; RULE-SURV-08 challenging frozen survival readings by note (probabilities untouched) and wait-exposure certificates by owned re-freeze task *only* on timing failure; eleven new CSV #53 columns; the transport card with a three-landmark table; ADR-0058.
+
+**Deliberately not shipped:** one unified 36-test Holm family (would retroactively change Session-94 verdict p-values or double-print the day-30 cell — see ADR-0058); Gray's (1988) test (still deferred until its influence-function variance can be verified against a published worked example); recalibration of the pooled curve on recent cohorts; a single transport "score" (would re-pool the axes the session separates); challenging exposure certificates on completion failure (the certificate's arithmetic is any-exit and remains valid).
+
+**New planned ideas:** (1) case-mix overlap/positivity check before either axis may print "supported" — a cohort whose composition changed (e.g. severity mix) can fail transport for reasons neither current test attributes; (2) a repeated-look error budget with durable statistical review snapshots, so weekly scans stop spending α independently; (3) Gray's test with a verified variance, which would also give the `crossing` shape a curve-wide test instead of a landmark-by-landmark description.
+
+## §94. 2026-10-31 — Attribute the drift before treating it: competing-risk decomposition of delivery cohorts (Session 94, [ADR-0057](./docs/adr/0057-drift-decomposition-competing-risks.md))
+
+**The hunt.** Three sources carried weight this session; two of them changed shipped mathematics, which is the only reason they are cited.
+
+1. **Comparing cumulative incidences is a solved statistical problem that delivery tooling has not imported.** Gray (1988) tests equality of cumulative incidence via weighted averages of subdistribution hazards; Pepe & Mori (1993) compare the CIFs directly through an integrated weighted difference; a two-sample test of the CIF difference at a fixed landmark time is the third standard option ([NCSS Ch. 560](https://www.ncss.com/wp-content/themes/ncss/pdf/Procedures/NCSS/Cumulative_Incidence.pdf); [Ghosh & Lin-lineage correlated-data extensions, PMC3125987](https://pmc.ncbi.nlm.nih.gov/articles/PMC3125987/)). Meanwhile the 2026 delivery-analytics mainstream still reports cycle-time averages, percentiles and phase benchmarks ([LinearB 2026 benchmarks](https://linearb.io/library/software-delivery); [Keypup's Jira bottleneck guide, 2026-02](https://www.keypup.io/blog/identify-software-delivery-bottlenecks-jira-data/)) — measures computed over *completed* work, in which a cancelled item simply leaves the denominator. Even a careful open-source flow study on Apache Cassandra's Jira has to hand-exclude 395 batch-closed issues and note that ~80% of apparent WIP is stale before its Little's-Law arithmetic reconciles ([jira-flow-analytics](https://github.com/mrrishit909/jira-flow-analytics)) — the abandonment/censoring confusion is doing real damage in the best public examples, not just the worst. No category-first claim: this was a focused hunt, and absence of a competing-risk drift decomposition in delivery tooling is a search result, not a proof.
+
+2. **The variance estimator matters more than the test choice at workspace n.** The formula reference shipped in CRAN's `cifmodeling` ([v3_formulas](https://rdrr.io/cran/cifmodeling/f/inst/doc/v3_formulas.Rmd)) prints both Aalen's counting-process variance and the delta-method variance for the Aalen–Johansen estimator in full; Braun & Yuan (2007), via the survey in [arXiv:1807.05846](https://arxiv.org/pdf/1807.05846), find Aalen's form overestimates the true variance while the Gaynor/delta form tracks it at small samples. Confronting Session 89's implementation with these formulas exposed a mis-transcription (Y² for Y(Y−d), total count for cause count, missing cross term, final-F referencing): 0.0048 where the multinomial truth is 0.012 lumped, 0.0344 spread. The delta form is exact at the multinomial anchor in both configurations; it now serves both incidences, and the anchor is a pinned test (see ADR-0057).
+
+3. **The boundary is a first-class case, not an edge.** At F ∈ {0,1} in both cohorts the Wald variance is zero by construction. The fixed mature-cohort design (Session 93+) makes censoring-before-30 *checkable* from the rows, which is what licenses Fisher's (1935) exact test as the boundary fallback — and what forbids it when an item was parked mid-window. Test pinned to the tea-tasting table (0.0285714) and R's textbook value (0.002759).
+
+**Shipped from this hunt:** `driftDecomposition` (exact day-30 partition, landmark Wald + verified Fisher fallback, Pepe–Mori integrated difference as effect size, 12-test Holm family, sparse-cause refusal, nine-verdict vocabulary including `substitution`/`stall`/`churn`), the corrected delta-method incidence variance for both causes, RULE-SURV-07 with component-framed single-decision precedence against RULE-SURV-06, SURV-09/10, CSV #53 columns, ADR-0057.
+
+**Deliberately not shipped:** Gray's test (variance under retained competing-event risk sets not approximated — planned with a verified estimator); Fine–Gray regression (proportionality nobody asked for); case-mix adjustment of the decomposition (positivity check first — already on the roadmap); a demo seeded with fake history so the card lights up.
+
+**New planned ideas:** (1) Gray's test with the influence-function variance once it can be verified against a published worked example end-to-end; (2) decomposition-aware forecast confidence — today drift of any kind drops `#/wait` rows to low confidence, but a *completion-led* shift and an *abandonment-led* shift should discount different downstream numbers (completion probabilities vs queue composition); (3) extend the landmark beyond a single τ=30 with a small fixed grid (14/30/60) under one Holm family, so "slower but same mix" and "same speed, different mix" separate by construction rather than by cross-referencing two cards.
+
+## 2026-10-31 — New hunt: forecast transport, not another risk score
+
+**Observed competitive direction:** Visier's Org Design announcement describes scenario comparisons, downstream cost/attrition effects, and continuous monitoring of implemented plans ([Visier, 2025-09-18](https://www.visier.com/company/news/visier-expands-strategic-workforce-planning-suite-with-ai-powered-org-design/)). Its HR/Finance planning article describes Vee Boards, headcount deviations, and historical/current/future scenario modelling ([Visier, 2026-10-26](https://www.visier.com/resources/blog/how-to-keep-hr-and-finance-in-sync-on-workforce-planning/)). These are vendor capability descriptions, not independently verified outcome evidence. Search surfaced BetterUp hybrid/AI coaching and roleplay in secondary roundups; product behaviour **[UNVERIFIED]**. This was a focused hunt, not a comprehensive inventory of every category requested.
+
+**Gap hypothesis:** scenario outputs need an applicability check when operating behaviour changes. No category-first claim: this search does not establish that competitors lack cohort drift tests.
+
+**Shipped:** fixed calendar start cohorts with equal administrative follow-up, Mantel–Cox log-rank, Holm family correction, and 30-day restricted mean time to any exit. A detected change propagates into financial-confidence warnings, a DACI applicability review, an owned evidence check and typed links. Censoring is retained; abandonment is explicitly an exit, never credited as success. Raw unrounded p-values feed correction.
+
+**New planned ideas:** (1) competing-risk completion-incidence drift alongside all-exit drift, to distinguish cancellation policy from delivery improvement; (2) case-mix stratification with overlap/positivity refusal before calling a forecast transportable; (3) sequential error budgeting across repeated calendar scans rather than treating each look as independent confirmation.
+
+**Deliberately rejected:** selecting the split date with the smallest p-value (uncontrolled search); multiplying probabilities by a drift penalty (invented calibration); interpreting non-significance as stability; treating faster abandonment as better delivery.
+
+## §93. 2026-10-31 — The second-order decision that a link cannot prove ([ADR-0056](./docs/adr/0056-decision-consequence-lab.md))
+
+**Blunt starting point.** LeadOS already has the most valuable inputs for a decision-futures read: typed operational links, a real decision register, Premise Sentinel, continuity TTS/TTR, a censoring-aware Kaplan–Meier curve, and a declared/derived Cost of Waiting price. But the decision card did not let a leader trace the exact records two hops away *before* committing, and `#/wait` multiplied the price by `weeks × P(still open at the END of the horizon)` and called it *expected additional cost*. That expression is **a lower bound on expected time-in-queue**, not the expected cost of waiting: an item that exits halfway through still incurred half the time. This session turns the defect into a named model, without retroactively rewriting old frozen certificates.
+
+### Competitive hunt: the market is building what-if engines, but attribution is the hard part
+
+| Source (accessed 2026-10-31) | What the source actually supports | What changes in LeadOS |
+|---|---|---|
+| [AnyLogic, “From what-if to what-now” (2025)](https://www.anylogic.com/blog/from-what-if-to-what-now-ai-and-simulation-for-business-decisions/) | Vendor/educational piece: simulation can explore second/third-order system effects when a model has been built. **[UNVERIFIED]** by hands-on vendor trial. | Adopt the question but **not** a fake simulation model: the typed graph is a map of recorded *associations*, not an executable causal digital twin. Never label a two-hop path as a predicted domino effect. |
+| [Indicio scenario-planning comparison (2025)](https://www.indicio.com/resources/blog/scenario-planning-and-analysis-software) and [Causal Wizard features](https://causalwizard.app/features/) | Vendor content: finance/supply-chain scenario tools compare shocks; causal tooling can test assumed backdoor paths, covariate balance, positivity and placebos *when appropriate longitudinal data and assumptions exist*. Marketing feature claims **[UNVERIFIED]** by trial. | A management workspace cannot conjure confounder balance from typed links. Expose the association and route to its evidence instead of presenting it as a counterfactual effect. |
+| [Societies.ai, 27 simulated Nike earnings universes (Oct 2026)](https://societies.ai/second-order-effects) | Vendor blog describes 27 earnings cases, 23 simulated analysts and 499 simulated journalists; it reports substantial tone differences under varied guidance. **[UNVERIFIED]** predictive validity or transport to team leadership. | Shows how seductive synthetic stakeholder reactions can be. Reject synthetic agent-based coalition probabilities and named-person forecasts until the product has a validated behavioural model. |
+| [Shopify Engineering, quasi-experiments & evidence ladder (2020)](https://shopify.engineering/using-quasi-experiments-counterfactuals) | Engineering account explicitly places descriptive statistics below quasi-experiments and experiments and notes observational counterfactuals fail when confounders vary. | Distinguish a descriptive graph from causal evidence in the UI, schema and typed relation labels. A two-hop edge **is not** an intervention estimate, even if it feels like one. |
+| [NCSS Kaplan–Meier Procedures, Restricted Mean Survival Time](https://www.ncss.com/wp-content/themes/ncss/pdf/Procedures/NCSS/Kaplan-Meier_Curves-Logrank_Tests.pdf); [Analyse-it KM interpretation](https://analyse-it.com/learn/kaplan-meier-survival-curves); [MedCalc KM RMST](https://www.medcalc.org/en/manual/kaplan-meier.php) | Reference methods define RMST as the area under the Kaplan–Meier curve up to a prespecified horizon; the mean is restricted where the tail is unobserved. | Compute exact conditional restricted mean *outstanding* time over +1/+2/+4 weeks. Endpoint-only `weeks × S(end)` is shown separately as a **lower bound**; a full-period wait is an upper bound. Refuse insufficient risk set/exit evidence or an extrapolated tail. This is a mathematical correction, not a new causal finding. |
+| [Manski (1990), “Nonparametric Bounds on Treatment Effects”](https://www.jstor.org/stable/2006597), explained in [“Mostly Unidentified?” (2019)](https://dlm-econometrics.blogspot.com/2019/12/mostly-unidentified.html) | Worst-case bounds make unknown counterfactuals visible rather than inventing a point estimate. **Not** a licence to call any operational ceiling a formal Manski ATE bound. | Treat related work as a conditional FULL-BLOCK ceiling only, by currency, assuming every linked item waits the entire horizon. Do **not** identify a causal effect or assign a blockage probability from an edge. |
+
+**The gap chosen, not the easy option.** Refining a forest plot or adding one more trend chart was viable but smaller than the blind spot: the leader could see a cost-of-delay number and a graph in separate screens but could not see an *auditable boundary* between the price of this wait and the consequences the graph merely suggested. The Consequence Lab couples those existing disciplines without pretending an association is causality. This is a narrower, falsifiable claim than “first decision digital twin” or “AI predicts your team”; no vendor absence or outcome improvement is claimed from this search.
+
+### Arithmetic and scope that landed in the same session
+
+- **Restricted mean conditional queue time:** `E[min(T−a,h) | T>a] = ∫₀ʰ S(a+t)/S(a) dt`. For a hand-checkable cohort of 8 decisions, two exits at day 7 and two at day 14 give `S(7)=0.75`, `S(14)=0.5`. Over 14 days the area is `7×1 + 7×0.75 = 12.25 days = 1.75 weeks`; the endpoint-only lower bound is `2×0.5 = 1 week`; the full-wait ceiling is 2 weeks. At a declared $100/week, those are $175 expected *conditional on the class curve*, $100 lower bound and $200 full-period ceiling. If the recorded tail ends before 14 days, the expected figure is withheld; the ceiling remains arithmetic, not a prediction.
+- **Graph as evidence, not generator:** bounded breadth-first traversal of valid typed operational edges, first- and second-order paths shown with directions; people, candidates, conflicts, pulses and generated measurement edges do not relay. Count reachable broken links and label a truncated map. A pre-registered premise at watch/breach opens one human verification task; a materially priced root tied to another open decision opens one separate coordination DACI call; neither action asserts the neighbour is actually blocked.
+- **Prospective falsification:** the probability *this decision is still open on its chosen review date* is frozen once, read from the class survival curve, then scored by Brier from a dated decidedOn. Skill against an observed base rate is withheld below five grades; the same decision at multiple horizons makes those grades dependent, explicitly labelled. A missing decision date is not silently reconstructed. CSV #57 exports only horizon×currency aggregates, with means and money blank below five; no IDs or narrative.
+
+**Known limits / do not imply more:** price assumes linear weekly erosion and a correctly recorded value; class curves assume independent censoring and exchangeability across very different decision types. A finite interval on this area is not computed, only evidence floors and a refusal; consider a Greenwood/delta or bootstrap interval with independent roots before interpreting small differences. The conditional full-block ceiling is not a formal causal partial-identification interval, can double count the same economic exposure, and must never be added to root expected cost. Vendor capabilities here are drawn from public marketing or technical descriptions; no hands-on comparison, manager study, real-browser or assistive-technology test was performed **[UNVERIFIED]**. The quarantined `src/**` tree remains **[UNVERIFIED]** for current product behaviour.
+
+**Next market hunt:** jointly model non-independent cohorts and typed overlaps with an empirically validated dependence structure rather than a synthetic ρ; price cross-manager queue coupling with shared work; add an interval around conditional RMST cost, bootstrap by independent root not by repeated records; quantify overlap magnitude for Evidence Terminal studies instead of stopping at a warning.
+
+## §92. 2026-10-31 — What do several studies of the same lever say together, and is one more worth running? (Session 92, [ADR-0055](./docs/adr/0055-evidence-terminal.md))
+
+**The question.** Sessions 84–91 built the workspace's *single-study* epistemic machinery: the Impact Ledger pre-registers a hypothesis and scores it with interrupted-time-series regression, the Assumption Ledger scores priors against outcomes, the Performance terminal freezes and scores a support-plan probability, and the Information Value terminal prices a declared experiment before it runs. Each answers a question about **one** study. The question nobody could answer was the one a leader asks after the fourth one closes: **several studies of the same lever on the same metric have now finished — what do they say together, is the disagreement real, and is one more study worth running?**
+
+**Why the category misses this completely.** A live survey of the meta-analysis tooling market (Comprehensive Meta-Analysis, RevMan, JASP and jamovi, R `metafor`, Meta-Essentials, MetricGate, the free browser calculators) finds a uniform shape: you paste a table of study estimates and standard errors, and the tool returns a pooled effect, a forest plot, Cochran's Q, I², τ² and optionally Egger's test or leave-one-out. All of it is correct and none of it is close to the job:
+
+1. **The studies are assumed to already exist as a spreadsheet.** Nothing harvests them from the system where the work happened, so the synthesis is always an export–analyse–forget exercise performed by someone with statistical training.
+2. **The pooled number lands nowhere.** No tool writes the finding back into the decisions, cases or tasks it should change; the output is a chart the reader must carry somewhere else by hand.
+3. **The independence assumption is invisible.** Random-effects pooling assumes independent estimates. Two interrupted time series measuring the *same* team metric over *overlapping calendar windows* share observations, which makes the pooled standard error optimistic by an unmeasured amount. None of the surveyed tools detects, counts or flags this.
+4. **Refusals are not a feature.** Below a handful of studies these tools will still print a pooled estimate, an I² and a funnel plot, because they are built for a researcher who knows the caveats — not for a leader reading the output on a Monday morning.
+
+**The cross-domain synthesis shipped in Session 92.**
+
+- **DerSimonian, R. & Laird, N. (1986), "Meta-analysis in clinical trials", _Controlled Clinical Trials_ 7(3); Cochran, W. G. (1954); Higgins, J. P. T. & Thompson, S. G. (2002), "Quantifying heterogeneity in a meta-analysis".** *Used directly:* τ² = max(0, (Q − df)/C), Q with its χ² tail, I² = max(0, (Q − df)/Q). Chosen over REML/Paule–Mandel because it is a closed form a reader can check by hand.
+- **Hartung, J. & Knapp, G. (2001), "A refined method for the multivariate meta-analysis"; Knapp & Hartung (2003).** *Used directly:* the HKSJ small-study interval, computed alongside the plain z interval, with the **wider** of the two reported — so the correction can only widen what the terminal claims, never narrow it.
+- **Korevaar, E. et al. (2023), "Evaluation of statistical methods used to meta-analyse results from interrupted time series studies: A simulation study", _Research Synthesis Methods_.** Simulation across series length, autocorrelation, effect magnitude, study count and heterogeneity: random-effects meta-analysis of ITS **level-change** estimates yields coverage close to the nominal level regardless of the ITS estimation method and regardless of how few studies are pooled. *Used directly as the licence to pool ITS level shifts at all.*
+- **The 2024 empirical comparison of ITS meta-analysis methods, _BMC Medical Research Methodology_ 24:2147.** Across real ITS datasets, the choice of random-effects estimator (DL, REML, Paule–Mandel, others) barely moves the pooled estimate, its interval or its p-value. *Used directly as the licence to pick DL for transparency rather than for accuracy it does not have.*
+- **Egger, M. et al. (1997), "Bias in meta-analysis detected by a simple, graphical test"; Haldane, J. B. S. (1956); Anscombe, F. J. (1956); Wilson, E. B. (1927).** *Used directly:* Egger's regression refused below ten studies ("below that the funnel plot is a shape, not a signal"); the 0.5 continuity correction so a source that is 0-for-n or n-for-n still has a finite log-odds; Wilson score intervals rather than the normal approximation, so "we saw none" is not reported as "none exist".
+- **Brier, G. W. (1950); Miller, R. G. et al. on calibration-in-the-large.** *Used directly:* Brier against the base-rate reference as a **skill** score, plus observed-vs-expected events with a two-sided z, so over- and under-confidence are distinguished rather than collapsed into one error number.
+- **Raiffa, H. & Schlaifer, R. (1961), _Applied Statistical Decision Theory_; the standard normal-normal EVPI/EVSI closed form.** *Used directly:* v = √(s² − s′²) with s′² = (1/s² + 1/σ²)⁻¹, so an uninformative trial is worth exactly zero and a perfect one is worth EVPI. Both limits are asserted by test rather than argued in prose.
+
+**What this module refuses to claim.**
+
+- **Never pools exploratory studies.** Pooling a hypothesis declared after the answer arrived rewards the declaration, not the evidence; exploratory studies are counted and shown, never pooled.
+- **Withholds τ² and I² below four studies**, because three studies cannot separate between-study variance from noise. Above that, I² ≥ 75 with p_Q < 0.1 returns "Depends where you use it" rather than an average.
+- **Refuses to pool below three pre-registered studies**, printing the count and the reason instead of a number.
+- **Reports coverage beside accuracy.** A frozen interval wide enough covers almost anything, so each grade reports mean absolute error next to the coverage rate.
+- **Names the independence break rather than hiding it**, counting overlapping study windows per cell and printing that count beside the pooled SE.
+- **Never gives an untested lever a mean it has not earned**, and returns `null` — never `0` — for the value of a trial when no within-study noise was declared, because zero would read as "worthless" when it is merely unpriced.
+- **Never scores, ranks or names a person**, never closes an item, never reassigns work and never alters a study. A frozen review stores aggregates only, so it cannot become a second unredacted copy behind the export boundary.
+
+**What the next session should hunt.** An effective-sample-size correction for overlapping windows, so the caveat becomes a number; per-class calendar drift (two-sample Mantel–Cox splits in `survival.js` coupled into `waitCost.js`); the calibration-discounted EVPI ceiling in `valueOfInformation.js`; and cross-manager queue coupling.
+
+## §91. 2026-10-31 — Grading the leader's consistency across their own team: LMX disparity, promise reliability, and intra-leader noise (Session 91, [ADR-0054](./docs/adr/0054-leadership-parity-consistency-terminal.md))
+
+**The question.** Sessions 88–90 repeatedly named the sharpest unbuilt audit in LeadOS: **is the leader leading everyone by the same standard, keeping promises symmetrically, and investing coaching, feedback, stretch authority, and sponsorship equitably — or quietly building an inner circle while leaving steady contributors invisible and holding different people to different evidentiary bars?**
+
+**Why the category misses this completely.** A live competitive audit across 2025–2026 performance, AI-coaching, engagement, and people-analytics platforms (Lattice, Culture Amp, Betterworks, 15Five, Leapsome, Visier, Knowlee/One Model, inFeedo Amber, Domo Decision Intelligence) reveals a uniform blind spot:
+
+1. **Calibration is always cross-manager and post-hoc.** Culture Amp, Lattice, and Betterworks run rating-distribution and bias checks *after* review drafts or ratings are submitted across multiple managers, or summarize text with LLMs to reduce stylistic variance. None of them audits **one manager's dyadic resource allocation and evidentiary thresholds** continuously from primary working records *before* a review or formal plan locks in.
+2. **Psychological contract monitoring relies on pulse surveys, not the leader's own promise ledger.** Tools like Culture Amp and inFeedo Amber ask employees quarterly or monthly whether leadership communicates openly or keeps commitments, while ignoring the actual dated ledger of promises the manager already recorded in 1:1s, 30-60-90 check-ins, feedback follow-ups, and GROW reviews.
+3. **Inequality metrics confuse functional scaffolding with favouritism.** Raw interaction counts treat weekly 30-60-90 ramp check-ins for a Day-20 joiner identically to inner-circle favouritism among steady-state peers.
+
+**The cross-domain synthesis shipped in Session 91.**
+
+- **Graen, G. B. & Uhl-Bien, M. (1995), "Relationship-based approach to leadership: Development of leader-member exchange (LMX) theory", _Leadership Quarterly_ 6(2); Buengeler, C., Piccolo, R. F. & Locklear, L. R. (2021), "LMX Differentiation and Group Outcomes: A Framework and Review Drawing on Group Diversity Insights", _Journal of Management_ 47(8).** Separates functional *LMX Variety* (differentiating scaffolding by role/ramp stage) from status-concentrating *LMX Disparity* (concentrating attention, autonomy, and sponsorship in a narrow inner circle while leaving fringe members invisible). *Used directly:* four natural-unit channels (`coaching`, `feedback`, `authority`, `sponsorship`), tenure-rate-normalized per 30 active days, decomposed across structural `level × ramp` cohorts.
+- **Gini, C. (1912); Atkinson, A. B. (1970), "On the measurement of inequality", _Journal of Economic Theory_ 2(3); Theil, H. (1967), _Economics and Information Theory_.** *Used directly:* finite-sample-corrected Gini $G \cdot \frac{n}{n-1}$ (eliminating the downward monopoly bias on 3–8 person teams), zero-safe Atkinson $A_{0.5}$ (exact when individual channel receipts are zero, unlike $\varepsilon=1$), and **exact additive Theil $T$ entropy decomposition** ($T = T_{\text{between}} + T_{\text{within}}$, $0 \ln 0 \equiv 0$) partitioning total allocation dispersion into structural role/ramp variety ($T_{\text{between}}$) and unexplained within-cohort peer disparity ($T_{\text{within}}$).
+- **Rousseau, D. M. (1989, 1995), _Psychological Contracts in Organizations_; García-Selva, A. et al. (2025), "Revisiting Psychological Contract Measurement: Validation of the PSYCONES Questionnaire", _Social Sciences_ 14(3).** Psychological-contract breach sharply erodes trust and affective commitment, and asymmetric reliability across teammates creates status resentment. *Used directly:* a per-person **Leader Promise Reliability Ledger** harvested strictly from leader-owed commitments (`oneOnOnes` `leader`/`shared` actions, `managerSupport`, leader `feedback` follow-ups, and deferred `growthPlans` reviews), bounded with **Wilson (1927)** 95% score intervals and `promiseGapPp` spread detection.
+- **Kahneman, D., Sibony, O. & Sunstein, C. R. (2021), _Noise: A Flaw in Human Judgment_; Nordmo, M. (2026), "Analyzing Noise Data From a Noise Audit", _IJSA_ 34(1); Leventhal, G. S. (1980), procedural consistency rule; Kendall, M. G. (1938), $\tau_b$ rank correlation.** *Used directly:* intra-leader standard-consistency audits across three thresholds — (a) **Performance Recovery bars** (comparing pre-adoption specific SBI observations, assessment days, support count, and written override usage across `performanceConcerns` with adopted plans), (b) **Succession sponsorship vs. behavioural evidence** (flagging `ready-now`/`ready-later` halo nominations with $<3/5$ signals alongside unnominated peers holding $\ge 4/5$ signals), and (c) **Review evidence-to-rating concordance** (Kendall's $\tau_b$, exact discordant pairs within comparable cohorts, and final-quarter recency concentration).
+- **Prescriptive Operations Research & Brier (1950) Verification.** *Used directly:* a greedy marginal-disparity-reduction solver (`planParityRebalance`) over a bounded 14-day leader hour budget that computes counterfactual before/after $T_{\text{within}}$, Gini, fringe count, and promise gap, paired with frozen `parityAudits` graded once after `reviewOn`.
+
+**What this module refuses to claim.**
+
+- **Never scores, ranks, or labels an employee.** Every number grades the leader's allocation, promise fulfillment, or threshold consistency. Channels are never collapsed into one opaque "Fairness Score."
+- **Zero demographic or protected-attribute collection or inference, and hard privacy wall.** Never asks for or infers gender, race, age, or sentiment; never reads confidential `conflicts` or anonymous `pulses`.
+- **Hard statistical refusals.** Gini/Atkinson/Theil refused below `parityMinTeam` (default 3) or zero channel volume; cross-concern dispersion refused below 2 adopted plans; Kendall's $\tau_b$ refused below 3 rated reviews; Brier average withheld below 5 graded audits; joiners under `parityRampFloorDays` (default 14d) protected from deficit flags while their onboarding promises remain tracked.
+- **Not legal or HR compliance advice.** Structural cohorts reflect recorded job level and ramp state only, never disparate-impact legal standards.
+
+**What the next session should hunt.** Per-class temporal delivery drift (two-sample Mantel–Cox log-rank over calendar splits on `survival.js` coupled into `waitCost.js`); calibration-discounted EVPI ceilings in `valueOfInformation.js`; cross-manager Kingman arrival coupling; and 1:1 talking-point saturation hygiene (`MAX_TOPICS = 40` overflow visibility).
+
+## §90. 2026-10-31 — What does waiting cost, in money: pricing the queue the workspace already keeps (Session 90, [ADR-0053](./docs/adr/0053-cost-of-waiting-terminal.md))
+
+**The question.** Session 89 made the queue answer *how long work like this takes here* and *the probability each open item is still open in N weeks*. The Monday-morning question is the next one: **what is that wait costing, in money, this week — and what does waiting two more weeks add?**
+
+**Why the obvious answer is wrong.** "Cost of delay" is a mature discipline, but everywhere it is sold — Reinertsen's *The Principles of Product Development Flow* (2009), WSJF (cost of delay ÷ job duration, SAFe), and the CoD fields of Productboard, Aha! and Airfocus — it prices a **product backlog item** from a cost of delay the leader declares *per feature*. None of those tools prices a leader's operational queue (open cases, hiring, change programmes, delegations, decisions, funded work) from the workspace's own records, because the records and the price live in different products. The typical vendor answer to "what is this case costing us" is a survey field, not a computation.
+
+- **Reinertsen, D. (2009), *The Principles of Product Development Flow*, ch. 3 (CD3).** Cost of delay is the economic value that decays while a job waits; under a *linear* CD3 the value erodes evenly over the window, so the weekly rate is value ÷ window. *Used directly:* a decision with linked committed money is priced derived — dominant value at stake ÷ the declared 12-week erosion window — and labelled `derived`, never blended with declared prices.
+- **SAFe / Leffingwell: WSJF = CoD ÷ job duration.** *Used as the framing only:* this module refuses the division, because "job duration" for an operational queue is exactly what §89 estimates — so instead of dividing, it multiplies: weekly price × P(still open after waiting more).
+- **Kaplan–Meier conditional (see §89).** P(still open at age + Δ | open at age) = S(age+Δ)/S(age). *Used directly:* the wait-horizon scenario for each priced open item at 1/2/4/8 weeks, refused below the at-risk floor and flagged past the longest observation (`beyondEvidence`), because a survival tail past the data is an extrapolation, not a measurement.
+
+**What is genuinely new here.** Not the multiplication — that is arithmetic. What no adjacent product in the searched material ships is the *combination*: a weekly money price declared once per **class of work**, multiplied by a censoring-aware still-open probability estimated from the leader's own closed records across six modules, aggregated **per currency and never pooled**, scenario-simulated over declared wait horizons, and frozen weekly into a navigable exposure certificate — with the triage it prompts opened as a DACI *decision* the leader must make, never an automatic reordering.
+
+**What this module refuses to claim.**
+
+- **A price is a declaration, not a measurement.** Declared and derived prices are labelled separately; the derived decision price is linear CD3, not a fitted curve. An item with no price is *unpriced, never zero*.
+- **No probability below the evidence floor, and no silent tail.** Below the at-risk floor the scenario cell prints the refusal; past the longest observation it is flagged as extrapolated. Both are on the row.
+- **No pooling across currencies.** Totals are per currency; an FX conversion would be an invented exchange rate.
+- **No person is priced.** Prices attach to classes of work; the owned delegations carry the recorded owner only. The terminal cannot reorder, close or reassign anything — RULE-WAIT-02 opens one triage *decision* per currency per week; the leader decides.
+- **No back-filled certificate.** The additive v64 migration leaves the collections empty; freezing a certificate on the leader's behalf after the queue is known would be a price asserted after the fact.
+- The independence-of-censoring and exchangeability assumptions from §89 apply unchanged and are printed on the Method panel.
+
+**What the next session should hunt.** Per-class drift over calendar time (is this class of work slowing, or was last quarter unusual — a two-sample log-rank against a period split); the **cross-concern fairness audit** (is the same evidence floor applied to everyone — still unbuilt, and no category product will measure it); a calibration-discounted EVPI ceiling; cross-manager queue coupling (Kingman arrival coupling).
+
+## §89. 2026-10-30 — Censoring, competing risks and the queue that will not say "on track" (Session 89, [ADR-0052](./docs/adr/0052-delivery-survival-terminal.md))
+
+**The question.** Every queue answers *what is open*. What can a local-first tool say about **how long work like this takes here**, when the workspace's own records are the only evidence it will ever have?
+
+**Why the obvious answer is wrong, twice.** The standard delivery metric — average cycle time over closed items — is survivorship bias in its purest form: it drops everything still open, so a team that starts long projects and abandons the hardest ones shows a *falling* average exactly when its delivery is getting worse. And a queue that only counts completions makes every team eventually complete everything, because failures never leave the denominator. These are the two corrections a dashboard cannot make after the fact, and both are 60-year-old statistics:
+
+- **Kaplan, E. L. & Meier, P. (1958), "Nonparametric estimation from incomplete observations", _JASA_ 53(282).** The product-limit estimator keeps a censored observation in the risk set up to the last day it was observed, then removes it without counting it as an event. *Used directly:* the survival curve over all exits, with **Greenwood (1926)** variance and the **Kalbfleisch & Prentice (2002)** log–log transform for a band that stays inside [0, 1].
+- **Aalen, O. O. & Johansen, S. (1978), "An empirical transition matrix for non-homogeneous Markov chains based on censored observations", _Scandinavian Journal of Statistics_ 5(3).** With competing risks, one minus the Kaplan–Meier curve is *not* the incidence of the cause you care about: the complement overstates completion whenever abandonment exists. The cumulative incidence function integrates the cause-specific hazard against the overall survival. *Used directly:* completion and abandonment are separate risks, the page prints both the naive complement and the Aalen–Johansen incidence, and the difference is the reported headline for any class where abandonment exists. *Deliberately not used:* a Fine–Gray subdistribution hazard regression — with the sample sizes a manager actually has, fitting one would be arithmetic theatre.
+- **Nelson, W. (1972); Aalen, O. O. (1978), "Nonparametric inference for a family of counting processes", _Annals of Statistics_ 6(4).** The cumulative hazard is estimable without assuming a parametric form. *Used directly:* hazard by declared elapsed-time bucket, with a **Katz (1952)** log-rate ratio and interval, so "does waiting get better or worse" is a measured quantity rather than a feeling about a chart.
+- **Mantel, N. (1966); Cox, D. R. (1972), "Regression models and life-tables", _JRSS-B_ 34(2).** The log-rank statistic compares two survival curves without distributional assumptions. *Used directly:* a two-class comparison on one degree of freedom, with the exact normal tail rather than a printed table.
+- **Brier, G. W. (1950), "Verification of forecasts expressed in terms of probability", _Monthly Weather Review_ 78(1).** *Used directly:* a frozen reading is scored once against the class's own base rate — a forecast that cannot beat "this class's historical completion rate" has earned nothing.
+- **Flyvbjerg, B. (2006), "From Nobel Prize to project management: getting risks right", _Project Management Journal_ 37(3); Kahneman, D. & Tversky, A. (1979), "Intuitive prediction", _TIMS Studies in Management Science_ 12.** The inside view is systematically optimistic; the outside view is a distribution of comparable past outcomes. *Used directly:* the class median and quartiles are computed from the leader's own closed records, never from an external benchmark, and the planning-fallacy ratio is computed **only** where the workspace recorded a declared estimate and an actual effort in the same unit.
+
+**What is genuinely new here.** Not the estimators — they are textbook and cheap. What no adjacent product ships is the *combination*: a curve estimated across **six unrelated modules of the leader's own record** (funded work, operational cases, hiring, change programmes, delegations, decisions), with censoring and competing risks handled explicitly, both the naive and the corrected completion figures printed together **with the reason they differ**, and a hard refusal to print a probability below the at-risk floor. A vendor delivery-analytics dashboard could compute the corrected number; it would then have to tell its customers that roughly a quarter of their work is abandoned. The naive number is better for the vendor, which is why the naive number is what the category sells.
+
+**What this module refuses to claim.**
+
+- **Independence of censoring** is assumed, not tested, and it fails exactly when a leader stops the slowest work first. The competing-risk model is in the product because of that doubt; the assumption is printed on the page rather than buried in a footnote.
+- **Exchangeability within a class** is assumed. Narrowing a class is the remedy, and the readings ledger is the only evidence the workspace has about whether pooling beat the base rate.
+- **The age percentile is not a probability.** It is a rank among past exits with no horizon in it, and it is labelled that way on the row, in the subtitle and in the brief, because the plausible misreading ("this item has a 78% chance of finishing") would be the most damaging sentence the module could produce.
+- **No person is scored.** Every sentence is about a class of work in a system. The terminal cannot reassign work, extend a deadline or close an item — those are the leader's decisions, and the module exists to inform them rather than to take them.
+- **A prediction cannot be back-filled.** An empty reading list is the correct state after upgrade: freezing a reading on the leader's behalf would be a prediction made after the answer was known.
+
+**What the next session should hunt.** The cost of the wait is still a sentence rather than a number, and the workspace already knows how to price delay in two other modules. And the uncomfortable one remains unbuilt: the **cross-concern fairness audit** — whether the same evidence floor is applied to everyone is a testable property of the leader's own record, and no product in the category will ever measure it.
+
+## §88. 2026-10-30 — Grading the leader's process instead of the person (Session 88, [ADR-0051](./docs/adr/0051-performance-recovery-due-process.md))
+
+**The question.** Every terminal in this workspace grades an artefact. What does a leader need at the moment the artefact is *a person who is not delivering* — and what can a local-first tool honestly say there?
+
+**What the market sells, and why none of it is adopted.** Three product categories own this moment: rating instruments (nine-box grids, potential scores, stacked rankings), adverse-action workflows (PIP generators whose conclusion pre-exists the evidence), and listening/people-analytics products that infer sentiment, engagement or flight risk from messages and calendar activity. The first two convert a manager's discomfort into a defensible-looking artefact; the third manufactures claims about people from proxies the person never consented to. `docs/FAIRNESS.md` already refuses ratings, nine-boxes and PIP triggers; this session extends that doctrine from copy into the command layer.
+
+**The literature that does survive the constraint.**
+
+- **Mager, R. F. & Pipe, P. (1970; 3rd ed. 1997), _Analyzing Performance Problems_.** Seven questions distinguish a *skill/knowledge* deficiency from a *performance* deficiency: could they do it if their life depended on it, do they know what good looks like, do they know when it is due, is something in the way, does good performance bring no consequence (or cost them), is capacity exhausted, have they had usable feedback close enough to act on. Each answer implies a different remedy — training for a skill gap, clarity for an expectation gap, obstacle removal for a blocked path. *Used directly:* the seven tri-state answers, the eight cause classes and the expected-support mapping. *Deliberately not used:* any inference of the answers from behaviour — the leader declares them, and an unanswered question keeps the diagnosis unnamed rather than guessed.
+- **Leventhal, G. S. (1980), "What should be done with equity theory?"; Colquitt, Conlon, Wesson, Porter & Ng (2001), "Justice at the millennium", _Journal of Applied Psychology_ 86(3).** Procedural justice is a set of checkable properties — consistency, accuracy, correctability, bias suppression, representativeness, ethicality — and procedural fairness predicts acceptance of an outcome better than the outcome's favourability does. *Used directly:* six rules (notice, accuracy, consistency, voice, bias suppression, support) each reduced to a fact the record either contains or does not, with a printed fix. *Adapted honestly:* "representativeness" and "correctability" are folded into voice/accuracy rather than pretending this app can audit an appeals process that does not exist inside it.
+- **Locke, E. A. & Latham, G. P. (1990, _A Theory of Goal Setting and Task Performance_; 2002, "Building a practically useful theory of goal setting", _American Psychologist_ 57(9)).** Specific, difficult, time-bounded goals with feedback outperform vague intentions. *Used directly:* a plan without a measure, a date or a bounded probability is refused by the command layer.
+- **Bies, R. J. & Moag, J. S. (1986), "Interactional justice"; Edmondson, A. (1999), "Psychological safety and learning behavior in work teams", _ASQ_ 44(2).** Being heard is a precondition, not a courtesy. *Used directly:* the voice rule and the blameless 1:1 prompt — and the refusal to record a "notice" conversation as voice.
+- **Brier, G. W. (1950), "Verification of forecasts expressed in terms of probability", _Monthly Weather Review_ 78(1).** A stated probability is gradeable. *Used directly:* the plan's own probability is frozen at adoption, scored once at review with the three-outcome realisation (met = 1, partial = 0.5, not met = 0), and the average is withheld below five resolved plans because an average over four cases is an anecdote with a decimal point.
+- **Reinertsen, D. G. (2009), _The Principles of Product Development Flow_, cost of delay; standard replacement-cost convention (months of pay).** Waiting has a price. *Used directly:* `costOfInaction`, which prices declared inputs and prints *unpriced, not zero* when a person has no pay row.
+
+**What is new here, if anything.** Not the frameworks — they are decades old and cheap. The combination is what no adjacent product ships: the frameworks are applied to **the leader's own record**, the app **refuses the next step** while a fairness fact is missing, the leader's **own probability is graded**, and the adverse action is **structurally unavailable** rather than merely discouraged by copy. A PIP generator cannot make that claim; a nine-box cannot; a sentiment dashboard cannot, because its input is the thing this design forbids.
+
+**Deliberate rejections, with reasons.**
+
+- **Performance rating / potential score / nine-box / forced ranking.** Ranks people on instruments the app cannot validate, and every downstream decision then inherits the measurement error silently.
+- **Sentiment, language or engagement analysis of messages.** Infers claims about people from proxies; forbidden by doctrine and by taste.
+- **PIP generators and warning-letter templates.** Pre-write the conclusion; the tool would be laundering a decision the leader has already made.
+- **Recommending an exit, a demotion or a pay change.** The app has no business making a personnel recommendation, and every one of those decisions belongs to a human process with legal weight.
+- **Legal advice.** Jurisdiction-specific and out of scope; the screens say so explicitly.
+- **Inferring the analysis answers from observation text.** Tempting and wrong: it would turn a tool that records the leader's reasoning into a scoring engine about a person.
+
+**Open weaknesses (stated, not hidden).** The audit is only as honest as the leader typing into it; nothing verifies that an observation happened. The cost model is arithmetic on declared numbers, and a leader who declares nothing gets a truthful "unknown" rather than a useful figure. The six justice rules are a checklist, not a validated psychometric instrument. Within-record clustering is not modelled: the same incident recorded three times inflates the evidence count unless the distinct-date rule catches it, which is why that rule exists and is tested. And the app cannot stop a leader acting badly outside it — it can only make the record of what was done visible.
+
+**Sources checked, confidence.** The frameworks above are well-established and quoted from standard editions; they are labelled as **used**, not as validated predictors in this context. Product comparisons (Lattice, 15Five, Culture Amp; PIP-template marketplaces; people-analytics vendors) are **search-limited** and are described as category behaviour, not as verified feature-by-feature claims. No vendor outcome statistic is used as evidence anywhere in this module.
+
+---
+
+## §86. 2026-10-30 — Strategy stress under declared macro-scenarios (Session 86)
+
+### Fresh scan: scenario planning is mature; the cascade is not
+
+| Source | What it says | Status | Product implication |
+|---|---|---|---|
+| Schoemaker (1995), *Scenario Planning: Lessons for Practice* | Scenarios are plausible alternative futures, not predictions. They test strategy robustness, not forecast accuracy. | Canonical. | Scenarios are declared external shocks with explicit kind and direction. No probability is assigned. |
+| Meadows (2008), *Thinking in Systems* | Leverage points are places in a system where a small shift produces large change. | Canonical textbook. | Each scenario declares which system parameter it shifts (arrival rate, resource ceiling, team composition, constraint set, competitive landscape, dependency availability). |
+| Tsebelis (2002), *Veto Players* | Coalition stability depends on the distribution of power among players whose agreement is required. | Peer-reviewed political science. | Coalition stability is re-checked under each scenario by re-running the power module's winning coalition enumeration on the projected state. |
+| Total Variation Distance (Levin & Peres, 2017) | The TV distance between two distributions over the same support is half their L1 distance, bounded [0, 1]. | Canonical probability theory. | The say-do gap divergence under each scenario is the change in TV distance between declared and measured shares. |
+
+### What the research changes in the design
+
+- **Declare, don't predict.** The literature cannot tell a leader which scenario will occur. The tool asks them to declare plausible shocks and then shows what changes. No probability, no ranking, no "most likely" — just the cascade under each declared scenario.
+- **Cascade, don't aggregate.** The novelty is not the scenario itself but the cascade: strategy coherence, attention allocation, coalition stability and case severity all shift under the same projected state, and the typed graph proves which records changed.
+- **Composite, not score.** Below three scenarios the composite is withheld. Above three, it is an arithmetic mean of observable divergences — not a fabricated "resilience score." The methodology page says so.
+
+### Shipped synthesis
+
+`warGame.js` (scenario projection, multi-module evaluation, composite resilience), `warGameRules.js` (RULE-WG-01..04 on the shared spine), Schema v60 additive collections, `#/wargame` terminal with four tabs, `wargame` typed node with `stresses`/`prefigures` relations, 22 new tests, full wiring.
+
+### Where LeadOS is narrower than the claim it might appear to make
+
+- Scenario planning is a mature consulting and software category. This session adds no novel scenario methodology and claims none.
+- The scenario adjustments are bounded multipliers applied to existing records, not causal claims. A "demand shift" scenario does not predict demand; it shifts the severity of existing cases within declared ranges.
+- The composite is an arithmetic mean of observable divergences, not a weighted, calibrated, or validated resilience index.
+- No live browser, assistive technology, cross-device or independent field trial was run (**[UNVERIFIED]**).
+
+## §85. 2026-10-30 — The channel is the missing instrument (Session 85, [ADR-0050](./docs/adr/0050-signal-path-cascade-latency.md))
+
+### Fresh scan: the silence literature is settled; the measurement is not shipped
+
+Every claim below is either a classical/peer-reviewed result or a vendor claim labelled as such. Nothing here supports a category-first claim, and no vendor outcome figure is used as evidence.
+
+| Source | What it says | Status | Product implication |
+|---|---|---|---|
+| [Rosen & Tesser (1970), *On reluctance to communicate undesirable information: the MUM effect*, Sociometry 33:253–263](https://homepages.se.edu/cvonbergen/files/2012/12/AN-EXPLORATORY-STUDY-OF-EMPLOYEE-SILENCE_IISSUES-THAT-EMPLOYEES-DONT-COMMUNICATE-UPWARD-AND-WHY.pdf) | People are reluctant to convey unfavourable news at all, independent of who caused it. | Classical, repeatedly replicated. | The suppression is a *transmission* probability, not a mood. That is a number this app can price. |
+| Athanassiades (1973); Read (1962); Roberts & O'Reilly (1974), as reviewed in the same source | Subordinates distort information sent upward so as to minimise the negative content, and hierarchy intensifies the effect. | Classical survey findings; the review notes the evidence is not uniform (Glauser 1984). | Per-hop loss should be modelled as multiplicative and *declared*, with the declaration exposed to falsification rather than asserted. |
+| [Morrison (2014), *Employee voice and silence*, Annual Review of Organizational Psychology and Organizational Behavior](https://www.researchgate.net/publication/229527091_Being_Polite_and_Keeping_MUM_How_Bad_News_is_Communicated_in_Organizational_Hierarchies1) and [Milliken, Morrison & Hewlin (2003)](https://core.ac.uk/download/pdf/61446587.pdf) | Voice/silence is a decision with self-protective motives and a felt futility component; silence is normal when viewed from the employee's side. | Peer-reviewed reviews. | A tool that tells a leader their team is "silent" is a judgement about people. A tool that tells them the *route* delivered 2 of 6 facts is a count about a route. Only the second is buildable here. |
+| [Strauss (2011) Upward Communication Distortion Index, in a 2017 USD dissertation](https://red.library.usd.edu/cgi/viewcontent.cgi?article=1356&context=diss-thesis) | An instrument for the *propensity of individuals* to distort upward communication, validated against LMX and locus of control. | Dissertation-level instrument; self-report per person. | Explicitly *not* adopted. Scoring individuals requires surveying them and turns a channel reading into a personnel rating. The probe ledger measures outcomes, not dispositions. |
+| Shannon (1948), *A Mathematical Theory of Communication*; Green & Swets (1966), *Signal Detection Theory and Psychophysics* | Channel capacity is a property of the channel; discriminability d′ separates sensitivity from response bias. | Canonical textbooks. | Both are computable from the probe ledger without any inference about a person: bits carried through the declared channel, and d′ over delivered/missed/false-alarm counts. |
+| Wilson (1927); Brier (1950) | Score interval for a proportion; quadratic scoring rule for probabilistic forecasts. | Canonical. | The page reports a Wilson interval and a Brier score rather than a bare percentage, because six probes do not support a point estimate presented as one. |
+
+### What the research changes in the design
+
+- **Measure the route, not the person.** Every literature-validated *instrument* in this space (UCDI, silence scales, psychological-safety surveys) scores individuals or teams. Every one of them is out of bounds for a local-first app that forbids proxy inference about people. The probe ledger measures the outcome a leader can already see: did the fact arrive, and how did they learn it.
+- **Hierarchy is the mechanism, so depth must be the model.** Because the effect intensifies with hierarchy, reach has to be a product over hops derived from the actual roster — not a single "communication health" score. That also means a reporting cycle must produce no number at all rather than a plausible one.
+- **Declaration before measurement.** The literature cannot tell a leader their own per-hop transmit probability. So the app makes them declare it, freezes the consequence, and grades the declaration. A channel reading that survives contact with six probes is worth more than one nobody recorded.
+- **Suppression has a mirror image.** Every relay can also raise a false alarm, and a loud channel makes the next true report cheap to ignore. Modelled as a parallel product, and surfaced as its own SIG rule, because a reach-only model would flatter a noisy channel.
+- **Interventions must be re-scored, not recommended.** The candidate levers (skip-level, cadence, escalation line, post-miss review, monitoring) are the standard ones in the silence literature. Because each is a declared parameter change, each can be priced by the same evaluator — which is what stops the tool from turning into advice.
+
+### Shipped synthesis
+
+`signalPath.js` (reach / false-alarm / arrival-conditional latency / expected loss / Shannon bits / d′ / Wilson / Brier / lever pricing), `signalPathSchema.js` (Schema v59, fail-closed normalisation), `signalPathRules.js` (`RULE-SIG-01..04`), 11 action APIs, `#/signal` with five panels (`path`, `reach`, `probes`, `levers`, `method`) and five dialogs, the `signal` typed node with `reaches`/`signals` relations and a resolver route, `SIG-01..07` in the Insights centre, the nav badge, CSV scope #51 (class codes, ratios and counts only), a deterministic brief, and a demo workspace whose committed channel is contradicted by its own probe ledger.
+
+### Where LeadOS is narrower than the claim it might appear to make
+
+- Organizational silence, psychological safety and upward distortion are extensively studied; this session adds no behavioural science and claims none.
+- The per-hop transmit probability is a **declared** convention, not a measurement. The ledger grades the product of the declaration, not the individual hops; the page cannot say which relay swallowed a message.
+- Parallel branches are treated as independent. Where a skip-level also removes the context the chain carried, the arithmetic overstates the gain, and the method panel says so.
+- Probe honesty is unenforceable. The ledger is only as good as the leader's willingness to record `never`.
+- No claim is made that any lever improves outcomes, morale or retention. Lever rows are model output under the leader's own declared parameters and are labelled as such.
+
+### Rejected and queued
+
+- **Rejected:** any sentiment or volume-based inference about people (mood scores, message counts, silence indices) — proxy inference the product doctrine forbids, and the reason the UCDI-style instruments are not used.
+- **Rejected:** per-hop measurement by instrumenting internal communication. It requires surveillance of individuals for a number the probe ledger can produce from questions the leader already knows the answer to.
+- **Rejected:** ranking levers and showing only the best. Hiding a priced bad deal is the failure this app exists to avoid.
+- **Rejected:** a single "channel health" index, and any verdict below six settled probes.
+- **Planned:** identify which hop is likely responsible by letting a leader settle a probe at each relay (`learnedVia: skip-level` already records a bypass, not a culprit), only once a per-hop sample exists.
+- **Planned:** hourly latency for channels that move in hours rather than days, which needs a typed timestamp on the probe rather than two dates.
+- **Planned:** carry the blind-path link into the case's own risk pricing so a case whose channel is 47% reliable is not evaluated as if it were 100%.
+
+## 2026-10-30 — Common-cause risk in the attention market (Session 83)
+
+### Domain and product scan
+
+- **NIST IR 8286C Rev. 1 (December 2025)** describes aggregating and harmonizing system-level cybersecurity risk registers into organizational and enterprise views; it explicitly notes the need to align risk descriptions and use consistent categories. This is authoritative guidance, but its scope is cybersecurity risk management, not a manager's weekly attention allocation. [NIST publication](https://nvlpubs.nist.gov/nistpubs/ir/2025/NIST.IR.8286Cr1.pdf)
+- A current 2026 third-party overview lists Resolver's combination of incident management, investigation, root-cause analysis and corrective action, and describes portfolio-level risk aggregation across ERM vendors. These are vendor capability claims relayed by a third party, **not verified against Resolver's docs**. [Third-party overview](https://www.nected.ai/us/blog-us/operational-risk-management-tools)
+- The 2026 conversation-coaching market scan surfaced Coachello's adaptive roleplay and Skillsoft CAISY's workplace-conversation simulation; the latter is more relevant than generic LLM chat for high-stakes rehearsal. Public descriptions establish the product category, not effectiveness. [Coachello roleplays](https://coachello.ai/ai-avatar-roleplays/) · [SHRM on AI training simulators](https://www.shrm.org/topics-tools/employment-law-compliance/employers-role-play-terminations-with-ai-training-simulators)
+- Risk-aggregation guidance consistently warns that adding item-level risks assumes something about dependence. Yet a matching free-text barrier does **not** establish shared causation or loss correlation. The product must show a question to investigate, not fabricate a covariance coefficient.
+
+### Gap, decision, and implementation
+
+The Attention Market already priced obligations and explicitly said it did not model correlation. The available case records already contain Toyota 5-Whys / Reason Swiss-Cheese barrier notes, but two cases citing the same exact text were not related or surfaced together. The feature therefore extended the existing graph and general post-commit engine rather than adding another AI form: `RULE-ATT-05` reconciles `shares-barrier` typed case edges on case lifecycle events; the attention read model computes a same-currency sensitivity from the records.
+
+Two disclosed scenarios: sum the priced exposures (additive) versus use the largest single exposure (full overlap). These are **not bounds**: actual loss could be between or outside them, and identical text is only a match heuristic. The optimizer remains unchanged. The edge stores no barrier text, and edits/resolution/pause remove stale relationships.
+
+This is a narrow cross-module extension, not a claim that LeadOS exceeds ERM suites at enterprise risk aggregation. No vendor-absence or category-first claim is made. The next important leap is to replace string-equality as the only common-cause key with a human-confirmed, typed driver/dependency model and evidence-backed scenarios, while preserving explicit uncertainty.
+
+### Verification
+
+Focused tests prove a real `addCase` event creates an edge, `buildAttentionMarket` reports the computed exposure scenarios, `updateCase` removes the stale edge, currencies never mix, unpriced exposure stays unknown, and both the rendered panel and the signal route exist. No live browser, assistive technology, cross-device or independent field trial was run; those remain **[UNVERIFIED]**. Search was restricted to indexed public pages and may miss product capabilities.
+
+## 2026-10-30 — Decision provenance and evidence boundaries
+
+Fresh competitive scan (vendor claims and third-party comparisons, not independently tested): [IdeaLift](https://idealift.app/blog/63-decision-intelligence-framework-product-teams) describes decision decay monitoring, with assumptions and signal-based review; [Lumivero](https://lumivero.com/resources/blog/decision-intelligence/) argues for linked decisions, risks and assumptions and continued monitoring. [Fluree's comparison](https://flur.ee/compare/decision-intelligence) describes Palantir Foundry/AIP ontology and staged write-back, Aera automated operational decisions and SAS governed decisioning; it is a vendor comparison and not neutral verification. [A 2026 scenario overview](https://www.business-software.com/blog/generative-ai-simulation-the-rise-of-what-if-scenario-engines-for-smarter-decisions/) names Anaplan, Pigment, Kinaxis Maestro and o9 for connected what-if planning. [Betterworks' 360 comparison](https://www.betterworks.com/magazine/best-360-degree-feedback-tools) names Betterworks, Culture Amp, Leapsome and Lattice for feedback connected to goals and people workflows; its rankings are self-interested. [Engagedly's survey](https://engagedly.com/blog/best-360-degree-feedback-softwares/) includes 15Five coaching and Qualtrics EmployeeXM. Claims of parity, first-to-market or specific vendor outcomes are **[UNVERIFIED]**.
+
+Gap: LeadOS has typed graph and event-driven propagation but a target state's relationship to a premise was not an assertion of equivalence. Applying a diagnostic likelihood ratio without that assertion can convert a test about a union of states into false individual evidence. Shipped a human-confirmed, frozen single-state equivalence gate and signed evidence conversion. Negative likelihood ratios less than one require reciprocal magnitude in the existing direction-and-magnitude ledger. Also repaired invalid shared-premise provenance and stopped summing different currencies. These are integrity improvements, not proof of calibration, independence, or competitive superiority. Existing observations and decisions remain historical and need review.
+
+## 2026-10-29 — decision execution and people intelligence hunt
+
+Sources below are vendor descriptions, not independent proof of effectiveness or a feature-by-feature test. Newly inspected this session:
+
+- [Palantir operational applications](https://www.palantir.com/docs/foundry/app-building/operational-apps): simulate a decision, submit a governed atomic action, and retain a decision/action log. Applied here to a smaller local case workflow: missing mitigation is visible, a human reviews removal, and the existing event spine re-evaluates status in the same transaction. LeadOS does not implement Foundry integrations or ontology permissions.
+- [Visier workforce planning](https://www.visier.com/solutions/workforce-planning/): describes comparing cost, headcount, skills and risk using connected workforce and financial data. LeadOS has local case/goal/capacity links but no verified live HRIS or finance integration; next explore consent-aware evidence-grounded scenarios rather than claim comparable data coverage.
+- [BetterUp Grow](https://www.betterup.com/products/betterup-ai-coaching): advertises configurable difficult-conversation roleplay and human escalation; LeadOS has deterministic talking points, not a conversational AI or human coaching network.
+- [Perdoo MCP](https://www.perdoo.com/resources/blog/9-fascinating-things-you-can-do-with-perdoos-mcp-server): describes AI-assisted strategy briefings and draft/write workflows. Planned: transparent provenance and explicit approval before any future integration; no external MCP added here.
+- [Lattice performance reviews](https://lattice.com/reviews) and [Qualtrics EX](https://www.qualtrics.com/employee-experience/): describe 360, performance and engagement workflows. LeadOS's local records and privacy boundaries are not equivalent to enterprise multi-rater collection; future work must preserve consent and aggregation thresholds.
+- [Gloat AI agent use cases](https://gloat.com/use-cases-agents/): describes continuously updated succession readiness and development milestones. Planned: trace actual practice/cover evidence to human-reviewed development, not automatically label employees as high-potential.
+
+Framework implemented: **fault-tree AND gate** (all explicitly linked mitigation tasks must be complete before an automated transition). Missing evidence is a blocker, not a zero-risk observation. A done task is not verification of effectiveness. This is narrower than the market's simulation and talent suites, but makes cross-module execution safer and more inspectable. No claim of novelty or vendor superiority is established.
+
+
+## 2026-10-29 — Decision intelligence and accountability hunt
+
+- [Alembic's 2026 release](https://alembic.com/alembic-launches-real-time-causal-ai-platform-for-enterprise) describes real-time causal simulation and capital reallocation (vendor claims, not independently validated). The gap in LeadOS is not another causal claim: it is whether users can trust the provenance and completeness of the connected work behind a decision.
+- [Causal Couture's scenario intelligence](https://www.humanitarians.ai/videos/causal-couture-week-5-implementing-scenario-intelligence-trends) distinguishes a user-assumption what-if from a forecast or causal effect. Preserve that distinction in LeadOS.
+- [Culture Amp / Lattice / 15Five comparison](https://www.guideflow.com/blog/performance-appraisal-software) identifies integrated reviews, engagement, goals and coaching as market baseline; it is a third-party comparison, not a verified feature audit.
+- Gap: LeadOS already has rich simulation and multi-module routing, but a dangling graph edge could suppress a new mitigation or decision, and text-matched audit entries could mix unrelated/confidential activity. This session implements typed audit association, missing-link visibility, and eligibility-aware repair for decision/delegation case rules. It does not claim market-first capability.
+- Rejected: predicting individual attrition from small, sensitive local datasets — weak validation and privacy risk.
+
+# RESEARCH — what the rules are based on
+
+This file records the leadership frameworks and evidence behind LeadOS, and — more
+importantly — what each one turned into in code, or why it was rejected. It is updated
+every session. Rules named here are the same ids the app shows on every finding.
+
+**Session 60 correction (2026-10-28):** §64 supersedes §63's stronger claims about
+FDR control, false-discovery counts and hindsight-free demo scoring. Prior sections are
+historical and were not re-audited or re-fetched in full **[UNVERIFIED]**.
+
+**Last refreshed: 2026-10-29, Session 72.** Fresh official-product research and the technical/framework synthesis for joining Impact outcomes to exact retained execution evidence are recorded in **§75** and implemented in Schema v49 / ADR-0037. §74 remains the technical-pattern review behind the successful-propagation ledger; §73 contains the prior direct-product/scorecard survey. Vendor announcements are not independent efficacy evidence; current Lattice AI Leverage Insights availability, competitor feature absence, parity and comparative effectiveness remain **[UNVERIFIED]**. Earlier sections are historical and were not all re-fetched.
+
+The bar for inclusion is not "it sounds like good leadership". It is: does it give the
+app something *checkable* against records the leader can enter? Frameworks that only
+produce adjectives are recorded in `ROADMAP.md` under "Rejected" with the reason.
+
+---
+
+## 1. Situation, Behaviour, Impact (SBI)
+
+**Source.** Centre for Creative Leadership's SBI model; used widely as the structure for
+feedback that can be heard without triggering defensiveness.
+
+**Why it matters.** Feedback fails for two reasons that have nothing to do with
+courage: it generalises one moment into a character trait ("you're always
+dismissive"), and it omits the impact, so the receiver has no reason to change.
+Gallup's manager research found meaningful feedback is the single lowest-rated manager
+behaviour and among the strongest predictors of engagement — only 16% of employees say
+their last conversation with their manager was extremely meaningful ([Gallup, *A Great
+Manager's Most Important Habit*](https://www.gallup.com/workplace/505370/great-manager-important-habit.aspx)).
+
+**Implemented.** `app/core/domain/feedback.js` → `validateSBI()` scores specificity on
+three axes and returns coaching for each gap, live, while the note is being written
+(`views/feedback.js`, `ui/modals.js`). Rules `FB-01` (never recorded), `FB-02` (stale),
+`FB-03` (praise only), `FB-04` (criticism only), `FB-05` (follow-up due).
+
+**Timeliness added this session.** Gallup describes useful feedback as fast, frequent and
+focused on recent work ([Gallup, *Fast Feedback Fuels Performance*](https://www.gallup.com/workplace/357764/fast-feedback-fuels-performance.aspx)).
+That supports measuring the observation-to-conversation gap; it does **not** establish a
+universal seven-day scoring cutoff. Feedback now stores `observedOn` separately from the
+conversation date. `feedbackLatencySummary()` reports average/max/delayed counts only for
+real date pairs in the 90-day window, and `FB-06` links to the measured items beyond the
+configurable team convention. Missing dates remain unmeasured; received/upward feedback is
+excluded from person-performance latency. Existing dates can be corrected without rewriting
+the SBI note.
+
+**Deliberately not implemented.** A hard block on vague feedback, a zero-day value for an
+unknown observation, or a claim that seven days is a research-validated threshold. People
+stop logging under hard blocks; a coach that explains is worth more than a validator that
+refuses, and unknown data must not become a flattering measurement.
+
+---
+
+## 2. GROW (Whitmore)
+
+**Goal → Reality → Options → Will.**
+
+**Why it matters.** Most development plans stop after Goal ("get better at influence")
+and never reach Will (a dated action the person owns). The plan then functions as
+evidence of intent rather than a mechanism for change.
+
+**Implemented.** `app/core/domain/growth.js` → `growCompleteness()` scores how many of
+the four stages have real content behind them (Options needs two distinct routes; Will
+needs a dated commitment). `planHealth()` refuses to call a plan healthy without a
+committed action. Rules `GROW-01`…`GROW-05`, plus competency coverage gaps.
+
+---
+
+## 3. Radical Candor and the feedback balance
+
+**Source.** Kim Scott's *Radical Candor* — care personally, challenge directly;
+"ruinous empathy" is praise-only feedback that avoids the hard conversation.
+
+**Implemented.** The praise/constructive balance per person (`BALANCE_LABELS`) and two
+separate findings: `FB-03` for praise-only, `FB-04` for criticism-only. Two distinct
+failures need two distinct interventions.
+
+**Caveat recorded.** Balance is not a target ratio. A person who is performing well
+should receive mostly praise; the finding fires on *absence* of one kind over a long
+window, not on a ratio being "wrong".
+
+---
+
+## 4. Psychological safety (Edmondson)
+
+**Why it matters.** Safety is the precondition for every other signal here: if people
+cannot raise problems, the leader's picture is systematically wrong, not merely
+incomplete.
+
+**Implemented.** Pulse dimension *safety* ("I can raise a problem or admit a mistake
+without penalty"), aggregated anonymously. `PULSE-03` fires below 3.0/5 and says
+plainly that every other signal is compromised while it stays there. The app treats a
+suppressed pulse as a finding in its own right (`PULSE-02`), because "we cannot see" is
+itself a risk.
+
+---
+
+## 5. Situational leadership (Blanchard) and onboarding
+
+**Implemented narrowly.** Rather than a style inventory (which would be a quiz, not a
+tool), the app uses *tenure and record density* as the situational signal: a joiner in
+their first 90 days with fewer than two logged 1:1s gets `ONB-01` at high severity, and
+dimensions that cannot yet be measured for a new joiner return `null` instead of zero.
+
+**Rejected.** Asking the leader to label each person's development level (D1–D4) and
+adapting advice to their own self-assessment. It is unfalsifiable and it makes the
+leader do the classification work the app claims to do.
+
+---
+
+## 6. One-to-ones: consistency over frequency
+
+**Evidence.** Gallup's manager research links frequent, development-focused
+conversations with engagement; managers account for ~70% of the variance in team
+engagement ([Gallup](https://www.gallup.com/workplace/713033/managers-and-team-productivity.aspx)).
+Vendor analysis of manager-effectiveness products makes a sharper operational point:
+*consistency* (held vs scheduled over eight weeks) predicts better than frequency,
+because cancellation teaches a team that their time is the flexible variable.
+
+**Implemented.** `cadence()` computes status from real dates and a configured cadence,
+plus `skippedStreak` and `adherence` over the last four meetings. `CONV-02` (overdue),
+`CONV-03` (due), `CONV-04` (streak of moved/skipped). Agenda generation
+(`suggestAgenda()`) turns the person's record into a reason for each item, so a 1:1 has
+content before it starts.
+
+**Design consequence.** A *moved* 1:1 is recorded as a signal, not deleted — deleting it
+would make adherence uncomputable and flatter the leader.
+
+---
+
+## 7. Goals: OKRs, and the difference between unmeasured and zero
+
+**Frameworks.** OKR (objectives + measurable key results); Gallup finds employees whose
+manager involves them in goal setting are substantially more likely to be engaged, while
+only ~30% report experiencing it.
+
+**Implemented.** Progress is computed from key results. Expected progress is computed
+from elapsed time. The gap drives `GOAL-01` (behind pace / overdue) and `GOAL-02`
+(flagged at risk). `GOAL-04` fires when a goal has no key results and reports the goal
+as *unmeasured* — never as 0%, because a missing number and a bad number demand
+different responses. `GOAL-03` tracks check-in staleness.
+
+**Co-authorship added this session.** Gallup reports that employees whose managers involve
+them in goal setting are 3.6× as likely to be engaged; that is an association, not proof that
+every leader-set objective causes disengagement ([Gallup, *Re-Engineering Performance Management*](https://www.gallup.com/workplace/238064/re-engineering-performance-management.aspx)).
+A person-owned goal now records `coAuthored: true | false | null`: shaped together, explicitly
+leader-set, or unknown. Team goals store null as not applicable. `GOAL-06` fires only for an
+explicit false value and prompts a conversation about understanding and ownership; it never
+infers authorship from silence. The goal edit flow corrects the field without replacing the
+objective's key results or check-in history, and review evidence labels the capture-time value.
+
+---
+
+## 8. Decision quality: DACI, reversibility, and pre-registered rationale
+
+**Frameworks.** DACI (Driver, Approver, Contributors, Informed) for role clarity; the
+"reversible vs irreversible" distinction (Bezos' one-way/two-way doors) for how much
+process a decision deserves.
+
+**Implemented.** `decisions.js` + `views/decisions.js`: roles, reversibility, options,
+rationale captured *before* the outcome, a review date, and a review that records what
+actually happened. `DEC-01` for decisions that have gone quiet; `DEC-02` for reviews due.
+"Outcome known but never reviewed" is treated as a completed loop only when the review
+is recorded.
+
+**Why before, not after.** A rationale written after the outcome is a story, not a
+forecast, and it cannot teach the leader anything about their own judgement.
+
+---
+
+## 9. Recognition
+
+**Evidence.** Only ~23% of employees strongly agree they get the right amount of
+recognition; those who do are about four times as likely to be engaged, and employees
+who do not feel adequately recognised are about twice as likely to say they will leave
+within a year ([Gallup](https://www.gallup.com/workplace/236441/employee-recognition-low-cost-high-impact.aspx),
+[Gallup & Workhuman](https://www.gallup.com/workplace/651812/organizations-redefine-feedback-including-recognition.aspx)).
+
+**Implemented.** A recognition ledger that requires *what the person did* (not "great
+job"), a per-person recency row so a drought is visible as a row rather than a feeling,
+and `REC-01` for people who have not been recognised in the window.
+
+---
+
+## 10. Succession and 360° feedback
+
+**Implemented.** Evidence-gated readiness (`readiness.js`): a "ready now" claim with
+thin supporting evidence is flagged (`READY-01`) rather than displayed as fact;
+`SUCC-01` finds seats with no ready successor.
+
+**Rejected for now.** Full 360° collection. It needs multiple raters per person and
+therefore a multi-user system; in a single-leader local app it would be one person's
+opinion dressed up as a circle. Gallup's finding that fewer than half of employees can
+formally feed back on their manager is exactly why this matters — and exactly why a
+tool that pretends to do it alone would be dishonest.
+
+---
+
+## 11. Anonymity thresholds in pulse surveys
+
+**Evidence (recorded in the earlier baseline session).** Published vendor conventions
+cluster at 5, with some minima of 3 and larger groups for sensitive topics. These are
+product policies, not proof that any group size guarantees anonymity. Culture Amp's default reporting
+group minimum is 5 and applies to *combinations* of groups; 15Five defaults to 5 and
+allows 3 or 4; Lattice publishes a floor of 3 that admins may raise but never lower;
+Microsoft Viva Glint uses 3 for confidential surveys and 10 for comments. Guidance also
+names the **homogeneity attack**: if everyone answers identically, the aggregate reveals
+each individual's answer regardless of group size, and thresholds must apply to every
+slice, not just the top level ([FeedbackPulse on k-anonymity](https://feedbackpulse.com/resources/survey-anonymity-thresholds),
+[15Five confidentiality](https://success.15five.com/hc/en-us/articles/8359259684507-Confidentiality-for-engagement-surveys),
+[SurveyMonkey best practice](https://www.surveymonkey.com/mp/anonymous-employee-surveys/)).
+
+**Implemented, strengthened in session 4.** Default 5; settings/API/imports support 3–25.
+All aggregate/dimension/trend values come from the same complete four-dimension cohort.
+Incomplete imported responses cannot inflate its floor or distort means. If any dimension
+or per-response overall value is unanimous, the *whole vector* is suppressed, preventing
+subtraction of released dimensions from the overall. Weekly charts apply the same policy,
+exclude future responses and retain null gaps/comparisons. Missing/blank/boolean scores do
+not become low answers, through either import or the write API.
+
+Comments require their own floor of nonempty responses and varied text, rather than
+borrowing the score-response count. Anonymous records carry `personId: null`; normalization
+removes any imported identity value. This corrects the earlier inaccurate “no field at all”
+claim. Regression tests and real-browser health rendering verify the release paths.
+
+**Tradeoff and limitation.** More sparse, unanimous and thin-comment windows are now hidden.
+That is deliberate: releasing more numbers is not worth quietly identifying a respondent.
+A local manager-entered workspace cannot verify independent respondents, protect raw JSON
+from someone with browser access, or prevent identification by writing style. This is a
+conservative release policy, **not** a privacy guarantee or a complete k-anonymity system.
+
+---
+
+## 12. Performance reviews: evidence, reflection, and calibration
+
+**Research and product benchmark (2026-10-24).** CIPD's evidence review of people
+performance practice argues for meaningful measurement, evidence-based practice and
+critical examination of assumptions rather than a universal review formula
+([CIPD evidence review, 2022](https://www.cipd.org/globalassets/media/knowledge/knowledge-hub/evidence-reviews/people-performance-practice-summary_tcm18-109854.pdf)).
+Lattice's review-form guidance recommends setting expectations before a cycle, asking
+consistent and specific questions, prompting for concrete evidence, and separating
+backward-looking assessment from future development
+([Lattice](https://lattice.com/articles/writing-great-review-questions-and-forms)).
+Culture Amp's template guidance starts with strengths, covers both past and future,
+includes employee self-reflection, and treats peer/upward input as useful but bias-prone;
+its optional four anchors are Needs Development, Consistently Meets Expectations, Often
+Exceeds Expectations and Sets a New Standard
+([Culture Amp template science](https://support.cultureamp.com/en/articles/7048422-the-science-behind-culture-amp-s-performance-review-templates),
+[Culture Amp manager guide](https://www.cultureamp.com/blog/managers-guide-to-employee-performance-reviews)).
+CCL's SBI guidance remains the basis for observable behaviour and impact rather than
+personality judgements (§1).
+
+**Gap analysis in plain language.** LeadOS already helped a manager hold the daily and
+weekly conversations, but at review time none of that work became a usable packet. The
+manager would have to reconstruct a quarter from memory—the exact moment when recency and
+a general impression are most likely to replace the record. Feedback latency and goal
+co-authorship remain valuable, but they improve one existing record type; the absent
+review lifecycle left the largest whole-job gap. This session therefore implemented the
+packet and its calibration checks together rather than adding another isolated score.
+
+**Implemented.** `app/core/domain/reviews.js` builds an inclusive-period, oldest-first
+appendix from 1:1s, manager-to-person SBI feedback, goals, dated delegation events, GROW plans and recognition.
+Every excerpt carries its source type, source id, basis and local route. Upward feedback
+about the manager and anonymous pulse answers are deliberately excluded. Current goal and
+plan values say **at capture** because the old store does not contain enough history to
+reconstruct period-end values. Four employee reflection prompts, three manager prompts,
+and an optional four-point manager rating are stored separately. Completion requires
+source evidence and all three manager narratives, but does not fabricate employee
+participation by requiring self-reflection.
+
+`CAL-01`…`CAL-07` expose thin source coverage, later-period concentration, high or low
+ratings without corresponding dated evidence, thin rating narratives, and entirely
+positive or entirely developmental evidence. They never calculate a rating, alter one, or
+claim to prove fairness. Completed packets freeze a recaptured snapshot; reopening and
+refreshing are explicit audited actions. Print/save-PDF uses the browser print dialog.
+
+**Deliberately rejected.** Automatic performance scores, an averaged employee self-rating,
+and a nine-box calibration grid. A single-manager local record cannot support the cross-
+rater comparison those devices imply. The checks are transparent heuristics over recorded
+evidence, not a psychometric instrument or a claim that bias has been eliminated.
+
+**Remaining limitation.** In this single-user app, the manager enters a reflection supplied
+by the employee; there is no employee login or direct submission. The packet is only as
+complete as the underlying records, and a source link opens the live record, which may
+have changed since the snapshot.
+
+---
+
+## 13. Delegation: transferred authority and visible follow-through
+
+**Research and product benchmark (2026-10-24).** CCL defines effective delegation as
+transferring authority and responsibility with the direction, resources and support needed
+for expected results—not merely clearing the leader's desk ([CCL, *Delegating Effectively*](https://www.ccl.org/leadership-solutions/leadership-topics/delegating-effectively/)).
+Asana's task-management pattern makes one owner, due date, details, status and completion
+visible ([Asana](https://asana.com/uses/task-management)). LeadOS borrows that basic clarity
+but adds the leadership-specific decision boundary, support, checkpoint history and explicit
+return-to-leader outcome instead of becoming another generic task list.
+
+**Gap analysis in plain language.** The owner explicitly selected all three former roadmap
+priorities for this session. Feedback recorded the conversation but not how old the observed
+moment was; goals recorded progress but not whether the owner helped shape them; and there
+was no delegation record at all. Those are three different truth gaps, so the increment adds
+three record models/signals rather than hiding them inside one composite “leadership score.”
+
+**Implemented.** A normalized `delegations` collection stores one accountable owner, title,
+expected outcome, decision authority, support, delegation/due dates, dated check-ins, and a
+terminal completion or return outcome. Four operational authority choices—recommend, agree
+first, act-and-inform, own—are LeadOS conversation labels, not a claimed CCL maturity scale.
+`delegationHealth()` keeps overdue, blocked and checkpoint-due facts independent even though
+the headline shows the most actionable state. `DEL-01` covers overdue/missing dates, `DEL-02`
+a latest blocked check-in, and `DEL-03` the configurable checkpoint convention. Suggested 1:1
+agendas point to the same record. Completion requires the delivered outcome; accepting work
+back requires why and what happens next. Closed records remain read-only history in the UI.
+Review evidence uses only dated in-period delegation events and labels current authority/status
+as capture-time values.
+
+**Deliberately rejected.** Inferring authority from seniority, silently reassigning work,
+calling a returned outcome completed, or promising reminders without a background service.
+The seven-day checkpoint is a team convention, not a validated universal threshold. No
+backend, account, network call or new dependency was introduced.
+
+---
+
+## 14. Conflict resolution: interests, voluntary process and verified follow-through
+
+**Research refreshed 2026-10-24 (session 4).** Acas describes mediation as voluntary,
+neutral and forward-looking: the participants control the agreement, and decide what may
+be shared. Its example outcomes include acknowledging perspectives, changing behaviour
+and regularly reviewing the agreement ([1](https://www.acas.org.uk/mediation)). CIPD's
+public guide distinguishes ordinary relationship disagreements from serious harassment
+complaints, which need formal procedures; only the public introduction was read, not the
+member-only material ([10](https://www.cipd.org/uk/knowledge/guides/workplace-mediation/)).
+Harvard's Program on Negotiation recommends observable problems, open questions, testing
+assumptions and understanding everyone's interests before seeking options; it explicitly
+asks whether a trained facilitator, HR or an ombudsman should help
+([9](https://www.pon.harvard.edu/daily/conflict-resolution/conflict-management-intervening-in-workplace-conflict/)).
+These are practice sources, not evidence for an automated diagnosis or a universal deadline.
+
+**Product benchmark.** Lattice's record-of-discussion pattern separates factual context,
+agreed actions with owners/dates, and a dated review. Its acknowledgement/signature is not
+necessarily agreement—an important distinction for LeadOS's single-manager data entry
+([1](https://lattice.com/articles/record-of-discussion-template)). Its 1:1 action items carry
+forward until completed; the useful pattern is continuity, not a one-off notes form
+([5](https://help.lattice.com/hc/en-us/articles/360060026934-Add-and-Manage-1-1-Action-Items)).
+No claim is made that Lattice provides the same conflict case workflow built here.
+
+**Gap analysis and decision before implementation.** Conflict resolution is the first
+unbuilt whole-job workflow in the existing roadmap. Pulse may signal an unsafe climate,
+but a score cannot record whose concerns have been heard, what people need, what was
+agreed or whether the agreement lasted. Build a manager's working record, not an HR
+investigation system: separate perspectives/interests, unknown/willing/declined participation,
+explicit process and sharing limits, owned dated commitments, follow-up, resolution with
+recorded verification, manual support handoff and reopening. An agreement is not resolution.
+Serious/uncertain concerns and declined participation must block the informal-agreement
+path; the app must not force reconciliation or claim to contact a professional.
+
+**Privacy boundary.** Notes remain unencrypted local data and appear in full JSON backups.
+Keep conflict content out of generated 1:1 agendas, person timelines, readiness scores and
+performance-review evidence; general Today/Signals reminders may contain only counts and
+status, not titles, names, interests or allegations. This is exposure minimisation, not
+access control or a promise of confidentiality. A manager-recorded confirmation is not an
+employee signature, independent testimony, legal finding or proof of fairness.
+
+**Audit-led safety work in the same increment.** Existing pulse trends bypass unanimous
+suppression and imported partial responses can defeat per-slice floors. Align release rules
+for aggregate, dimension, trend and comments; suppressed/missing values must remain null.
+Fix goal/delegation tab keys and protect delegation-only workspaces from demo replacement.
+No runtime dependency, backend, account, model inference or network integration is needed.
+
+**Implemented and verified.** The additive schema-v4 record has versioned agreements,
+owned commitments/results, context snapshots, dated checks and closure/handoff/reopening
+history. Unknown or declined participation cannot enter the informal-agreement path.
+Resolution requires completed results and a current-context all-party check that actually
+covered those results; an earlier same-day check cannot verify later work. Reopening keeps
+a verification boundary in the record and transition; damaged/missing boundaries require
+a fresh check rather than inventing chronology. Support handoff is manual and explicitly
+not sent/not resolved. Generic `CFL-01`…`CFL-04` reminders work even without a roster.
+
+Pure/API/schema/jsdom tests and actual Chromium create→agreement→result→check→resolve→reload→
+reopen→support-handoff→export/import runs cover the lifecycle and privacy exclusions.
+Unencrypted-storage warnings are part of capture/detail/export copy, not hidden in docs.
+The final audit also protects future-format data from accidental downcasting, reports
+malformed/duplicate conflict history and rejects oversize writes rather than cutting notes.
+The static server is restricted to canonical assets so scratch exports, credentials and
+repository files are not inadvertently published alongside the local application.
+No claim of independent attestation, legal defensibility, mediation competence or clinical
+risk assessment follows from a manager ticking confirmation. An encountered July-2026
+Acas disciplinary-code draft was **not** treated as a binding/current legal code.
+
+**Rejected.** Conflict-style/personality scores, blame assignment, sentiment inference,
+a conflict-count penalty on team health or talent ratings, automatic HR messages and
+using private mediation notes as automatic performance evidence.
+
+---
+
+## 15. Frameworks considered and rejected
+
+| Framework | Why not implemented (yet) |
+|---|---|
+| **Kotter's 8 steps** | A change-management sequence, not a weekly leadership habit. Would need a change programme object with its own lifecycle; nothing here measures progress through it honestly. |
+| **Tuckman stages** | Team-development stages are a narrative, not an observable. Any inference from recorded data would be astrology with a citation. |
+| **Servant leadership inventories** | Self-report questionnaires. This app scores behaviour against records, not self-image. |
+| **RACI on every task** | RACI earns its cost on cross-team deliverables, not on a leader's own 1:1 actions. DACI is kept for decisions, where role confusion has a measurable cost. |
+| **Nine-box grids** | Requires calibrated ratings across managers; with one leader it is a sorting exercise with a promotion attached. |
+| **Personality/strengths assessments** | Not evidence the app can verify, and a leader who trusts a label over a record stops looking at the record. |
+| **Sentiment analysis of free text** | Would require a model, network calls and unverifiable inference. Rejected on the product invariants (no network, no fabrication). |
+| **Earned-value / capacity planning** | Needs effort estimates the app does not collect; faking capacity numbers would violate "unmeasured ≠ zero". |
+
+---
+
+## Standing research debts
+
+1. **Upward feedback** — the single highest-value addition that a local, single-user app
+   cannot honestly provide without independent contributors and a privacy model.
+2. **Pulse question validity** — the four dimensions are chosen for actionability, not
+   psychometric validation. If this grows beyond a personal tool, the items should be
+   replaced with validated ones (e.g. a short psychological-safety scale) and the change
+   recorded here.
+3. **Conflict practice validation** — test the workflow with consented real-manager use;
+   this working record is not a trained mediator or a jurisdiction-specific case system.
+4. **Longitudinal latency/delegation outcomes** — current thresholds are transparent team
+   conventions. Do not claim predictive validity without real, consented longitudinal data.
+
+---
+
+## 16. Longitudinal people analytics & safe HR spreadsheet exports (Session 5)
+
+**Sources & industry benchmarks.**
+- *Survivorship & composition bias in people analytics:* Excluding departed/archived team
+  members from historical cohorts inflates historical cadence and engagement metrics
+  (survivorship bias), while comparing composite averages when new survey dimensions enter
+  the denominator produces Simpson's / composition-shift paradoxes even when underlying
+  behaviours are unchanged.
+- *Longitudinal pulse anonymity:* Culture Amp and Microsoft Viva Glint default to a minimum
+  of 5 respondents for quantitative scores (supported minimum 3), enforce cascading/unanimous
+  suppression so identical slices cannot be deduced by subtraction across adjacent windows,
+  and apply independent floors to open-text comments.
+- *Spreadsheet formula injection & HR data minimisation:* OWASP WSTG (`WSTG-INPV-21`) and
+  MITRE `CWE-1236` document that RFC 4180 CSV quoting does **not** stop spreadsheet engines
+  (Excel, LibreOffice Calc, Google Sheets) from executing cells starting with `=`, `+`, `-`,
+  `@`, control whitespace (`\t`, `\r`, `\n`), leading whitespace before formula prefixes, or
+  Unicode full-width equivalents (`＝`, `＋`, `－`, `＠`). GDPR Art. 5(1)(b)/(c) (purpose
+  limitation and data minimisation) requires routine operational exports to exclude
+  confidential interpersonal mediation records and raw pulse rows.
+- *Accessible data visualisation:* W3C WCAG 2.1 SC 1.1.1 (text alternatives), 1.3.1
+  (programmatic table relationships), 1.4.1 (non-color series differentiation via dash
+  patterns and marker geometry), 1.4.3 (>=4.5:1 text contrast) and 1.4.11 (>=3:1 graphical
+  object contrast).
+
+**Implemented.**
+- **Schema v5 dated snapshots (`schema.js`, `actions.js`):** 1:1 action `completedOn`,
+  feedback `followUpCompletedOn`, goal `initialConfidence` / `completedOn` / `krUpdatedOn` /
+  `initialCurrent` / check-in `{ progressPct, keyResults }`, and GROW `closedOn` /
+  `stagesUpdatedOn` / `will[].completedOn`. Pre-v5 migrations keep unknown dates `null`.
+- **Bias-safe historical series (`health.js`, `trends.js`):** `reconstructStateAt()` restores
+  `active` status when `archivedAt > asOf`, labels each dimension `exact` vs `approximate`,
+  guards pre-logging windows as `pre-history` (`null`), and computes `matchedDelta` across
+  shared dimensions (`coverageChanged` disclosed).
+- **Accessible SVG + table charts (`ui/charts.js`, `views/health.js`):** 8-week, 12-week and
+  6-month series with distinct stroke dash + marker shapes, hollow markers for approximate
+  checkpoints, broken polylines across suppressed gaps, and collapsible `<details>` HTML
+  `<table scope="col|row">` alternatives.
+- **Scoped, formula-neutralized CSV export (`core/csv.js`, `core/store.js`, `views/settings.js`):**
+  13 purpose-limited scopes; string formula triggers prefixed with `'` while finite negative
+  numbers remain numeric and `null`/`undefined` stay `""`; `pulseSummary` enforces weekly
+  cohort, unanimity and comment floors with zero `personId`; confidential `conflicts`
+  separated behind a danger confirmation prompt.
+
+---
+
+## 17. Encryption at rest for a local leadership record (Session 6)
+
+**The question this section answers.** LeadOS keeps 1:1 notes, feedback, performance-review
+reflections and confidential conflict records in one browser `localStorage` blob. That is the
+most sensitive class of text a manager holds, and until this session it was plain text: readable
+by anyone who opened the browser profile, copied the storage, or picked up a backup file. What is
+the responsible design when the app has no server, no account and no way to reset anything?
+
+**Sources & industry benchmarks.**
+- *Key derivation:* OWASP's Password Storage Cheat Sheet (2023, still the current published
+  guidance in 2026) recommends PBKDF2-HMAC-SHA-256 with **600,000 iterations** and a per-record
+  random salt of at least 128 bits; NIST SP 800-132 is the underlying KDF standard. PBKDF2 is
+  chosen over Argon2id here because every browser ships it in WebCrypto with no dependency, and
+  Argon2id's memory-hardness buys little against the actual threat (an offline copy of the file
+  and a guess at a human passphrase) once the passphrase is long.
+- *Cipher and construction:* AES-256-GCM (NIST SP 800-38D) gives confidentiality **and**
+  integrity in one pass, which matters more here than in a typical app: a silently corrupted
+  workspace that still decrypts would be indistinguishable from a legitimate edit. The GCM
+  additional-authenticated-data binds the KDF parameters, so an envelope cannot be rewritten to
+  use a cheap iteration count.
+- *Passphrase quality signals:* NIST SP 800-63B's 2024 revision argues for length over
+  composition rules and against forced rotation. The policy here is a 12-character floor with no
+  character-class rules, plus two footgun guards (reject leading/trailing whitespace, reject a
+  single repeated character). It deliberately shows no "strength meter", which would promise a
+  measurement the app cannot make.
+- *How password managers frame the same tradeoff:* Bitwarden, 1Password and Proton all raise the
+  KDF iteration count over time while keeping the count **stored per file/account** so raising
+  the default does not orphan data encrypted earlier. The envelope here records its own
+  parameters for exactly that reason.
+- *Local-first product patterns:* offline-first apps with real user data converge on the same
+  three-part safety story — an explicit lock state, no silent fallback to plain text, and a
+  visible, irreversible warning at the moment encryption is enabled rather than in a help page.
+
+**What this application chose, and why.**
+| Decision | Reason |
+|---|---|
+| Encryption is **opt-in**, off by default | Turning it on changes where the only copy of the data lives (behind a key nobody can reset). A first-time manager must be able to choose that, not discover it. |
+| Envelope is **self-describing and versioned** | A future version can open today's files without guessing parameters, and refuses a newer format instead of mangling it. |
+| **Verified round-trip before overwrite** | Encrypt → decrypt → compare → write. The failure mode of "saved an unreadable blob" is total data loss; the cost of the extra check is one AES operation. |
+| **Locked blocks every write path** | An API call, an import, a demo load or a reset could each replace the ciphertext with an empty plaintext workspace. One guard in the store covers all callers. |
+| Lock screen renders **only** the lock screen | Half-rendered navigation over an unreadable workspace implies readability that does not exist, and invites actions that cannot work. |
+| Ciphertext is **never treated as corruption** | The existing corrupt-blob path quarantines and starts fresh. Applying that to an encrypted workspace would destroy it, so vault envelopes are detected before that path. |
+| Import declares its **mode change** | Restoring an encrypted backup into the lock screen keeps encryption; restoring an encrypted file into a plain workspace says, in words, that it is now stored unencrypted. Silent downgrades are how people believe they are protected when they are not. |
+| Exports are **separate decisions** | A plain-text JSON backup remains the recovery-of-last-resort for a forgotten passphrase; encrypted backups exist for everything else. The UI states which is which at the button. |
+| **Idle auto-lock timer** | Implemented this session: locks an unlocked encrypted workspace after a configurable inactivity window (default 30 minutes, 0 = off), warns first with a non-destructive "keep working" affordance and a one-minute grace, and logs the lock to the event log (`tests/app/idle.test.mjs`). The timer cannot fire mid-sentence without warning, and any activity cancels a pending lock. |
+
+**Deliberately rejected.**
+| Idea | Reason |
+|---|---|
+| A recovery key or security questions | A recoverable key stored next to the data is decoration, and security questions are guessable by exactly the people most likely to try. |
+| Encrypting CSV exports by default | A CSV's purpose is opening in a spreadsheet. Encrypting it makes the routine export useless; the honest control is a warning plus a separate encrypted-backup path. |
+| Key escrow / "account recovery" | There is no account and no server, and inventing a hint of one would be a lie about who can read the data. |
+| Storing the derived key in `localStorage` to avoid the lock screen | That reduces encryption to a flag: anyone with the profile gets the key with the data. |
+| Argon2id via WASM | A dependency, a CSP and a supply-chain surface for a marginal gain on a long passphrase. |
+
+**Standing research debt.** Browser WebCrypto was not exercised in a real browser binary in this
+session (Node's `webcrypto` was injected into jsdom), so genuine cross-browser unlock behaviour
+remains `[UNVERIFIED]`. Remaining gaps worth future sessions: per-collection encryption for the
+conflict records specifically, and a passphrase-strength estimate based on a local wordlist rather
+than a character meter.
+
+---
+
+## 18. One-meeting preparation: the paper the leader walks in with (Session 8)
+
+**The question this section answers.** A 1:1 fails most often *before* it starts. The manager
+remembers the last two topics and forgets the promise made three meetings ago, the blocked
+delegation, the feedback that was never closed. The app already generated an agenda from a
+person's record (`suggestAgenda()`, §6), but that agenda lived only inside the log dialog and the
+person page — there was no way to walk into the meeting with it, and no way to hand the person a
+sheet of their own topics. What does a leader actually need on one page, and what must never be
+allowed onto it?
+
+**Sources & product benchmarks.**
+- *Consistency beats frequency, and preparation beats status updates.* Gallup's manager research
+  links frequent, development-focused conversations with engagement and notes managers account for
+  roughly 70% of the variance in team engagement ([Gallup](https://www.gallup.com/workplace/713033/managers-and-team-productivity.aspx)).
+  Vendor and practitioner guidance on 1:1s is consistent that an agenda shared *before* the meeting
+  (and notes taken *during* it) is the single highest-leverage habit; a 1:1 that becomes a status
+  readout is the failure mode to avoid.
+- *Pre-read / one-page brief culture.* Amazon's narrative-memo ("6-pager") practice and the wider
+  "committee memo" tradition are the extreme case of the same idea: force the thinking onto one
+  document *before* people gather, so the meeting debates the document rather than improvising it.
+  A 1:1 prep sheet is the lightweight, personal version of that.
+- *1:1 templates in real products.* 15Five, Lattice, Culture Amp and similar manager-tooling
+  products ship 1:1 agenda templates and, in several cases, a "pre-meeting" prompt that pulls open
+  items forward. The pattern adapted here is the *generated* agenda with a stated reason per item,
+  which is more honest than a blank template and more useful than a generic list.
+- *Two-way agendas.* Best practice is that the employee also brings topics. In a local,
+  single-user tool there is no employee login, so the honest implementation is a manager-recorded
+  "topics they have asked to raise" field, labelled as a scribe record rather than a form the
+  employee filled in.
+- *Privacy boundaries.* A printed or shared sheet is a *new* exposure surface. The two things that
+  must never travel on it are the confidential conflict working record (§14) and individual
+  anonymous pulse responses (§11). Both are excluded at the data layer and named on the sheet.
+
+**What this application chose, and why.**
+| Decision | Reason |
+|---|---|
+| A **route, not a dialog** (`#/prep/<personId>`) | A printable document needs a stable address you can bookmark, print, or save-as-PDF. A modal cannot be printed cleanly. |
+| **Their topics first** | The person's agenda is not a courtesy — it is the reason the meeting exists. Leading with the leader's generated items would recreate the status-meeting failure mode. |
+| **Generated agenda keeps its reason** | Reuses `suggestAgenda()` unchanged, so the sheet inherits the same auditable logic as the log dialog. An item with a reason can be accepted or dropped knowingly. |
+| **Open commitments grouped by source** | A promise made in a 1:1, a feedback follow-up, a GROW action and a delegation checkpoint live in different records; grouping them makes it obvious what is still owed. Overdue items sort first within each group. |
+| **"Since we last spoke" from the record** | The last meeting's notes, mood, carried-forward actions and recognition are fact, not memory. |
+| **Exclusions are named on the sheet** | A reader holding the paper should know the sheet is *missing* conflict records and anonymous pulse answers on purpose, so an absence is not mistaken for an omission. |
+| **A notes area on the sheet** | The sheet becomes the raw material for the next log entry; the manager writes on it and then logs the 1:1. |
+| **`talkingPoints` is a plain string array** | Readable in an export, survives a copy/paste into the person dialog, and degrades to an empty list on every old record without a migration. |
+
+**Deliberately rejected.**
+| Idea | Reason |
+|---|---|
+| Employee self-submission of topics | There is no account, no employee login and no server. A field the manager fills in is honest; a form that pretends to be the employee's is a fabrication. |
+| Auto-including conflict records "because they are relevant" | Exactly the leak this sheet is designed to avoid. Conflict content stays in the conflict workspace and surfaces only as count-only signals. |
+| A per-meeting copy stored as a new record | Duplicates data and creates drift. The sheet is a *view* over current records, regenerated each time, like the review packet. |
+| A scoring or grade on the sheet | The sheet is a brief, not a verdict. Adding a number would invite the leader to grade the meeting instead of run it. |
+| Sending the sheet anywhere | There is no network, no email and no server. "Shareable" here means print or save-as-PDF, and the sheet says so. |
+
+**Standing research debt.** Print/PDF visual output and real-browser geometry of the sheet remain
+**[UNVERIFIED]** (no browser binary in this container). Whether a manager actually uses the sheet
+before the meeting — and whether the grouped-commitment format reduces forgotten follow-ups —
+requires rehearsal with real usage, which is absent here.
+
+---
+
+## 19. Structured 30-60-90 onboarding scaffolding (Session 9)
+
+**The question this section answers.** LeadOS deliberately pauses steady-state goal (`GOAL-05`)
+and development-plan (`GROW-01`) reminders during a new joiner's `onboardingDays` window (default
+90 days) so new hires are not judged on steady-state KPIs before they have context. Until this
+session, the *only* onboarding check was `ONB-01` (`< 2` held 1:1s). As soon as a manager logged a
+second 1:1 in week two, the app fell silent for the remaining 75 days of onboarding. What belongs
+in a structured first-90-days tracker for a first-time manager, and what would turn onboarding into
+harmful bureaucracy or premature grading?
+
+**Sources & product benchmarks.**
+- *Organizational socialization ("The Four C's"):* Talya N. Bauer's SHRM Foundation guide
+  (*Onboarding New Employees: Maximizing Success*, 2010) and Bauer et al.'s meta-analysis of 70
+  socialization studies (*Journal of Applied Psychology*, 2007) separate passive administrative
+  orientation (*Compliance*) from three proactive levers that predict role performance, job
+  satisfaction, organizational commitment and retention: **Clarification** (explicit role
+  expectations and decision boundaries), **Culture** (team norms and unwritten working rules), and
+  **Connection** (peer buddy and deliberate stakeholder introductions, since social capital rarely
+  forms on its own — especially on remote/hybrid teams).
+- *Phased 30-60-90 role transitions:* Michael D. Watkins (*The First 90 Days*, Harvard Business
+  Review Press, 2003 / updated 2013) frames role transitions around three distinct 30-day horizons
+  rather than one flat checklist: **Day 30 (Learn & Connect)** — role clarity, buddy, stakeholder
+  introductions and working rhythm; **Day 60 (Contribute & Calibrate)** — a bounded early win that
+  builds self-efficacy and credibility plus explicit two-way calibration feedback; **Day 90 (Own &
+  Transition)** — end-to-end ownership of a recurring domain, a 90-day retrospective, and handoff
+  into steady-state goals and growth planning.
+- *Product benchmarks:* Lattice Onboarding, Culture Amp Onboarding, Rippling and BambooHR separate
+  IT/HR paperwork from manager-owned 30-60-90 plans with buddy assignment, stakeholder maps and
+  30/60/90 check-in conversations. Where enterprise suites over-index on compliance checklists or
+  single-person surveys that carry no statistical anonymity, a local manager tool excels at making
+  the **manager's own scaffolding obligations** visible and auditable.
+- *Psychological safety boundary (Edmondson, 1999):* Onboarding check-ins ask a new hire what is
+  confusing, surprising or blocking them. If onboarding scaffolding records were auto-imported into
+  formal performance review evidence packets, new hires would have an incentive to hide confusion.
+
+**What this application chose, and why.**
+| Decision | Reason |
+|---|---|
+| **Dedicated `state.onboarding` collection (Schema v6)** | Keeps 30-60-90 plans independent of roster edits, supports future internal role transitions, participates in demo-overwrite protection and activates future-schema safety for older builds. |
+| **Zero fabrication on `v5 → v6` migration** | Existing workspaces migrate with `onboarding: []`; plans are started explicitly by the leader with 6 editable 30/60/90 starter checkpoints anchored to `startDate`. |
+| **Scaffolding gaps framed on the manager, never as a score on the person** | Missing role clarity, an unassigned/archived buddy, unmapped stakeholder introductions or a missing early win (`ONB-03`) are manager debts, not an employee "62% onboarded" grade. |
+| **Three horizons (`30`, `60`, `90`) + dated phase check-ins** | Pairs observable checkpoints per horizon with explicit Day 30, Day 60 and Day 90 check-in conversations (`heldOn`, `summary`, `blockers`) validated against `startDate` and the clock. |
+| **Day 90 conversation gate before completion** | A plan cannot be marked `completed` until the Day 90 check-in conversation is recorded, preventing checkbox closure without an actual conversation. |
+| **Excluded from performance-review packets (`reviews.js`)** | Protects psychological safety during onboarding check-ins while still integrating into `#/onboarding`, `#/people/<id>`, `suggestAgenda()`, `#/prep/<id>`, `personTimeline()` and scoped CSV export. |
+
+**Deliberately rejected.**
+| Idea | Reason |
+|---|---|
+| A numeric "onboarding score" or ramp percentage on the person | Conflates missing manager support (no buddy, unclear scope) with employee capability and invites gaming. |
+| Personality or "culture-fit" ratings | Unfalsifiable against observable work and a well-known vector for similarity bias. |
+| HR / IT compliance checklists (laptop, payroll, tax/right-to-work forms) | Administrative orientation belongs in HRIS/IT systems; mixing paperwork into a leadership workspace crowds out role clarity and coaching. |
+| Auto-ingesting onboarding blockers into performance reviews | Punishes candour in month one and turns developmental check-ins into evaluation files. |
+
+**Standing research debt.** Real-browser visual layout and print geometry of `#/onboarding` and the
+updated `#/prep/<personId>` commitment section remain **[UNVERIFIED]** in this container (no
+browser binary installed); JSDOM workflows, `axe-core` semantic/ARIA checks and live HTTP module
+serving are verified.
+
+## 20. 1:1 follow-through: closing the loop the meeting left open (Session 10)
+
+**The question this section answers.** LeadOS already recorded 1:1 actions, surfaced overdue ones
+and listed them on the printable prep sheet. What it could not express was the *outcome* of a
+promise: an action was open or done, with no way to say "we moved this to next week", "we agreed to
+drop it", or "this was confirmed face to face". The roadmap item was therefore not "more reminders"
+but a *ledger*: at the end of a conversation, what happened to everything that was promised before
+it? This section records the evidence behind the design, and the parts deliberately not built.
+
+**Sources & product benchmarks.**
+- *Practitioner guidance on the ritual itself.* The recurring finding across 1:1 guides is that the
+  meeting should **open** with the previous meeting's commitments: "review action items from the
+  previous meeting … whether they've been completed" (Fellow, *One-on-One Meetings: The Definitive
+  Guide*, 2026), "start every 1:1 by reviewing what was agreed last time" (Popwork, 2026), and a
+  standing "review commitments → progress → obstacles → new commitments → feedback" structure
+  (Deliberate Directions, 2025). None of this is peer-reviewed research; it is convergent practice
+  from vendors and coaches, and the app treats it as design input rather than proof.
+- *Product benchmarks.* 15Five places incomplete action items from past agendas in a **Previous
+  action items** section and carries them over when the 1:1 is ended (15Five Help Center, *End a
+  1-on-1 meeting*, 2026); Lattice action items "carry over from meeting to meeting until they are
+  checked off" (Lattice Help Center, 2023); Fellow exposes a per-note **Carry-forward** setting with
+  *Always / Never / Ask me* (Fellow Help Center, 2026); Granola's rolling action list treats a
+  repeatedly carried item as "a signal rather than a scheduling problem" and advises naming the
+  block directly (Granola, *One-on-one meeting template*, 2026).
+- *Accountability research and commentary.* Gallup's 2025 workplace work reports that creating
+  accountability ranks **lowest of seven leadership competencies** that influence engagement and
+  performance (46% of leaders rate themselves exceptional at it; 30% of managers rate their leaders
+  the same way) — a survey, not a controlled study, but consistent with the product observation that
+  the gap is follow-through rather than intent. SHRM's manager guidance is blunter: "mistrust arises
+  when managers don't do what they said they would do" (*Building Trust as a Manager*, 2023). HBR's
+  2026 argument that "accountability must be chosen, not mandated" is the reason this feature asks
+  for a decision instead of enforcing a checklist.
+- *Behavioural mechanism.* Gollwitzer's implementation-intentions research (*American Psychologist*,
+  1999) supports specifying when and how a commitment will be met; a due date is a weak commitment
+  device, but an explicit re-commitment with a new date is stronger than silently re-showing the old
+  one. Edmondson's psychological-safety findings (§4) set the tone of the question: "what got in the
+  way?", not "why did you fail?".
+- *Metric caution.* Practitioner guides propose a "commitment completion rate" with a healthy band
+  around 85–95% and a warning zone below 70% (Deliberate Directions, 2025). That number has no
+  published dataset behind it, and in a single-manager, manager-entered record it would measure
+  what the manager bothered to log. It is recorded here as a *rejected* metric, not adopted.
+
+**What this application chose, and why.**
+| Decision | Reason |
+|---|---|
+| **Four explicit outcomes per open promise** — done in this conversation, still open, carried into a later meeting, dropped with a reason | Silent auto-carry (the 15Five/Lattice default) hides a blocker: the item reappears every week and the backlog looks unchanged. Asking per item is Fellow's "Ask me" option, with the decision and its history kept. |
+| **The original is closed, not moved** (`carriedTo*`), and the successor links back (`carriedFrom`) | The record keeps both the date the promise was first made and the meeting that moved it. Carry depth and "first agreed on" are *derived* from the chain at read time, so an edited import cannot fabricate a flattering history. |
+| **A rejected link reopens the promise instead of losing it** — missing successor, another person, a date going backwards, or a cycle | The failure mode the feature exists to prevent is a promise disappearing from every open list. Normalization reports the repair in plain language. |
+| **`CONV-06` fires at two carries, not one** | One carry is life. Two carries is the point where "scheduling" stops explaining it (Granola's advice), and the conversation should be about the block or an explicit drop. |
+| **Board completion `completedInMeetingId = null`** | Ticking a box is a report, not a conversation. Only a held 1:1 can record that a promise was confirmed face to face. |
+| **A "promises closed in a 1:1" win** (≥ 2 in a fortnight) | A follow-through feature that only produces alarms trains avoidance. The same records should show what is working. |
+| **Historical snapshots rewind carries, drops and confirmations** | Otherwise a trend chart claims a promise was closed before the meeting that closed it. This mirrors the Session 5 survivorship-bias and Schema v5 snapshot rules. |
+| **CSV exports the ledger, not a score** — `state`, `carried_forward_count`, `first_agreed_on`, `confirmed_in_meeting`, and per-meeting `carried_in` / `carried_out` | A leader can audit the raw facts. No percentage is computed for them. |
+
+**Corrections made while building it.** The export's `owner` column was removed from 1:1, GROW,
+feedback and onboarding rows: the application never asked who owned a 1:1 action, so the column was
+asserting `leader` for every row. An honest export shows only recorded facts.
+
+**Deliberately rejected.**
+| Idea | Reason |
+|---|---|
+| Automatic carry-forward of every incomplete item | Makes a repeating commitment invisible, inflates the "open" backlog without naming the block, and removes the moment where a leader could decide to drop or re-scope. |
+| Deleting a dropped commitment | The decision to stop is evidence. Keeping the reason supports "what did we choose not to do?" in a review and prevents the same promise being re-made blindly. |
+| A completion-rate score or ranking per person | The data is manager-entered and incomplete; a percentage would reward under-recording and read as a performance rating. Counts and dates only. |
+| Email/Slack reminders for carried items | No backend, no network, no scheduler (standing architecture constraint); a tab cannot reliably deliver a reminder, and pretending otherwise is a silent failure. |
+| Letting "carried" count as progress in the health score | Carrying is the absence of a decision, not delivery. The health dimensions continue to use cadence, feedback, goals, growth and pulse, not promise throughput. |
+
+**Standing research debt.** There is no validation that explicit reconciliation reduces the number
+of abandoned commitments in a real team; the carry count is descriptive, not causal. Real-browser
+keyboard and screen-reader behaviour of the new dialog (radios, conditional date/reason fields) is
+**[UNVERIFIED]** in this container — JSDOM + `axe-core` 4.11 report 0 violations, but no browser
+binary was available.
+
+**Sources consulted (accessed 2026-10-25).**
+- 15Five Help Center, *End a 1-on-1 meeting* — https://success.15five.com/hc/en-us/articles/360059003911-End-a-1-on-1-meeting
+- 15Five Help Center, *Hold a 1-on-1 meeting* — https://success.15five.com/hc/en-us/articles/360002699811-Hold-a-1-on-1-meeting
+- Lattice Help Center, *Add and Manage 1:1 Action Items* — https://help.lattice.com/hc/en-us/articles/360060026934-Add-and-Manage-1-1-Action-Items
+- Fellow Help Center, *Carry Incomplete Items Forward* — https://help.fellow.ai/en/articles/3945044-carry-incomplete-items-forward
+- Granola, *One-on-one meeting template for managers* — https://www.granola.ai/blog/one-on-one-meeting-template-for-managers
+- Gallup, *How Can Leaders Build Accountability and High Performance at Work?* (2026 update) — https://www.gallup.com/workplace/712004/accountability-in-the-workplace.aspx
+- SHRM, *Building Trust as a Manager* — https://www.shrm.org/topics-tools/news/managing-smart/building-trust-manager
+- Harvard Business Review, *Accountability Must Be Chosen, Not Mandated* (April 2026) — https://hbr.org/2026/04/accountability-must-be-chosen-not-mandated
+
+## 21. Who owes it: commitment ownership and the leader's own half of the ledger (Session 11)
+
+**The question this section answers.** Session 10 made a 1:1 promise's *outcome* explicit, but every
+promise still looked the same: the record said what was agreed and when it was due, never **who was
+going to do it**. On a five-person team the leader can hold that in their head for a week; on a real
+team it is exactly the detail that evaporates, and it is the detail every comparable product
+records. Worse, the previous export had to be corrected because it printed `owner = leader` for every
+row — a column asserting something the application never asked. This session answers three
+questions: does ownership belong in the model, whose ownership should a 1:1 tool recognise, and how
+should a first-time manager be confronted with their *own* unkept promises without turning the tool
+into a scold.
+
+**Sources & product benchmarks.**
+- *Large-sample evidence that keeping promises is a leadership behaviour, not a nicety.* Zenger
+  Folkman analysed 1.8 million assessments of 162,000 leaders (≈13 raters each, 60 behaviours),
+  including the item "honors commitments and keeps promises" (Folkman, *Forbes*, 29 Aug 2025).
+  Leaders rated **needing improvement** on that item sat at the **13th percentile** of overall
+  leadership effectiveness; "competent" at the **23rd**; "strength" at the **46th**; and only a
+  "profound strength" reached the **74th**. Correlational, not causal, and self/other ratings are
+  involved — but the spread is large enough that follow-through is not a soft skill.
+- *Trust is already falling, and promises are the mechanism people name.* DDI's *Global Leadership
+  Forecast* reports trust in immediate managers down **17 points between 2022 and 2024 (46% → 29%)**,
+  with "breaking promises" first on its list of trust traps (DDI, 2024/2026). Gallup's 2026 study of
+  seven leadership competencies finds **creating accountability the lowest-rated of the seven**, and
+  managers rate their own leaders well below how those leaders rate themselves. The Gallup framing
+  ("holding everyone responsible") is about *others*; the gap this feature targets is the mirror
+  image.
+- *The asymmetry is the point.* Practitioner work on leadership integrity cites Simons and McLean
+  Parks' study of nearly **7,000 employees across 76 hotels**, measuring whether managers' words and
+  actions line up ("My manager delivers on promises"). The widely repeated conclusion is that a
+  breach is weighted far more heavily than a kept promise, which is why a team remembers the one
+  meeting the manager moved and forgets the nine they held. Two-way accountability is named
+  explicitly: accountability is "a two-way contract… where it breaks is usually the second half"
+  (Tina Laws Consulting, 2026), and "one-way accountability is the death of trust" (learn2, 2022).
+  A tool that tracks only the report's commitments reproduces exactly that one-way structure.
+- *What comparable products do.* **15Five** assigns a 1-on-1 action item to its creator by default
+  and lets you reassign it to the other participant — and only to them (*Create and reassign a 1-on-1
+  action item*; *Hold a 1-on-1 meeting*, 2024–2026). **Lattice** behaves the same way: items default
+  to the creator and can be reassigned to the other person in the 1:1 (*Add and Manage 1:1 Action
+  Items*, 2023). **Fellow** puts the assignee inside the note and chases it, described by reviewers
+  as "so I do not have to remember who owes me what" (PeopleGoal, 2026). Practitioner templates make
+  the field mandatory: `Commitment · Owner · Due date · Evidence of completion` (Evalflow, 2026), and
+  "an action item only works when one person owns it" (Sprad, 2026).
+- *Where the evidence stops.* None of this shows that adding an owner field improves outcomes. The
+  claim this application makes is narrower and defensible: an unowned promise cannot be followed up
+  by anyone, and a leader who never sees their own debts cannot practise the two-way accountability
+  the sources describe.
+
+**What this application chose, and why.**
+| Decision | Reason |
+|---|---|
+| **Ownership is a three-value vocabulary** — `them`, `leader`, `shared` — plus `null` | A 1:1 has exactly two participants, so a name is unnecessary and a free-text owner invites ambiguity. `shared` exists because "we will both draft it" is true often enough that forcing a fiction would corrupt the record. |
+| **`null` means "not recorded", and the app says so** | 15Five defaults new items to *you*; that is a plausible default, not a fact. LeadOS keeps the field unknown, shows "Owner not recorded", and counts the gap, because a fabricated owner is worse than a visible one. |
+| **The leader's own promises get a first-class surface** — *What you owe* on Today, a "I owe" stat and an inline owner column on the board | The research above is about the manager's own half. A list that mixes both people's promises lets the leader scan past their own; separating them makes the debt unavoidable without adding a score. |
+| **A carried promise keeps its owner** | The person a promise was made to does not change because the date moved. Reassigning is a separate, audited action (`oneonone.action.owner`), and the original (already carried) is refused with a pointer to the live copy. |
+| **`CONV-07`, per person, when the leader is late on their own promise** | "Mei is waiting on a promise you own" is actionable; "1 overdue action" is not. Severity rises from 3 to 4 when one person is waiting on more than one, because a pattern is what erodes trust. |
+| **`CONV-05` now covers only promises the team owes** | Before this, the same overdue record produced two findings. Splitting by owner keeps one fact in one place: what they owe versus what you owe. |
+| **Ownership is part of the export, truthfully** | The `owner` column returns — this time because the app records it. Unrecorded owners are blank, and GROW "will" actions carry no owner at all: by definition they belong to the person whose plan it is. |
+| **Ownership is editable only while a promise is open** | Rewriting who owed something after it was done or dropped would rewrite the history the ledger exists to preserve. |
+
+**Deliberately rejected.**
+| Idea | Reason |
+|---|---|
+| Defaulting every new action to the report (or to the leader) | The most common product default, and the least honest: most promises are the report's, which makes a wrong default invisible, and the leader's own half disappears entirely. |
+| A completion-rate score for "your commitments" | Same reason the report-side rate was rejected in §20: manager-entered, incomplete, and it would reward under-recording. Counts, dates and names only. |
+| Automatic escalation (email/Slack/notifications) when the leader is late | No backend and no scheduler by architecture; a tab cannot promise a reminder. The card and the signal are honest about being visible only when the app is open. |
+| A free-text owner field, or assigning to anyone outside the 1:1 | Invents a roster the app does not have and makes "who owes it" unanswerable. The two participants are the only people the record can vouch for. |
+| Letting the leader reassign a promise to the report retroactively | Would turn the ledger into a tool for rewriting who was responsible. The write path refuses a closed promise and makes reassignment an explicit, logged act. |
+
+**Standing research debt.** No controlled evidence that surfacing leader-owned commitments changes
+behaviour; the demo's single overdue leader promise is illustrative, not measured. Real-browser
+keyboard/screen-reader behaviour of the inline owner select and the Today card remains
+**[UNVERIFIED]** in this container (JSDOM + `axe-core` 4.11 report 0 violations).
+
+**Sources consulted (accessed 2026-10-25).**
+- Folkman, J., *When Leaders Keep Their Word (And When They Don't)*, Forbes, 29 Aug 2025 —
+  https://www.forbes.com/sites/joefolkman/2025/08/29/when-leaders-keep-their-word-and-when-they-dont/
+- Gallup, *Accountability Is Leadership's Greatest Weakness* (Harter & Tatel, 2026) —
+  https://www.gallup.com/workplace/703379/accountability-leadership-greatest-weakness.aspx
+- DDI, *Leadership Trust: 7 Ways Leaders Build Trust and Strengthen Teams* (2026) —
+  https://www.ddi.com/blog/leadership-trust
+- *Integrity in Leadership: What It Is and How to Show It* (Simons & McLean Parks hotel study summary,
+  2026) — https://leadchangegroup.com/leadership/integrity-in-leadership/
+- Tina Laws Consulting, *Leadership Accountability: Why Managers Set the Temperature* (2026) —
+  https://www.tinalawsconsulting.com/strategy-hub/leadership/leadership-accountability-why-managers-set-the-temperature-for-every-team/
+- learn2, *How to Build High-Trust Leadership* (2022) —
+  https://www.learn2.com/building-high-trust-workplace-culture/
+- 15Five Help Center, *Create and reassign a 1-on-1 action item* —
+  https://success.15five.com/hc/en-us/articles/360040690591-Create-and-reassign-a-1-on-1-action-item
+- 15Five Help Center, *Hold a 1-on-1 meeting* —
+  https://success.15five.com/hc/en-us/articles/360002699811-Use-the-1-on-1-agenda
+- Lattice Help Center, *Add and Manage 1:1 Action Items* —
+  https://help.lattice.com/hc/en-us/articles/360060026934-Add-and-Manage-1-1-Action-Items
+- PeopleGoal, *10 Best 1-on-1 Meeting Software* (Fellow action assignment, 2026) —
+  https://www.peoplegoal.com/blog/1-on-1-meeting-software/
+- Evalflow, *Manager One-on-One Meeting Agenda Template* (owner field, 2026) —
+  https://www.evalflow.com/blog/one-on-one-meeting-agenda-template
+
+## 22. Development commitments that keep moving: a review is a record, not a date change (Session 12)
+
+**The problem this answers.** Session 10 gave 1:1 promises a follow-through ledger (done / still open /
+carried / dropped, with the chain and the reason). The GROW module still had the older, weaker shape: a
+`will` list with a `done` checkbox and one `reviewOn` date. A plan could therefore be "reviewed" by
+editing the date — the cheapest possible way to look like development is being managed — and a
+commitment that stopped moving could only be ticked, left alone, or deleted by editing the plan. That is
+the same hole the 1:1 ledger closed, still open in the module whose whole purpose is growth.
+
+**What the practitioner literature actually says.** The consensus is unusually consistent, and it is
+about cadence and record-keeping rather than about frameworks:
+
+- Plans fail for structural reasons, not motivational ones. The named failure modes are "plans that are
+  created and then ignored for twelve months", "check-ins stop after the initial planning meeting",
+  "nothing is scheduled", and "keeping obsolete goals active after priorities change" (performspark,
+  letscatapult, TMI, culturespark). A plan with no calendar entry is "a document, not a commitment".
+- Annual review is not a cadence: "Annual review is not a cadence. It is a postmortem." Practical
+  rhythms cluster at weekly-to-monthly micro check-ins inside existing 1:1s plus a quarterly formal
+  review (Huneety, TMI, Culture Amp, Lattice's own guidance, Engagedly, firsthr).
+- The review has to be a conversation with a record, not a status field: "The conversation is the
+  plan" (Huneety); a documented close-out covering what was completed, what changed, and what is next
+  (performspark); notes at each check-in so "the plan's history tells the development story"
+  (bundleskills).
+- Dropping is a legitimate outcome and must be explicit. "Drop goals that no longer fit" and "close the
+  plan with a documented review" appear as *best practice*, while "keeping obsolete goals active after
+  priorities change" appears as a named mistake. A silently abandoned goal and a dropped one look
+  identical in a checklist.
+- Development reviews are forward-looking and must stay separate from performance ratings (Huneety,
+  LMSpedia, firsthr) — the same separation the app already enforces between review packets and growth.
+
+**Evidence strength, stated honestly.** The behaviour-change literature does not support a 30-day rule.
+Singh et al.'s 2024 systematic review (20 studies, 2,601 participants) found median times to
+habit-formation of 59–66 days with a 4–335 day range for *simple* behaviours. So the default 30-day
+review date in this app is a **convention chosen for the demo and the UI**, not a validated cutoff, and
+the research screen says so. The weaker-support facts used for prioritisation: Gallup (2023 State of the
+Global Workplace) reports only 33% of employees strongly agree their manager helps them set goals they
+can get excited about; Gallup (2019) reports 14% strongly agree performance reviews inspire improvement,
+and weekly feedback is associated with 5.2× the odds of strongly agreeing feedback is meaningful. These
+are correlational survey findings, not causal proof that a carry counter improves anybody's development.
+
+**Product benchmarking.** Every commercial suite keeps development plans inside the manager cadence
+rather than as a separate annual document: Lattice Grow embeds IDPs in 1:1s and review cycles with
+"ongoing development check-ins" and automated reminders; 15Five connects IDP goals to recurring
+check-ins and 1:1s and explicitly carries development goals "forward into future review cycles";
+Trakstar/Bridge tie development tracking to manager-owned conversations. What they mostly do **not**
+expose is the *decision* per commitment — carry-over is usually automatic or a checkbox. That is the
+gap this session fills: the same four outcomes as a 1:1 promise (done, still open, carried with a new
+date, dropped with a reason), a derived carry depth, and a visible distinction between "the review
+happened" and "the date moved".
+
+**Decision (implemented).**
+
+1. **A review is a first-class record** (`growthPlans[].reviews[]`): date, what was discussed, the
+   agreed next date, and the per-commitment decisions applied at that moment. `reviewOn` remains the
+   scheduled date, but it can only move *legitimately* by holding a review; `updateGrowthPlan` pushing it
+   later increments `reviewDeferrals` and stamps `reviewMovedOn` instead of silently accepting it.
+2. **Carrying is renegotiation, not failure** — the original keeps its date and a link to its successor,
+   the successor keeps the original's `addedOn` (so "carried 2× since 14 Sep" is derived from the chain,
+   never stored as a counter), and the live copy is the only thing counted as open work. `GROW-06` fires
+   at two carries, exactly as `CONV-06` does for 1:1 promises.
+3. **Dropping requires a reason (3–300 chars)** and is excluded from the completion denominator; it is
+   never counted as done, even if a stale `done` flag survives an import.
+4. **A held review resets the deferral count** and sets the plan's review date to the date the two of
+   them agreed. `GROW-07` reports a review date that has been moved twice or more without a review.
+5. **The review's dates win**: a commitment carried *in* a review is stamped with the review date, not
+   the day the record was typed, so the ledger cannot be rewritten by entering it late.
+
+**Rejected, with the reason recorded.**
+
+| Idea | Reason |
+|---|---|
+| Auto-rolling every unfinished development action into the next review | Lattice/15Five-style automation hides the one moment where the leader could re-scope or drop the commitment. The stall becomes invisible, which is precisely what `GROW-06` exists to catch. |
+| A development-completion percentage per person | Manager-entered, self-reported, and it rewards under-recording; the same reasoning that rejected a 1:1 completion rate. Counts, dates and reasons only. |
+| Editing the review date as the primary "review" action | The behaviour the data model should discourage: it makes a plan look managed while nothing is discussed. Kept possible, but counted (`reviewDeferrals`) and signalled. |
+| Deleting a dropped commitment | The decision to stop is the useful part. Keeping the reason supports "what did we choose not to do?" and prevents the same promise being re-made blindly. |
+| A hard block on plans with no review date | Punishes the honest early state and encourages inventing a date. The app reports it (`GROW-04`) and offers the dialog instead. |
+| A fixed 30-day review cadence presented as best practice | The evidence supports frequency, not a cutoff (Singh et al. 2024: median 59–66 days, range 4–335). 30 days is a default, labelled as a convention. |
+| Marking commitments done automatically when the plan closes | Closing a plan is an administrative act; capability change needs evidence. Done requires a date and, ideally, a review. |
+
+**Standing research debt.** No controlled evidence that a visible carry count changes a manager's
+behaviour, and no validation with real managers. The two new signals are diagnostic, not predictive.
+Real-browser keyboard/screen-reader behaviour of the new per-commitment Carry/Drop controls, the review
+dialog and the expandable history remains **[UNVERIFIED]** in this container (JSDOM + `axe-core` 4.11
+report 0 violations on `#/growth`, `#/people/<id>` and the open review dialog).
+
+**Sources consulted (accessed 2026-10-25).**
+- Huneety, *How to review and track an IDP* — https://www.huneetylearning.com/individual-development-plans/reviewing-and-tracking
+- Huneety, *How to write an IDP for managers* — https://www.huneetylearning.com/individual-development-plans/for-managers
+- PerformSpark, *Individual Development Plan Best Practices for HR* — https://performspark.ai/blogs/individual-development-plans-best-practices
+- Let's Catapult, *Employee Development Plan: What to Include and Example* — https://letscatapult.org/blog/employee-development-plans/
+- TMI, *How to Build an Employee Development Plan That Drives Real Growth* — https://www.tmi.org/blogs/how-to-build-an-employee-development-plan-that-drives-real-growth
+- Culture Amp, *Employee development plans: Templates and examples* — https://www.cultureamp.com/blog/personalized-employee-development-plans
+- Lattice, *Employee Development Plans & Growth Software* — https://lattice.com/platform/grow
+- Lattice, *Grow Manager Guide to Development One-on-Ones* (field guide PDF) — https://cdn.prod.website-files.com/5b3faf37aa13a17359838c48/62323163936302e190d52f2f_Lattice_Managers%20Guide%20to%20Development%201-1s.pdf
+- 15Five, *Growth Studio — Individual Development Plans* — https://www.15five.com/products/perform/growth-studio
+- Bundleskills, *Individual Development Plan: Template and 6 Real Examples* — https://bundleskills.com/blog/individual-development-plan-template
+- Engagedly, *Individual Development Plan (IDP): A Complete Guide* — https://engagedly.com/blog/what-is-an-individual-development-plan-idp-why-do-you-need-it/
+- FirstHR, *Individual Development Plan: A Guide for Small Business* — https://firsthr.app/blog/performance/individual-development-plan
+- Singh, B. et al. (2024), habit-formation systematic review, summarised in Phi Management, *Individual Development Plan: Real Timelines* — https://phimanagement.com/blog/individual-development-plan/
+- Gallup (2023), *State of the Global Workplace*, as quoted by Teachable — https://www.teachable.com/blog/employee-development-plan
+- HBR, *How to Talk to Your Team About Their Career Development* (2023) — https://hbr.org/2023/03/how-to-talk-to-your-team-about-their-career-development
+
+## 23. Internal role transitions: the move nobody onboards (Session 13)
+
+**The question this section answers.** The Schema v6 onboarding tracker (§19) scaffolds a person
+*joining the team* for 90 days. But most 90-day transitions a leader will ever manage are not
+hires: they are promotions, lateral moves and scope changes by people already on the roster
+(IC → Lead is the canonical case). Until this session the only way to give such a person a
+30-60-90 plan was to create a "new joiner" plan — which defaulted its anchor to
+`person.startDate`, so a plan for a three-year veteran opened at "day 1,069", instantly past
+window, with joiner-flavoured checkpoints and no way to record what the move even was. What
+does the evidence say about internal transitions, how do they fail differently from external
+hires, and what should the record look like?
+
+**Sources & product benchmarks.**
+- *Transitions are mostly internal, and the first months predict the outcome:* Michael D.
+  Watkins, *The First 90 Days* (Harvard Business Review Press, 2003/2013). In Watkins' survey
+  of 580 leaders (avg. 18.2 years' experience), the typical leader had been **promoted 4.1
+  times, moved between business units 1.9 times and changed function 1.8 times**, versus
+  joining a new company 3.5 times — internal moves outnumber external joins roughly 2:1.
+  In his parallel survey of 1,300+ senior HR leaders, almost 90% agreed "transitions into new
+  roles are the most challenging times in the professional lives of leaders" and nearly
+  three-quarters agreed "success or failure during the first few months is a strong predictor
+  of overall success or failure in the job."
+- *Internal movers are the under-supported group:* Watkins (responding to McKinsey, 2021):
+  "leaders making internal moves get far less support than new hires. In my study, **56% of
+  respondents disagreed or strongly disagreed** that their companies did a good job of
+  supporting internal moves such as promotions." The promoted-from-within case is repeatedly
+  identified as the one organisations most often under-support precisely because "someone who
+  already knows the team and the work" is assumed to need nothing — while the real risks
+  (leading yesterday's peers, an unclear new mandate, quietly keeping the old job) are
+  relational, not operational.
+- *How internal transitions actually fail:* Watkins' "promote yourself" imperative — the
+  strengths that earned the move get over-applied to a seat that rewards different behaviour
+  (his Douglas Ivester case: a superb COO failing as CEO by remaining a "super-COO"); the
+  first-time-manager literature calls the same pattern the **Doer Trap** (the newly promoted
+  lead keeps doing IC work because it feels productive, while nobody clears the team's
+  blockers). Practitioner checklists for internal hires (HiBob) converge on the same four
+  contents, in this order: **handover of the previous position** (document
+  responsibilities, train a replacement, transfer projects), **new-role clarity** (review
+  the new KPIs/expectations that differ from the old seat), **new stakeholder
+  introductions**, and a **buddy inside the new team**. Enboarder's transition toolkit adds
+  the sharpest framing: "what stays with the person vs what stays with the role — skills
+  travel, but systems access and stakeholder ownership don't always."
+- *Failure rates justify scaffolding even for proven people:* the widely cited baseline is
+  that ~40% of executives fail within their first 18 months in a new role (Watkins 2003, as
+  reviewed in the leadership-transition literature; a Center for Creative Leadership white
+  paper puts outright executive-integration failure at 38% to over half, attributing it to a
+  *diagnostic* failure — applying the old playbook to a new situation — rather than effort).
+- *The manager's own manager is the intervention:* DDI's Global Leadership Forecast
+  (summarised in manager-onboarding practice guides) finds managers who receive support from
+  their own leader during the transition are ~1.5× more likely to be effective in their
+  first year. In LeadOS terms: the scaffolding gaps must be framed as the *leader's* debts,
+  exactly as `ONB-03` already does for joiners (§19).
+
+**What this application chose, and why.**
+| Decision | Reason |
+|---|---|
+| **`kind` + `label` on the existing plan record (Schema v10), not a new collection** | A transition is the same "first 90 days in the role" object: same horizons, same Day 90 conversation gate, same one-active-plan-per-person invariant. `kind: 'role-transition'` + a `label` naming the new scope records the move itself, which no other record in the app captured. |
+| **The anchor is the plan's, never the roster's** | A transition defaults its start to today and can never precede `person.startDate`; `person.startDate` is not touched, so tenure, `isNewJoiner`, `ONB-01`/`ONB-02` and "years on the team" stay truthful. The pre-session behaviour (defaulting to the join date) made every tenured plan instantly "past window" — the exact silent nonsense this product exists to prevent. |
+| **A transition requires its label** | The label *is* the feature: "Team Lead · Platform" is what makes the plan readable as a move rather than a second onboarding. Structural requirement (like a goal title), not a quality gate. |
+| **A distinct starter template** | The 6 transition checkpoints follow the failure modes above: Day 30 = old-role handover inventory + written scope/authority delta; Day 60 = first early win *in the new seat* + explicit old-habits calibration ("promote yourself"); Day 90 = end-to-end ownership without falling back + goals/GROW reset to the new level. The new-joiner template is unchanged. |
+| **Same signals, honest wording** | `ONB-03`–`ONB-05` fire for transitions with transition wording (scaffolding owed is scaffolding owed); tenure-based `ONB-01`/`ONB-02` stay joiner-only, and a transition plan does **not** silence a new joiner's `ONB-02` — the two kinds answer different questions. No new rule ids, so signal history stays comparable. |
+| **Kind is correctable, history is not** | `updateOnboardingPlan` can reclassify kind/label (e.g. a plan created before v10) while checkpoints, check-ins and the anchor are preserved. Migration labels every pre-v10 plan `new-hire` with an empty label — the only kind the app could create before, so nothing is invented. |
+| **Dialog defaults that match the decision** | Opening the dialog for someone past the onboarding window pre-selects "role transition" anchored to today; switching kind/person re-anchors the suggested date until the leader picks one, after which the field is never overwritten. |
+
+**Deliberately rejected.**
+| Idea | Reason |
+|---|---|
+| Resetting `person.startDate` when a transition starts | Destroys tenure and corrupts every tenure-derived signal. The start date is a fact; the transition is a later fact. |
+| Inferring a transition from a role/level edit on the roster | Would fabricate plans from typo fixes. Only the leader knows a move happened. |
+| A separate `state.transitions` module | Duplicates horizons, gates, signals and exports to answer the same question; breaks the one-active-plan invariant's meaning. |
+| A "transition score" or ramp percentage for the promoted person | Same reason as the rejected onboarding score (§19): missing handover time or an absent buddy is the *organisation's* scaffolding debt, not the person's capability grade. |
+| Auto-updating role/title/level when a transition plan is created | The plan records the intended move; the roster edit is a separate deliberate act. Coupling them would let a cancelled plan rewrite someone's record. |
+
+**Standing research debt.** Real-browser (non-JSDOM) interaction with the reworked plan dialog
+(kind select → date re-anchor) and visual layout of the two-kind `#/onboarding` list remain
+**[UNVERIFIED]** in this container, as in §19. The return-from-leave ("re-boarding") literature
+was noted but not yet researched in depth — it is roadmap Next #4, not assumed identical to
+promotion transitions.
+
+**Sources.**
+- Watkins, M. D., *The First 90 Days* (HBR Press, 2003; updated 2013) — transition taxonomy,
+  13.5 transitions per leader, first-months predictor, "promote yourself" / Ivester case.
+- Watkins, M. D., *Why is McKinsey Trashing The First 90 Days?* (LinkedIn, 2021) — 56%
+  internal-move support gap.
+- Watkins, M. D., *Strategy for the critical first 90 days of leadership* (2004) — 40%
+  18-month failure baseline.
+- HiBob, *New hire checklist* — internal-hire variant (handover inventory, new KPIs, buddy,
+  stakeholder introductions).
+- Enboarder, *Employee Transition Plan Toolkit* — "what stays with the person vs what stays
+  with the role"; 30/60/90 clarity for internal moves.
+- Happily.ai, *Manager Onboarding Checklist* — the Doer Trap; DDI Global Leadership Forecast
+  manager-support effect; peer-to-manager boundary conversation.
+- HRHook, *30-60-90 day onboarding plan* — "Do not skip onboarding because the employee knows
+  the company. Focus on the changed identity, relationships, authority, and skills."
+
+## 24. Sharing without the dispute file: conflict-redacted operational exports (Session 14)
+
+**The question.** Until this session a leader could not move their whole workspace to another
+device, or share records upwards, without bundling every word of the confidential conflict
+records into the file: the JSON backup was all-or-nothing, and CSVs can show tables but cannot
+restore a workspace. Was a "leave the conflict records out" mode the right next capability —
+and if so, what exactly should be left out, and what could go wrong?
+
+**Why conflict records are not just another table.** Across mediation practice the
+confidentiality norm is near-absolute and covers more than content. CIPD's mediation factsheet
+says anything said in mediation "should be confidential to those taking part", and that a
+mediator may report to HR only *that* a meeting successfully took place, "not disclose the
+detail of what was discussed or agreed". Several professional standards go further and treat
+**the fact that a case exists at all** — and attendance/status around it — as confidential
+information in its own right; mediator working notes are routinely destroyed at conclusion
+(EEOC, FCC, Oxford MSD all describe note destruction), because even a content-free trace
+ invites reconstruction. Two design consequences follow, both implemented:
+
+1. **Existence traces go too.** LeadOS event-log entries about conflicts already carry no
+   content ("Conflict record created"), but they still reveal that a case exists, when it was
+   opened and how often it was touched. Under the mediation norm that is itself a disclosure,
+   so the operational copy removes conflict *events* as well as records, and discloses only
+   counts in a machine-readable marker — the same count-only disclosure the app already uses
+   for `CFL-01…04` reminders.
+2. **Encryption is not a substitute for omission.** GDPR Art. 5(1)(c) requires shared data to
+   be "adequate, relevant and limited to what is necessary" (ICO), and commentators on the
+   principle put it bluntly: "a secure, encrypted copy of an unnecessary field is still
+   unnecessary." The operational copy is therefore offered plain (the sharing case) *and*
+   encrypted (the move-device case), with redaction applied before sealing in the encrypted
+   variant, so the omitted records are absent from the ciphertext too.
+
+**The second-order hazard: a "safe" file that is dangerous later.** The real risk of this
+feature is not the export; it is a restore months later from the incomplete file, silently
+trading a complete local history for an empty conflict list. Mitigations, in depth: the file
+declares its own incompleteness (`redactions` marker, counts only); the filename differs
+(`leados-operational-…` vs `leados-export-…`); import always reports the omission as a
+warning; and importing a file that *declares omitted records* over a browser that *has
+readable conflict records* is refused with `reason: 'redacted-replacement'` until the user
+explicitly confirms the replacement (Settings asks with a danger dialog and retries with
+`replaceWithRedacted: true`). Where the current copy is unreadable (locked/protected), the
+existing explicit total-replacement confirmations apply and the omission warning still
+surfaces — blocking there would create a dead end for exactly the people the recovery path
+exists for.
+
+| Alternative considered | Rejected because |
+|---|---|
+| Anonymise conflicts instead of omitting them (fake names/dates) | Creates false facts in a file that will be imported as truth; small-team records are re-identifiable from structure anyway. The app's convention is omit-and-declare, never fabricate. |
+| Keep conflict events (they contain no content) | Existence and cadence of a case are themselves confidential under mediation practice (above). |
+| Refuse to import operational copies at all | Breaks the primary use case — restoring operational records onto a new/empty device. A warning where nothing can be lost is honest; a blanket refusal is a dead end. |
+| Guard on "mode used" even when 0 records were omitted | A 0-omission operational copy is byte-equivalent in content to a full backup of that workspace; guarding it would cry wolf and train users to click through the warning that matters. The guard fires on *declared omissions*, and completeness is still announced. |
+| Detect redacted files without the marker (e.g. "conflicts empty but workspace old") | Unfalsifiable inference — an honestly conflict-free workspace is indistinguishable from a hand-stripped one. The marker is the only non-fabricated signal; malformed markers are ignored rather than guessed at. |
+
+**Honest limits.** The marker is a declaration, not a proof: someone can edit JSON by hand,
+and an unmarked stripped file is undetectable (above). "Conflict-free" means the conflict
+collection and its event traces are absent; it does not mean the file is fit for any audience —
+1:1 notes, feedback and reviews remain in it, and the UI says so. There is `[UNVERIFIED]`
+real-browser evidence for the new Settings flows (download handler, modal-stacked confirm);
+coverage is JSDOM + `axe-core`, matching the standing debt.
+
+**Sources.**
+- CIPD, *Workplace Mediation* (factsheet) — confidentiality of content; only the fact of a
+  successful meeting may be reported, not detail.
+- ICO, *Principle (c): Data minimisation* — Art. 5(1)(c): "adequate, relevant and limited to
+  what is necessary".
+- Legiscope, *GDPR Purpose Limitation and Data Minimisation: Official Rules in Practice* —
+  "A secure, encrypted copy of an unnecessary field is still unnecessary."
+- Workplace-mediation confidentiality practice (CMC, EEOC Q&A, FCC mediation agreement,
+  University of Oxford MSD) — mediator notes destroyed; the occurrence/attendance of a case
+  itself treated as confidential.
+
+## 25. Closing the execution loops: Today's development-review queue, succession-to-transition handoff, and return-to-work ("re-boarding") 30-60-90 plans (Session 15)
+
+**The three gaps.** Sessions 12 and 13 built the underlying ledgers — GROW development reviews
+with explicit commitment outcomes (§22) and internal role-transition 30-60-90 plans (§23) — but
+left three execution loops disconnected in daily manager workflow:
+
+1. **Development reviews had a ledger, not a daily queue.** `reviewStatus` knew which GROW plans
+   were overdue, due within 7 days or unscheduled, and how many times a review date had been
+   pushed without holding one (`reviewDeferrals`), yet `#/today` only listed overdue individual
+   GROW commitments inside *Loose ends* and linked out to `#/growth`. A manager triaging Today
+   could not hold a due development review from Today itself.
+2. **Succession readiness stopped at the rating.** `#/readiness` evaluated behavioural evidence
+   for named seats (`EVIDENCE_DEFINITIONS`), and `#/onboarding` ran 30-60-90 `role-transition`
+   plans, yet when a tracked candidate actually stepped into a seat there was no handoff between
+   the two — managers had to re-enter the seat and person manually on another screen while losing
+   sight of the readiness gaps and notes already recorded.
+3. **Return from extended leave had to masquerade as a promotion or a new hire.** Using
+   `new-hire` for a returning tenured employee anchored horizons to a years-old `person.startDate`;
+   using `role-transition` demanded a promotion/new-role label and seeded handover checkpoints
+   aimed at leaving an old job rather than catching up on context and pacing load back sustainably.
+
+**Research & product benchmarks.**
+
+- *Actionable review prompts beat passive dashboards:* Whitmore's GROW model (*Coaching for
+  Performance*) treats the *Will* stage as incomplete without an agreed review conversation where
+  commitments are inspected, renegotiated or retired. Lattice Grow and 15Five Growth Studio
+  surface IDP check-ins inside recurring manager workflows rather than burying them on a separate
+  development tab, though both lean on automatic goal carry-over. Surfacing `dueGrowthReviews`
+  directly on `#/today` (ordered overdue → due within 7 days → unscheduled) with a one-click
+  *Hold review* button that opens `openGrowthReviewDialog` in place combines suite-grade workflow
+  convenience with LeadOS's explicit per-commitment decision discipline (done / still open /
+  carried / dropped with reason).
+- *Succession planning fails at the handoff into Day 1:* Charan, Drotter & Noel (*The Leadership
+  Pipeline*) and Watkins (*The First 90 Days*, §23) both observe that organisations spend far
+  more effort rating potential successors than scaffolding the first 90 days once someone steps
+  into the seat — assuming an internal candidate "already knows how things work here". Benchmarked
+  talent suites (Lattice Talent Reviews / Workday Succession) store readiness matrices separately
+  from onboarding checklists. `transitionHandoff` bridges `#/readiness` (and `#/people/:id`)
+  into `openOnboardingPlanDialog` pre-filled with `kind: 'role-transition'`, `label: seat`,
+  `startDate: today`, and a read-only *Succession handoff* callout displaying the candidate's
+  recorded readiness status, behavioural evidence count and optional development-gap `notes` —
+  while leaving `roleClarity` blank for the manager to write honestly and leaving `person.role`
+  and `person.startDate` untouched.
+- *Return-to-work ("re-boarding") fails on context drift and unpaced load, not capability — and
+  leave reasons do not belong in a browser app:* Ladge & Greenberg (*Academy of Management
+  Perspectives*, 2015; HBR, *How to Make Sure Working Parents Can Succeed When They Return*) and
+  CIPD's return-to-work guidance highlight three recurring failure modes after parental,
+  caregiving, sabbatical or extended absence: (a) nobody briefs the returner on decisions,
+  priorities and org changes that happened while they were away; (b) full pre-leave workload
+  resumes on week one without agreed pacing; and (c) informal peer re-connection is left to
+  chance. At the same time, GDPR Art. 9 treats health/medical data as special-category data
+  requiring strict necessity and safeguards. LeadOS therefore adds `'reboarding'` as a third
+  `ONBOARDING_KINDS` value (Schema v11) with six re-entry starter checkpoints (context catch-up,
+  4-week load pacing, peer catch-up buddy, key stakeholder re-connections, one bounded early
+  deliverable, and Day 90 steady-state goal/GROW recalibration), optional non-medical context
+  `label`, and explicit UI guidance never to record medical, health or personal leave reasons.
+
+| Alternative considered | Rejected because |
+|---|---|
+| Auto-copying readiness warnings/notes into `roleClarity` on handoff | Evaluation notes describe past readiness gaps, not agreed 90-day scope and decision authority; copying them silently fabricates `roleClarity` and suppresses `ONB-03` before expectations are written. |
+| Auto-updating `person.role` when starting a transition from `#/readiness` | A 30-60-90 transition may represent an acting/stretch seat or phased handover before a formal title change; roster edits stay explicit. |
+| Adding a `leaveType` or `leaveReason` field to `reboarding` plans | Invites storing medical, health or family leave data (GDPR Art. 9 special-category risk) in a local browser tool that needs only operational re-entry scaffolding. |
+| Reusing `role-transition` for return-to-work | Forces a fake "new role" label when the person is returning to the *same* role and seeds old-role handover checkpoints that do not match re-entry needs. |
+| Navigating from `#/today` to `#/growth` instead of opening the review dialog directly | Adds an extra screen hop and forces the manager to hunt for the overdue card on `#/growth` instead of holding the review where the prompt appeared. |
+
+**Honest limits.** As with §§19–24, no controlled trial with managers validates whether these
+prompts improve retention, transition outcomes or return-to-work experience. Real-Chromium pixel
+contrast, mobile layout and screen-reader traversal of the new `#/today` card, `#/readiness`
+handoff and `reboarding` flows remain **[UNVERIFIED]** in this container (verified via Node 22,
+JSDOM and `axe-core` 4.11 with 0 violations across 289 automated tests).
+
+**Sources.**
+- Whitmore, J., *Coaching for Performance* (5th ed.) — GROW *Will* review accountability.
+- Charan, R., Drotter, S., & Noel, J., *The Leadership Pipeline* (Jossey-Bass) — passage-specific
+  scope/time-application shifts when stepping into a new leadership seat.
+- Watkins, M. D., *The First 90 Days* (HBR Press) — internal transition scaffolding (§23).
+- Ladge, J. J., & Greenberg, D. N. (2015), *Extreme Mixed-Emotions: Becoming a New Mother in the
+  Professional Workplace*, Academy of Management Perspectives — re-entry uncertainty, identity/load
+  recalibration and manager scaffolding after extended leave.
+- CIPD, *Managing a Return to Work after Long-Term Absence* — structured catch-up, phased pacing
+  and confidentiality boundaries around absence reasons.
+- GDPR Art. 9 & ICO Special Category Data guidance — data-minimisation prohibition on collecting
+  unnecessary health/medical information in general management records.
+
+## 26. Closing the remaining daily loops: decision outcome reviews on Today, delegation-to-GROW capability handoff, and 1:1 prep-sheet carry-through (Session 16)
+
+**The three gaps.** After Session 15 closed Today's development-review queue and succession
+handoff, source audit revealed three remaining workflow breaks between planning and follow-through:
+
+1. **Decision outcome reviews had a signal (`DEC-02`), not an execution queue — and decisions were
+   immutable once saved.** `app/core/domain/decisions.js` flagged `reviewsDue` only after a review
+   date was strictly past (`< today`) and did not check `Boolean(d.chosen)`, so an *undecided*
+   record whose `reviewOn` passed could masquerade as an outcome review due. Meanwhile `#/today`
+   lacked a *Decision reviews* card comparable to *Development reviews*, `DEC-01` linked to
+   `#/decisions?decision=<id>` which `views/decisions.js` ignored, `DEC-03` asked the manager to
+   *"Name the approver"* while no `updateDecision` action or *Edit* dialog existed, and DACI
+   person matching used substring `.includes()` (`"Bo"` false-matching `"Bob"`).
+2. **Stretch delegations and GROW commitments lived in two disconnected ledgers.** `#/delegations`
+   recorded owned outcomes, authority levels (`investigate` → `own`), checkpoints and terminal
+   outcomes, while `#/growth` tracked GROW capability commitments (`will[]`). Turning a stretch
+   delegation into a tracked GROW commitment required manual re-typing on a second screen with
+   zero cross-reference when the delegation later completed or returned.
+3. **1:1 preparation stopped at the door of `Log a 1:1`.** `#/prep/<personId>` assembled the
+   report's waiting `talkingPoints` and `suggestAgenda`, yet clicking *Log the 1:1* dropped any
+   item selection made during preparation, collapsed every checked suggestion's `source` to
+   `'suggested'` instead of its real provenance (`'delegation'`, `'onboarding'`, `'growth'`, etc.),
+   and left covered employee `talkingPoints` stuck on `person.talkingPoints` forever unless the
+   manager opened a separate dialog after the meeting.
+
+**Research & product benchmarks.**
+
+- *Separating decision quality from outcome luck requires scheduled post-decision reviews:*
+  Annie Duke (*Thinking in Bets*) warns against **"resulting"** — judging the quality of a
+  decision solely by whether it turned out well without revisiting the rationale and assumptions
+  recorded at decision time. Kahneman, Lovallo & Sibony (*Before You Make That Big Decision*, HBR)
+  and Gary Klein (*Performing a Project Premortem*, HBR) show that lightweight, pre-scheduled
+  outcome reviews calibrate leader judgement only when they happen while context is still
+  retrievable; Bain's RAPID and Intuit's DACI frameworks likewise treat explicit *Approver*
+  clarity as revisable governance metadata when a missing approver is caught (`DEC-03`). Decision
+  intelligence tools such as Cloverpop surface due decision reviews in active queues rather than
+  archiving calls out of sight. LeadOS now guards `reviewsDue` and `dueDecisionReviews` on
+  `Boolean(d.chosen)`, surfaces overdue and due-within-7-days calls directly on `#/today`
+  (prioritising `irreversible` calls on ties) with an inline *Review outcome* modal, honours
+  `?decision=<id>` focus links, adds audited `updateDecision`, and renders exact token-matched
+  DACI involvement on `#/people/<id>`.
+- *70% of capability growth happens inside real stretch assignments, but only when paired with
+  deliberate reflection:* McCall, Lombardo & Eichinger (*The Career Architect* / Center for
+  Creative Leadership's *Lessons of Experience*, 70-20-10 model) demonstrate that real owned
+  responsibilities — not classroom courses — drive the majority of leadership and technical
+  growth, *provided* a coaching loop extracts lessons from the experience. Whitmore's GROW model
+  positions stretch assignments inside *Options* and concrete *Will* commitments. Unlike Lattice
+  or 15Five — where project tasks and IDP items either stay siloed or auto-sync completion
+  percentages — LeadOS adds explicit `delegationId` linking on `growthPlans[].will[]` (Schema
+  v12) with one-click *Add to GROW* / *Start GROW plan* handoffs from `#/delegations`, carry-chain
+  link preservation, and an explicit coaching-reflection prompt when a linked delegation
+  completes or returns (**never** silently auto-closing the GROW commitment).
+- *1:1s work best when employee topics lead and carry cleanly into the meeting record:* Steven
+  Rogelberg (*The Surprising Science of Meetings*) shows that 1:1 effectiveness rises sharply
+  when direct reports shape the agenda and see their raised topics explicitly addressed rather
+  than crowded out by status updates. Dedicated 1:1 tools (Fellow, Hypercontext, Lattice 1:1s)
+  carry talking points directly from prep into the live meeting doc and mark covered topics done
+  while keeping uncovered ones queued for next time. LeadOS now renders interactive checkboxes on
+  `#/prep/<personId>` across *Their topics* and *Suggested agenda*, passes the exact selection
+  into `openOneOnOneDialog`, preserves true agenda `source` provenance (`'their-topic'`,
+  `'delegation'`, `'onboarding'`, etc.), and clears covered employee topics **only** when a 1:1
+  is logged as `held` (never on `skipped` or `moved`).
+
+| Alternative considered | Rejected because |
+|---|---|
+| Auto-closing a GROW `will` commitment when its linked delegation completes | Shipping a delegated deliverable is operational execution; capability growth requires a coaching reflection on *what was learned* before marking the GROW commitment done. |
+| Counting undecided decisions with past `reviewOn` dates inside `reviewsDue` / `DEC-02` | An unmade decision needs a *call* (`DEC-01`), not an outcome review; mixing the two muddies accountability and lets `reviewDecision` run before an option is chosen. |
+| Clearing all `person.talkingPoints` automatically whenever any 1:1 is logged | Wipes topics the conversation ran out of time to cover — or worse, wipes topics on a `skipped`/`moved` 1:1. Only explicitly checked topics in a `held` 1:1 are cleared. |
+| Substring matching (`field.includes(name)`) for DACI roles on person pages | False-matches short names inside longer ones (`"Bo"` inside `"Bob"` or `"Bono"`). Delimiter-aware token matching keeps DACI attribution accurate. |
+
+**Honest limits.** As with §§19–25, all records remain manager-entered in a single local browser
+profile: direct reports cannot submit `talkingPoints` or co-sign a GROW reflection themselves,
+and no field study with managers measures whether Today's decision-review queue improves
+long-term calibration. Real-Chromium pixel contrast, mobile layout and print/PDF rendering of the
+updated `#/today`, `#/decisions`, `#/delegations`, `#/growth` and `#/prep/<id>` views remain
+**[UNVERIFIED]** in this container (verified via Node 22, JSDOM and `axe-core` 4.11 with 0
+violations across 293 automated tests).
+
+**Sources.**
+- Duke, A., *Thinking in Bets: Making Smarter Decisions When You Don't Have All the Facts*
+  (Portfolio) — separating decision process quality from outcome luck ("resulting").
+- Kahneman, D., Lovallo, D., & Sibony, O. (2011), *Before You Make That Big Decision*, Harvard
+  Business Review — structured decision hygiene and post-decision review discipline.
+- Klein, G. (2007), *Performing a Project Premortem*, Harvard Business Review — explicit
+  assumptions and scheduled outcome calibration.
+- McCall, M. W., Lombardo, M. M., & Eichinger, R. W., *The Career Architect* / CCL *Lessons of
+  Experience* — stretch assignments + reflection loop (70-20-10 developmental model).
+- Rogelberg, S. G., *The Surprising Science of Meetings* (Oxford University Press) — employee-led
+  1:1 agendas and explicit topic follow-through.
+
+
+
+
+## 27. A phase conversation is not a completed checklist (Session 17)
+
+**Audit and gap.** The existing `onboardingHealth` model already distinguishes checkpoint
+completion from Day 30 / 60 / 90 conversation dates and exposes `ONB-04` for missed
+conversations. Today did not offer these conversations as executable work. Its other
+review queues were directly actionable; onboarding required a screen hop and manual search.
+The standing inventory in §§5, 19, 23 and 25 therefore pointed to a workflow gap, not a
+missing framework, another onboarding schema or a new backend.
+
+### Fresh research, retrieved 2026-10-25
+
+Outbound research in this environment is restricted to approved hosts. The following
+public documents and product source were actually read through GitHub's API; they are
+pinned for repeatability. We did **not** log into a vendor product or freshly verify the
+full feature claims for Lattice, 15Five or Culture Amp in earlier sections.
+
+1. **Sourcegraph's documented manager practice and Lattice workflow** —
+   [Onboarding Feedback Milestones](https://github.com/sourcegraph/handbook/blob/5752928b213a3ddbc7cee4459524f404a5b96fb4/content/departments/people-talent/onboarding-feedback-milestones.md),
+   [Onboarding Review Process](https://github.com/sourcegraph/handbook/blob/5752928b213a3ddbc7cee4459524f404a5b96fb4/content/departments/people-talent/onboarding-reviews.md),
+   and [Hiring Manager responsibilities](https://github.com/sourcegraph/handbook/blob/5752928b213a3ddbc7cee4459524f404a5b96fb4/content/departments/people-talent/onboarding-for-hiring-managers.md).
+   This published workflow describes structured two-way conversations, written expectations,
+   and Lattice reviews issued at days 25 and 85 before month-one/month-three conversations.
+   It explicitly says onboarding reviews do not replace 1:1s. It also assigns buddy selection
+   and other scaffolding to managers. This is evidence of one company's documented use,
+   not proof of current vendor defaults, efficacy or universal timing. Adapt: surface the
+   conversation before its date; identify the person and plan; keep conversation evidence
+   separate from the task list. Do not copy company-specific probation/re-hire ratings.
+2. **Frappe HR employee-onboarding product implementation** —
+   [Boarding controller](https://github.com/frappe/hrms/blob/20e9b8934d5f9d63522eb2fbeaa483b00e7cfe4f/hrms/controllers/employee_boarding_controller.py)
+   and [Employee Onboarding](https://github.com/frappe/hrms/blob/20e9b8934d5f9d63522eb2fbeaa483b00e7cfe4f/hrms/hr/doctype/employee_onboarding/employee_onboarding.py).
+   Source confirms template activities become dated project tasks with explicit assignments;
+   date offsets are anchored to `boarding_begins_on`, and overall boarding status follows
+   project progress. Its explicit completion operation can mark all associated tasks complete.
+   Adapt the anchored-date and actionable-work patterns, **not** the task-completion semantics:
+   LeadOS's phase dates already use each plan's own anchor, and a recorded conversation
+   must not silently complete its checkpoints, other phase conversations, or the entire plan.
+   This is a source-level benchmark, not an executed Frappe deployment or code reuse.
+
+### Established frameworks applied, with boundaries
+
+- **Bauer's organizational-socialization / Four Cs model** (see §19): clarification and
+  connection are manager-provided scaffolding. A late check-in is a missing opportunity to
+  hear the joiner, not a numeric measure of their capability. Existing templates are retained.
+- **Watkins' transition horizons** (§§19, 23): internal role moves need explicit expectations
+  and two-way calibration just as new hires do. Return-to-work plans retain their own start
+  anchor and privacy boundaries (§25); tenure is never reset to drive this queue.
+- **Psychological safety** (§4): ask about unclear expectations, surprises and support;
+  avoid probation grades and medical/leave reasons. These are design guardrails, not a claim
+  that a browser prompt raises psychological safety or predicts retention.
+
+### Implementation, backlog and explicit rejections
+
+| Considered capability | Status / consequence |
+|---|---|
+| Date-derived phase conversation queue on Today | **Implemented:** `dueOnboardingReviews` + shared `onboardingCheckinsCard`; overdue then due today/within seven UTC calendar days, all three plan kinds. |
+| Complete queue and exact source-plan navigation | **Implemented:** `#/onboarding?status=checkins`, `?person=`, `?plan=`; completed exact-plan links remain resolvable, stale/archived-person links explain why no record is shown. |
+| In-place capture, traceability and truthful completion | **Implemented:** existing validated `recordOnboardingReview`, persisted phase record and `onboarding.review.recorded` event; cancel is inert; other horizons and checkpoints stay untouched. |
+| Manager support commitments after phase conversations | **Planned:** explicit opt-in owner/date handoff into 1:1 follow-through; existing `blockers` are still free text, not an owned task ledger. No automatic export into performance evidence. |
+| A seven-day lead time as a validated best practice | **Rejected:** seven days is the existing app's fixed review-queue look-ahead convention, not a research finding or universal deadline. |
+| Automatically mark Day 30/60 held when Day 90 is held | **Rejected:** invents conversations that may never have happened. Missing earlier phases remain visible while the plan is active. |
+| Completing checkpoints or the plan when logging a check-in | **Rejected:** confuses conversation evidence with delivery; the existing explicit completion action remains separate. |
+| Scheduled email/calendar reminders or a new task database | **Deferred:** would break the no-backend architecture; queues derive when the app renders and send nothing. |
+
+**Verification and limits.** Twelve new Node/JSDOM tests cover boundaries, sort stability,
+private-data exclusion, all three kinds, cancellation, validation, lifecycle, deep links,
+persistence, visible storage failure and XSS-safe rendering. Chromium 153 exercises
+Today → complete queue → dated conversation → reload → exact plan at desktop and mobile
+sizes, with five WCAG A/AA axe scans (including color contrast) reporting no violations.
+There is no real-manager outcome study, screen-reader certification, Safari/Firefox or
+physical-device verification. Full evidence boundaries are in the session-17 audit.
+
+---
+
+## 28. Delegation follow-through as a support prompt, not a performance verdict (Session 18)
+
+### Fresh research, retrieved 2026-10-25
+
+- The Center for Creative Leadership's first-time-manager research describes delegation and
+  micromanagement as a transition challenge: managers must decide when to step in or provide
+  support without taking ownership back. Its practical advice treats new managers as needing
+  support and development, not as people whose delegation record can be graded. [CCL, *Understanding
+  the Leadership Challenges of First-Time Managers* (2026 PDF)](https://www.ccl.org/wp-content/uploads/2026/02/leadership-challenges-first-time-managers-research-paper-center-for-creative-leadership.pdf).
+  This research strengthens the case for a practical aid on the manager's own next action.
+- Gallup's article reports a 2014 study of 143 Inc. 500 CEOs: people ranked as high in delegation
+  talent also had higher growth/revenue outcomes in that sample, and described delegators as
+  setting outcome expectations, ensuring resources and encouraging autonomy. This is an
+  association in a small, selected founder/CEO sample, not causal proof or a universal manager
+  benchmark. [Gallup, *Delegating: A Huge Management Challenge for Entrepreneurs*](https://news.gallup.com/businessjournal/182414/delegating-huge-management-challenge-entrepreneurs.aspx).
+- **Product gap checked in source:** the live delegation view already exposed check-in,
+  completion and return actions, while Today had no direct lane for blocked/stale work. Existing
+  `delegationHealth` already distinguished blocked, overdue, missing-date and stale-check-in
+  facts; no new model or arbitrary deadline was required.
+
+### Design consequence and safety boundary
+
+Today now derives the queue from those existing record signals, ordered blocked → overdue →
+missing due date → stale check-in. A blocked result appears first because the leader can offer
+help; it is not a judgement about the team member. **Record check-in** and **Complete** open the
+existing validated dialogs and persist the respective `delegation.checkin` /
+`delegation.completed` events. A follow-up marked on-track removes the item from the attention
+list, but does not complete the outcome; completion and return-to-leader remain separate, explicit
+actions.
+
+The existing configurable seven-day interval is a team convention. It is not newly validated by
+CCL or Gallup, and the queue does not claim to predict missed delivery. There are no background
+reminders, employees are not notified, and manager-entered status is not independently verified.
+
+### Inventory and explicit decisions
+
+| Capability | Status / consequence |
+|---|---|
+| Direct Today queue for blocked, overdue, unscheduled and stale active delegations | **Implemented:** pure `dueDelegationCheckins`; selected items are actionable without leaving Today. Archived-owner records remain visible and are labelled. |
+| Existing full attention lane and source-record links | **Reused:** `#/delegations?filter=attention` plus exact `?delegation=<id>` route. |
+| Check-in and completion event history / terminal outcome integrity | **Reused:** existing validated dialogs and `delegation.checkin` / `delegation.completed` events; check-in never silently completes or returns work. |
+| Fixed global check-in schedule | **Rejected:** teams and assignments differ; keep the configured cadence explicitly labelled as a local convention. |
+| Manager-entered readiness or performance score derived from stale delegation | **Rejected:** record completeness is not employee performance; no owner ranking, capability inference or health-score input. |
+| Background reminders / employee notifications | **Deferred:** canonical local app cannot schedule or send them; do not imply a notification was delivered. |
+
+**Verification boundary.** Pure priority/order/exclusion and deterministic state tests plus JSDOM Today →
+open dialog → cancel with no write → record check-in → event/persistence/reload, and explicit
+completion with required delivered-result evidence, passed. Axe scans of the selected dashboard and
+dialog found zero WCAG A/AA/21AA violations, excluding color contrast in JSDOM. No physical/mobile browser pass, real screen-reader test, manager usability study or
+employee outcome study was conducted in this session; those remain **[UNVERIFIED]**.
+
+## 29. Performance-review follow-through as an explicit handoff (Session 19)
+
+### Sources checked 2026-10-25
+
+- CIPD's current performance-management factsheet describes reviews as an opportunity for
+  learning and improvement and advocates a continuous cycle, high-quality coaching conversations,
+  and regular, timely feedback. It also cautions that objectives should be meaningful and that
+  complex knowledge work may call for learning outcomes rather than rigid targets. This informed
+  the choice to carry a review focus forward as editable context, not auto-convert it to a metric.
+  [CIPD, *Performance management: An introduction* (29 Jan 2026)](https://www.cipd.org/en/knowledge/factsheets/performance-factsheet/).
+- MIT HR describes performance reviews as part of ongoing manager–employee dialogue, calls for
+  shared responsibility and follow-through, and says conversations should establish future SMART
+  goals and plan follow-up discussions. This supports a deliberate conversation/form step instead
+  of an automatic record-creation side effect.
+  [MIT Human Resources, *Performance Reviews*](https://hr.mit.edu/performance/reviews).
+- Lattice's published product notes say its Agent can draft Growth Areas from reviews, feedback
+  or 1:1s and add action items; its Grow product describes individual development plans and 1:1
+  integration. This is a vendor description of functionality, not independent evidence that the
+  feature improves outcomes. The useful pattern is reducing re-entry while connecting context to
+  ongoing development; LeadOS deliberately uses a human-controlled, editable form and keeps the
+  exact source review rather than inferring agreement or auto-writing action items.
+  [Lattice, March 2026 product updates](https://lattice.com/blog/march-2026-product-updates);
+  [Lattice Grow](https://lattice.com/platform/grow).
+
+### Repository gap and selected design
+
+The completed packet stored manager `development` and `nextSteps`, while goals and GROW plans
+were created through separate forms with no review provenance. The prior workflow therefore
+lost context at exactly the point where ongoing performance conversations should turn toward
+learning. The handoff is available only on a completed review and offers two explicit choices:
+
+- **Goal:** editable prefill of the development focus, with owner fixed to the reviewed person,
+  authorship left unknown, and a human-entered measurable key result required.
+- **GROW:** editable Goal prefill only. Reality, Options and a new Will commitment remain empty
+  until the leader and person formulate them; review `nextSteps` appear only as a clearly labelled
+  discussion prompt, never as a prefilled agreement.
+
+Schema v13 adds nullable `sourceReviewId` on goals and growth plans. Creation validates that the
+source review exists, is complete and belongs to the same person; normalization clears dangling or
+cross-person links and preserves valid provenance if the source review is later reopened for a
+correction. Both sides link in the UI and the operational CSVs. Completion itself creates no
+follow-up record. Existing GROW behavior closes the previous active plan when a new one is saved;
+the handoff form now calls this out if one exists. No dependency, backend, account, network call,
+reminder or new personal-data collection was added.
+
+### Verification and boundaries
+
+The new API tests cover v12→v13 migration, same-person/complete-source guards, author unknown,
+link repair, CSV preservation and no side effects on review completion. A real-dialog JSDOM test
+runs both handoff choices, confirms editable text and empty GROW Will, submits only a user-written
+commitment, and checks both-direction UI traceability. These tests do not show that managers and
+employees understand or agree with a resulting plan. Real Chromium/mobile, assistive technology,
+print output, human usability and outcome validation remain **[UNVERIFIED]**.
+
+## 30. Manager-owned support after Day 30/60/90 check-ins (Session 20)
+
+### Sources checked 2026-10-25
+
+- **ACAS, Planning an induction programme** (guidance updated 30 June 2026): plan an induction
+  around the role and person, maintain regular manager contact, listen and answer questions, give
+  feedback/guidance, and review training and support needs. This supports an explicit manager
+  follow-up after a recorded conversation; it does not say to turn candid concerns into employee
+  performance evidence or prescribe a universal deadline.
+  [ACAS, *Planning an induction programme*](https://www.acas.org.uk/inductions/planning-an-induction-programme).
+- **CIPD, Employee induction**: its practical induction tools cover preparation, phased induction
+  and evaluating the process. The applicable product pattern is a phase-linked next step that can
+  be revisited, rather than a one-off checklist completion claim.
+  [CIPD, *Employee induction*](https://www.cipd.org/en/knowledge/tools/employee-induction/).
+- **MIT Human Resources, Performance Reviews**: guidance emphasizes shared responsibility,
+  explicit expectations and resources, ongoing dialogue, reviewing earlier commitments/obstacles,
+  setting concrete next steps and planning follow-up. This informed an opt-in action authored by
+  the manager, with a due date and later review, not an automatic task generated from notes.
+  [MIT HR, *Performance Reviews*](https://hr.mit.edu/performance/reviews).
+- **Lattice Help, Add and manage 1:1 action items**: the product documents assigned, optionally
+  dated items that remain available across meetings until explicitly completed. This is a vendor
+  description, not independent outcome evidence. LeadOS reuses the persistent action-ledger
+  pattern, but retains 30-60-90 check-in provenance and keeps this record distinct from a real
+  meeting action until a held 1:1 explicitly reconciles it.
+  [Lattice Help Center, *Add and manage 1:1 action items*](https://help.lattice.com/en-us/articles/15178767-add-and-manage-1-1-action-items).
+
+### Repository gap and design decision
+
+The 30/60/90 check-in stored `heldOn`, `summary` and optional `blockers`, while the 1:1 commitment
+ledger stored actions nested inside actual meeting records. No explicit manager-owned action
+could be attached to the check-in without either silently copying candid blocker text or inventing
+a meeting. The improvement creates an independent, user-entered manager-support record only after
+a check-in exists. The blank form asks the manager to describe their specific action and choose a
+due date. It stores stable check-in ID, plan ID, horizon and source-date snapshot; later edits to
+the check-in keep the source identity and do not rewrite the original date snapshot.
+
+The new record participates in the manager's open/overdue obligation ledger and can be explicitly
+marked done on the board or reconciled in a later *real held 1:1* as done, carried forward, or
+dropped. A carried copy keeps its originating phase and date; the actual meeting is separately
+recorded as the carry/confirmation context. `managerSupport` is not a performance-review evidence
+source, blockers are not imported into it, and ordinary check-in recording creates no task.
+Existing meetings and action history remain untouched. Schema v14 introduces a separate
+`state.managerSupport` collection without migrating/inferencing earlier check-ins into actions.
+The `actions` CSV export adds source-check-in ID, plan, horizon and held date fields.
+
+### Verification limits
+
+Automated API, normalization, migration, CSV, source-link, real-1:1 reconciliation, snapshot-rewind,
+review-evidence-exclusion and JSDOM interaction checks cover the data path. They do not establish
+that a real manager or employee interprets the action correctly, that candid disclosure feels
+safe, or that follow-through improves. Real-browser/mobile, assistive technology, human usability,
+privacy effects and employee outcomes remain **[UNVERIFIED]**. The approach does not create
+notifications or claim that a future meeting will occur.
+
+## 31. Real-browser validation of manager-owned check-in follow-through (Session 21)
+
+### Guidance checked 2026-10-25
+
+- **W3C WAI-ARIA Authoring Practices, Modal Dialog Pattern.** Its keyboard pattern moves focus
+  into a modal, keeps Tab and Shift+Tab within it, and closes it with Escape; implementation
+  notes also discuss returning focus to the invoking control. These are interaction expectations,
+  not proof of screen-reader compatibility. They informed the focused real-Chromium keyboard
+  checks in the new smoke script.
+  [W3C WAI-ARIA APG, *Dialog (Modal) Pattern*](https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/).
+
+### Audit gap and validation decision
+
+Session 20 had JSDOM lifecycle and axe coverage for the new manager-support form, ledger and 1:1
+reconciliation, but no real-browser run of that specific workflow. The repository already had
+optional Chromium checks for conflicts and onboarding phase queues. Extending those large scripts
+would couple otherwise separate smoke scenarios, so Session 21 adds a standalone, optional,
+isolated `scripts/app-manager-support-smoke.mjs`.
+
+The new script uses a fictional person and a fixed clock in a clean browser context. It records a
+Day 30 check-in with a distinct candid blocker string, explicitly enters a manager-owned action and
+due date, follows the source link, and settles the action in an actual held 1:1. It also verifies
+that cancellation and opening the meeting dialog write no records, that the blocker string is not
+copied into the commitment or displayed on the 1:1 board, and that the saved source phase/date and
+meeting provenance remain intact. It checks axe findings, horizontal overflow at selected desktop
+and mobile viewport sizes, focus entry/containment, Escape dismissal and focus restoration. No
+product data/schema or application dependency changed.
+
+### Evidence and limits
+
+- Chromium **153.0.8010.0**, headless: new smoke script passed; no uncaught page/console errors,
+  no external application requests, and no horizontal overflow at **1440×1000** and **390×844**.
+- Eight axe-core scans using WCAG 2.1 A/AA rule tags reported zero findings. Keyboard tests cover
+  focus entering the modal, Tab and Shift+Tab staying within it, Escape close and return to the
+  trigger. Existing conflict and check-in queue Chromium scripts were also rerun successfully.
+- Automated axe is not a WCAG conformance certificate; headless Chromium is not exhaustive visual
+  or device testing. No actual assistive technology/screen reader or manager/employee comprehension
+  session was available in this run. Those, browser diversity, print/PDF and representative
+  large-workspace performance remain **[UNVERIFIED]**.
+
+## 32. Programmatic association for inline validation errors (Session 22)
+
+### Guidance checked 2026-10-25
+
+- **W3C WAI Forms Tutorial, User Notification.** Dynamic errors should be made noticeable to
+  assistive technology (for example, with an alert container); field-level messages can also be
+  associated with their matching controls using `aria-describedby`. Messages should be concise and
+  explain how to correct the problem. This informed the field-error association fix and regression
+  checks. The guidance does not replace testing with actual assistive technologies.
+  [W3C WAI, *User Notification*](https://www.w3.org/WAI/tutorials/forms/notifications/).
+- **W3C WCAG Technique ARIA21.** The informative technique demonstrates `aria-invalid` and
+  `aria-describedby` together to mark a field invalid and expose its error text. Techniques are
+  examples, not normative requirements in themselves.
+  [W3C, *ARIA21: Using aria-invalid to Indicate An Error Field*](https://www.w3.org/WAI/WCAG22/Techniques/aria/ARIA21).
+
+### Audit finding and repair
+
+Reviewing the shared form helper while preparing screen-reader tests found that `setFieldError`
+inserted inline text in `role="alert"` and marked its control `aria-invalid="true"`, but left
+`aria-describedby` pointing only at the ordinary help text (or unset). When focus later returned
+to the invalid control, its specific correction was not programmatically associated with it. Axe
+had not reported this gap.
+
+`buildForm` now retains the existing help-text ID and adds the current inline error ID to the
+control's `aria-describedby` when an error appears. Clearing an error removes only that error ID
+and the invalid state, while preserving the help association. A JSDOM flow and the Chromium
+manager-follow-up smoke check assert the invalid state, live error role, both description IDs and
+successful cleanup/retry. The helper is shared, so the repair applies to all forms that use
+`setFieldError`, not only this follow-up dialog.
+
+### Verification limits
+
+The existing focused UI flow passed and the full-suite/Chromium results are recorded in the
+Session 22 log. Automated DOM assertions prove the relationship exists, not that NVDA, JAWS,
+VoiceOver, TalkBack or Orca announce it clearly or without duplication. No actual screen-reader
+session or manager/employee comprehension study was available; both remain **[UNVERIFIED]**.
+
+## 33. Cross-domain operational cases & event-driven parallel propagation engine (Session 23)
+
+### Cross-domain synthesis
+
+First-time managers rarely experience delivery incidents, vendor failures, scope escalations, or
+strategic bets as isolated entries inside one HR tool. An operational incident simultaneously tests
+engineering reliability, financial and capacity trade-offs, stakeholder politics, OKR confidence,
+decision governance, and blameless psychological safety. Session 23 synthesises seven quantitative
+and qualitative traditions into a single local-first entity (`state.cases`) backed by a typed
+cross-module relationship graph (`state.links`) and a deterministic parallel rules engine
+(`app/core/domain/automation.js`):
+
+1. **Engineering & Safety Science — AIAG-VDA (2019) FMEA Action Priority + Reason (1990) Swiss-Cheese Barriers.**
+   Classical Risk Priority Numbers ($\text{RPN} = S \times P \times D$, $1..1000$) treat
+   $(S=10, P=2, D=2 \Rightarrow 40)$ as lower priority than $(S=4, P=5, D=5 \Rightarrow 100)$.
+   AIAG-VDA (2019) corrected this by elevating Severity 9–10 failure modes to High/Medium Action
+   Priority regardless of modest RPN. Reason's (1990) *Human Error* / Swiss-Cheese model and Dekker's
+   blameless post-mortem practice further show that stopping at "who made a mistake" leaves latent
+   systemic conditions intact. `computeFmea` and `evaluateRca` implement both: Action Priority
+   overrides naive RPN when Severity $\ge 9$, residual FMEA tracks post-mitigation RPN reduction %,
+   and `BLAME_PATTERN` warns when causal text blames an individual without naming a missing systemic
+   guardrail.
+2. **Mathematics & Statistics — Three-Point Beta-PERT Estimation (Malcolm et al., 1959).**
+   Single-point cost and effort guesses systematically underestimate right-skewed operational tails.
+   `computePertImpact` models both financial exposure and diverted team-capacity person-days via
+   three-point PERT ($\mu = \frac{O + 4M + P}{6}$, $\sigma = \frac{P - O}{6}$, and approximate 80%
+   interval $P_{10}..P_{90}$), rejecting inverted inputs ($O > M$ or $M > P$).
+3. **Finance & Economics — Risk-Adjusted Expected Value, Mitigation ROI & Opportunity Cost.**
+   Capital and engineering time are scarce. `computePertImpact` pairs PERT expected cost with
+   pre- and post-mitigation occurrence probabilities to compute expected unmitigated loss, expected
+   residual loss, expected loss avoided, net risk-adjusted value ($\Delta E[\text{Loss}] - C_{\text{mit}}$),
+   and mitigation ROI multiple, alongside explicit opportunity cost and cumulative diverted
+   team-capacity alerting (`CASE-04` at $\ge 10$ expected person-days).
+4. **MBA / Operations & Decision Governance — Bain RAPID / Intuit DACI & Reversibility.**
+   High-exposure or irreversible operational trade-offs should not hide inside chat threads.
+   `RULE-DEC-01` automatically creates and links a structured DACI Decision record seeded with
+   PERT-quantified options (*Execute preventive mitigation* vs *Accept / defer*) whenever Action
+   Priority is High, PERT expected exposure $\ge 10{,}000$, or the case is an escalation/initiative.
+5. **Political Science — Mendelow (1981) Power × Interest Stakeholder Matrix & Coalition Stance.**
+   Operational fixes fail politically when high-power skeptics or blockers are surprised late.
+   `classifyMendelowStakeholder` maps each stakeholder onto *Manage closely*, *Keep satisfied*,
+   *Keep informed*, or *Monitor*, tracks stance (`champion` → `blocker`), auto-schedules briefing
+   cadences (`RULE-STAKE-01`), and triggers `CASE-02` when briefings go overdue or high-power
+   stakeholders remain skeptical/blocking.
+6. **Production / Lean / Six Sigma — Ohno (1988) Toyota 5-Whys & Closed-Loop Verification.**
+   Mitigations that are delegated but never verified decay silently. `RULE-DEL-01` creates an
+   accountable mitigation Delegation with calibrated authority; completing all linked mitigation
+   delegations (`onDelegationCompleted` / `RULE-SYNC-DEL-01`) automatically transitions the Case to
+   *Monitoring* so residual FMEA scores are verified before closure (`resolveCase`).
+7. **Leadership & Psychological Safety — Edmondson (1999) Blameless Coaching Air-Cover.**
+   `RULE-COACH-01` queues blameless support/barrier talking points into `person.talkingPoints`,
+   1:1 agenda suggestions, and printable 1:1 prep sheets, while strictly excluding operational
+   incidents from automatic performance-review evidence and blocking any links to confidential
+   `conflicts` or anonymous `pulses`.
+
+### Verification and limits
+
+- **322/322 Node & JSDOM tests pass** across 25 test files (`tests/app/cases-automation.test.mjs`
+  verifies FMEA/PERT/Mendelow/5-Whys math, 5-way parallel propagation, idempotency, delegation →
+  monitoring feedback loop, resolution propagation, upstream escalation from Goals/Delegations/
+  Decisions, Schema v14 → v15 migration, privacy-wall enforcement, CSV formula-injection defense,
+  and zero `axe-core` violations across `#/cases`, `#/cases/:id`, dialogs, and connected views).
+- PERT probabilities and $P_{10}..P_{90}$ bounds are decision-support approximations over
+  manager-entered numbers, not actuarial forecasts. Real graphical browser layout/overflow on the
+  new `#/cases` surfaces, assistive-technology screen-reader announcements, and real-manager
+  comprehension remain **[UNVERIFIED]** in this container (no browser or screen-reader binary
+  installed).
+
+
+## 34. Capacity, flow and allocation: the operating-plan layer (Session 24)
+
+**Audit and gap.** Session 23 closed the cross-domain *case* loop. Reading the whole canonical
+runtime (§§5–33 plus `app/**`) showed a structural gap rather than a missing feature: every module
+records intent — goals, delegations, cases, 30-60-90 plans, decisions — and nothing answered the
+manager's weekly question, *"do the people I have actually have the capacity to do this, and what
+has to give?"* Every comparable product category assumes that layer exists (OKR tools grow a
+"workload" tab, portfolio tools import a capacity sheet, PSA tools assume a time-entry system).
+Building the layer as a *derived* view over existing records is the version that fits LeadOS's
+no-backend, no-fabrication architecture.
+
+**Frameworks applied, with the boundaries stated.**
+
+| Discipline | Framework | How it is used — and what is deliberately *not* claimed |
+|---|---|---|
+| Operations research | Little's Law (Little, 1961): WIP = throughput × cycle time | Throughput is counted only from **delivered** plan items in a trailing window; WIP counts only funded plan items, the same unit. Below two completions the app refuses to state a rate. |
+| Queueing theory | Kingman's diffusion approximation (Kingman, 1961) with a variability factor of 1 (Poisson/exponential) | Reported as a **delay multiplier** at the current utilisation. It is a model, not a measurement: it says utilisation above ~80% costs lead time super-linearly, which is the decision-relevant claim. |
+| Production / lean | Reinertsen's *Principles of Product Development Flow* (2009), Goldratt's Theory of Constraints | WIP limits and bottleneck naming (highest per-person utilisation, with unowned work shared evenly so the bottleneck cannot be hidden). No "efficiency score" for a person. |
+| Economics / finance | Marginal analysis, opportunity cost, value density (expected value ÷ expected person-days) | Funding is a boundary decision, not a ranking alone: "what is the next thing that fits?" and "what is the cheapest thing to remove?" Sunk cost is never used to defend an item. |
+| Mathematics / statistics | Three-point Beta-PERT (Malcolm et al., 1959) and additive variance under independence | Independent PERT variances sum, so the portfolio range widens with scope (central limit theorem). Target-date risk is **cumulative** — each target is judged against all work due by then. No claim of independence in reality; the caveat is in the view. |
+| Leadership | Protected focus and explicit saying-no (Drucker; Doerr's OKRs; Sull & Escobari on commitments) | Trade-offs are recorded as owned DACI decisions with generated options, never performed silently by the engine. |
+| HR / change | Transition productivity ramp (Watkins, *The First 90 Days*) | Ramp factors (0.45 / 0.75 / 0.8 / 0.7) are **planning conventions**, editable in Settings, not measurements of anyone's ability. |
+
+**Implementation.** `app/core/domain/capacity.js` (pure): `buildCapacityModel`, `flowMetrics`,
+`rankPortfolio`, `deliveryForecast`, `capacityHistory`, `capacitySummary`; Schema v16 adds
+`state.portfolio` plus four planning settings; `app/views/capacity.js` and
+`app/ui/capacity-modals.js` render and capture it; `CAP-01`–`CAP-05` join the signal engine.
+
+**Cross-module propagation (the reason it is architecture, not a dashboard).** Three rules extend
+the Session-23 engine rather than duplicating it:
+
+| Rule | Trigger | Effect |
+|---|---|---|
+| `RULE-CAP-01` | `case.created` / `case.updated` / `case.resolved` | Registers, refreshes, releases, or reinstates a **committed capacity reserve** dated from the case. Idempotent; a reopened case gets its capacity back. |
+| `RULE-CAP-02` | any event that makes utilisation > 100% | Opens **exactly one** DACI trade-off decision containing the numbers and concrete options (defer the lowest-value item, cut the next, accept the delay, stop starting unfunded work). No second decision while the first is unanswered. |
+| `RULE-CAP-03` | `portfolio.decided` | Writes an explainable check-in on the linked goal when its funded work is deferred or cut (moving on-track → at-risk), and the follow-up when it is re-funded. Funding new work writes nothing. |
+
+**Alternatives considered and rejected.**
+
+| Alternative | Rejected because |
+|---|---|
+| Deriving effort automatically from goal key-result counts or delegation due dates | Produces confident numbers with no basis; a plan built on invented effort is worse than no plan. Unestimated work is counted as a gap instead. |
+| Hours-per-week per person as an editable field | Invites recording contracted hours rather than focused hours, which is the number that determines delivery. One team-level convention plus an explicit operational reserve is more honest and far less data entry. |
+| A single "capacity score" or utilisation grade | A grade invites gaming (reserve less, estimate lower). The view reports utilisation, delay multiplier, deficit and date range — each with its own evidence. |
+| Letting the engine auto-defer or auto-cut work when the plan is infeasible | Removes the human decision that is the whole point of leadership, and rewrites someone's committed work without a conversation. The engine generates options; the leader decides and signs a rationale. |
+| Auto-creating a capacity reserve during the v15→v16 migration | An estimate nobody gave would be invented. Migration adds the empty ledger; open cases with recorded capacity days still count as implicit reserves at read time. |
+| Treating each target's probability independently | Every item would claim the whole team's capacity and report ~100% confidence until the day it slips. Cumulative risk is the only honest aggregation. |
+| A time-entry system | Different product, needs a backend and daily compliance; LeadOS stays a planning and conversation tool. |
+
+**Honest limits.** Every number is manager-entered: focused hours, effort, value, targets and
+ramp are conventions, not measurements. The utilisation history is a **reconstruction** from item
+lifespans with current roster and ramp values, and is labelled `approximate` in the UI. Little's
+Law at a small completion count is thin, and the app says so rather than hiding it. No field study
+shows that seeing a delay multiplier changes a manager's behaviour; real-browser rendering of
+`#/capacity`, screen-reader announcement of the capacity bar, and print output remain
+**[UNVERIFIED]** here. No outbound retrieval was performed this session (host allowlist), so the
+citations above are to published works rather than freshly retrieved vendor documentation.
+
+**Verification.** 18 new tests in `tests/app/capacity-flow.test.mjs`; full suite **340 passed, 0
+failed, 0 skipped across 26 files**; `axe-core` in JSDOM reports **0 violations** on `#/capacity`
+and on the add-work dialog; `node --check` and ESLint pass on every touched module; the static
+server returns `200` for all new modules.
+
+## 35. Delegation completion must close the capacity loop (Session 25)
+
+**Gap found in code, not inferred from a feature checklist.** Session 24 allowed a portfolio item to
+carry `sourceType: delegation` and a typed `funds` graph edge. But the inspected completion path
+(`completeDelegation` → `onDelegationCompleted`) only advanced linked operational cases to
+Monitoring. A linked portfolio item remained open and funded after its delegated outcome had been
+verified. That stale item continued to inflate committed demand and WIP, and it was absent from
+delivered throughput. The relationship existed; its lifecycle propagation did not.
+
+**Design:** `RULE-CAP-04` consumes the already-audited `delegation.completed` event and only closes
+portfolio items explicitly linked to that delegation. This follows Deming's Plan–Do–Check–Act
+loop (the completion evidence is the Check; synchronized delivered state is the Act), Little's Law
+(incorrect WIP distorts cycle-time estimates), and the product's existing source-of-truth rule:
+explicit links authorize propagation, never a title/date guess. The historical item and graph edge
+remain; the completed date comes from the delegation record. Returned work is deliberately not
+closed as delivered because the outcome has not been achieved. A closed delegation cannot create
+new open planned demand.
+
+**Product-pattern synthesis.** Prior repository research documents Asana's single-owner/due-date
+execution pattern (§13), the explicit ask-versus-auto-carry trade-off in 1:1 systems (§18), and
+portfolio/OKR tools' expectation that committed work has a recorded owner and status (§34). LeadOS
+keeps those useful facts—owner, due date, status and explicit handoff—but extends them through the
+existing typed relationship graph so a verified lifecycle event updates the connected module once.
+This is not a claim that a competitor ships the same local-first automation. The current session
+used the repository's dated benchmark artifact and code, not fresh vendor pages; contemporary
+vendor functionality remains **[UNVERIFIED]**.
+
+**Cross-domain application:**
+
+| Discipline | Applied decision |
+|---|---|
+| Engineering / systems | One event rule in the shared automation engine, one atomic store transaction, no UI-only state mirroring. |
+| Operations / Lean | Delivered work leaves WIP; completion contributes to observed throughput, preventing stale queue metrics. |
+| Economics / finance | The capacity previously committed is released, improving the scarce-resource plan without changing the original estimate or value. |
+| Statistics | The actual delegation completion date drives cycle-time history; no completion date or effort is fabricated. |
+| Leadership / incentives | Only a leader's explicit completion record propagates; return/reassignment cannot be mistaken for success. |
+| Governance / audit | Typed provenance remains queryable and the automatic write adds its own append-only rule-tagged event. |
+
+**Implementation:** `RULE-CAP-04` in `app/core/domain/automation.js`, called by the existing
+`completeDelegation` transaction in `app/actions.js`. `syncCapacityPlan` also reconciles
+pre-existing completed-delegation links from older workspace state; repeated sync is idempotent. No
+new schema version, collection, dependency, network or account. End-to-end regression in
+`tests/app/capacity-flow.test.mjs` covers completion, capacity release, preserved linkage, audit
+provenance, closed-source and chronology guards, legacy-state repair and repeated-sync idempotency.
+
+**Rejected:** marking a delegation-linked portfolio record delivered when the delegation is
+*returned*. That only says the owner returned the work; it does not prove delivery, and automatically
+releasing its demand would understate the capacity still required. Also rejected: inferring links
+from matching titles, person IDs or due dates; those are not evidence of a relationship.
+
+**Remaining gap:** edit/start-date chronology is guarded at completion, but the plan contains no
+independent effort-consumption telemetry; estimated remaining effort stays an estimate until the
+item is explicitly completed/released. Work linked to goals/cases still has separate lifecycle
+rules. No fresh vendor retrieval or field study was conducted this session.
+
+## 36. Selection and hiring: evidence weights, correlated signals and the cost of an empty seat (Session 26)
+
+### Research retrieved 2026-10-25
+
+The first implementation of this module used Schmidt & Hunter's (1998) validity table from memory.
+Two things were wrong with that, and both were caught by retrieval rather than by review:
+
+1. **A wrong figure.** The draft used `.18` for *unstructured interviews*. In Schmidt & Hunter that
+   value is `.38`; `.18` is *years of experience*. A single transcription error would have made the
+   weakest interview method look as weak as a CV screen — plausible enough to survive review, which
+   is exactly why the numbers needed checking against a source.
+2. **A superseded table.** Sackett, Zhang, Berry & Lievens (2022) re-analysed the underlying
+   meta-analyses and argued that decades of range-restriction corrections had systematically
+   *overcorrected*, inflating validity estimates. Their revised figures are materially lower and
+   **re-ordered**: structured interviews (.42) now rank first, job-knowledge tests .40, work samples
+   .33 (down from .54 — the largest drop of any method), cognitive ability .31 (down from .51),
+   integrity .31, assessment centres .29, unstructured interviews .19, years of experience .07.
+
+Sources read this session:
+
+- Sackett, P. R., Zhang, C., Berry, C. M. & Lievens, F. (2022). *Revisiting meta-analytic estimates
+  of validity in personnel selection.* Journal of Applied Psychology, 107(11), 2040–2068 —
+  author manuscript: <https://gwern.net/doc/statistics/meta-analysis/2021-sackett.pdf>
+- Comparison tables of the two revisions, including the 80% credibility interval for structured
+  interviews (.18–.66): <https://www.master-hr.com/insights/new-study-providing-updated-validity-estimates/>
+  and <https://ink.library.smu.edu.sg/cgi/viewcontent.cgi?article=8187&context=lkcsb_research>
+- SIOP's practitioner summary of the re-ordering ("structured interviews … among the top five
+  strongest predictors … cognitive ability rounded out this list at .31"):
+  <https://www.siop.org/tip-article/is-cognitive-ability-the-best-predictor-of-job-performance-new-research-says-its-time-to-think-again/>
+- Schmidt & Hunter (1998) summary, retained as the context for why the older numbers are still
+  everywhere: <https://firstpersonnel.org/wp-content/uploads/2013/10/Summary-Schmidt-Hunter-1998.pdf>
+
+Classic foundations used without a fresh fetch: Spence (1973) on signalling and Akerlof (1970) on
+adverse selection (why an expensive, job-related signal is worth more than a cheap one — and why an
+unstructured chat mainly measures the interviewer); Bauer & Erdogan (2011) on organisational
+socialisation (why an accepted offer should hand off to a 30-60-90 plan rather than to nothing);
+Kahneman & Tversky's work on anchoring and the planning fallacy (why "I liked them" arrives with a
+number attached before any evidence does).
+
+Vendor and market claims about contemporary hiring tools were **not** retrieved this session and are
+**[UNVERIFIED]**.
+
+### Design consequences
+
+- **Weights are inputs, not conclusions.** A 5/5 structured interview moves the posterior by at most
+  .42. That single constraint is what stops the module becoming a scoreboard: no one conversation,
+  however good, can decide anything, and the UI says so.
+- **Correlated evidence is discounted explicitly.** Two ratings of the same competency by the same
+  interviewer are not two observations. The second rating of a `(method, competency)` pair counts
+  ×0.5 with a different rater and ×0.25 with the same rater. Deterministic, order-stable (signals
+  are sorted by date then id) and explained line by line in the evidence table, so a leader can see
+  *why* their fifth interview changed almost nothing.
+- **Neutral is neutral.** 3/5 means "mixed / no decisive signal" and contributes exactly zero to the
+  log-odds. A scale that only pushes upward is how "not bad" becomes "good".
+- **Disagreement is surfaced, not averaged.** A spread of 3+ points on one competency becomes a
+  finding with an instruction (run a work sample or a calibration conversation). Averaging two
+  opposite ratings produces a confident middle that nobody actually observed.
+- **The falsification test replaces a confidence percentage.** "Three more strong contrary
+  observations would move this across the 50% line" is a claim a manager can act on; "78% likely to
+  succeed" is not, and it invites treating a heuristic as a prediction.
+- **The offer gate is a convention and says so.** Evidence weight ≥ 0.50 (at the 2022 weights: at
+  least two reasonably strong independent observations), ≥ 2 methods, every required competency
+  assessed. Below that, a decision is still allowed — with a recorded acknowledgement. Blocking
+  would push the decision out of the tool; silently allowing it would launder a guess into evidence.
+- **Fairness without special-category data.** The 4/5 adverse-impact rule needs race/sex/disability
+  data that a local single-manager browser tool has no lawful basis to collect. What is measurable
+  instead is process parity: were the same competencies assessed for everyone who reached the same
+  stage? That is auditable from the record and cannot be gamed by not recording it.
+- **An empty seat is priced only if priced.** Cost of vacancy uses a leader-recorded daily figure.
+  Deriving it from a salary band would put the most persuasive number on the screen without any
+  basis; the module shows "unmeasured" and explains how to estimate it in one line.
+- **Small-sample floors apply here too.** Cycle time is withheld below two completed hires, matching
+  the flow metrics' refusal to state a rate from one completion.
+
+### Cross-module wiring (the architectural point)
+
+Hiring is only useful as a *system* member. Three rules run inside the existing event engine:
+
+- `RULE-HIRE-01` turns a recorded interview-effort estimate into a committed `hiring` capacity item,
+  refreshes it in place, completes it on a fill and releases it on hold/cancel. This is what makes
+  the operating plan honest: interviews are work, and they were previously invisible to it.
+- `RULE-HIRE-02` closes the loop on acceptance — roster record, new-hire 30-60-90 plan, three typed
+  graph edges, reserve completed — inside one transaction, so a hire never requires a second entry
+  and is traceable from requisition to first 90 days.
+- `RULE-HIRE-03` escalates a stalled role through the *shared* escalation path, so the resulting case
+  immediately inherits FMEA severity/probability/detectability, financial PERT fields, a stakeholder
+  coalition, a DACI decision and an accountable delegation. The `autoEscalated` flag keeps it to one
+  case for the life of the role.
+
+### Rejected during implementation, with reasons
+
+| Idea | Why rejected |
+|---|---|
+| A single candidate "score" out of 100 | Collapses method quality, coverage and direction into one number that gets compared across people who were assessed differently. The module reports weight, band, coverage and the flip count separately. |
+| Auto-reject / auto-advance thresholds | Removes a person from consideration without a human decision. Gaps are surfaced and acknowledgements recorded; the decision stays with the leader. |
+| "Culture fit" rating | Unfalsifiable, reliably similarity-to-self, and the documented route by which structured processes decay back into affinity bias. |
+| Storing protected characteristics for adverse-impact maths | No lawful basis or safe storage in a local single-manager browser tool. Process parity is the honest substitute. |
+| Résumé parsing / file import | Adds an unverifiable inference step to the one module whose value is evidence quality, plus a data-protection surface. |
+| Inferring interview effort from headcount or stage counts | Would fabricate the estimate the capacity layer depends on. A suggestion is shown next to the field and stored only if the leader submits it. |
+| Retention timer that auto-deletes candidate records | Tempting for data minimisation, but a timer that silently deletes records in a local browser tool can destroy a decision rationale mid-dispute. Deletion is explicit and audited; a prompt-based retention reminder is on the roadmap instead. |
+
+### Verification and limits
+
+`tests/app/hiring.test.mjs` (27 tests) covers the mathematics, the migration, every action gate and
+all three rules end to end; the full suite is 368/368 across 27 files. `axe-core` reports zero
+violations on `#/hiring`, `#/hiring/:id` and the requisition dialog.
+
+Limits that remain, stated plainly: the validity coefficients are population meta-analytic averages
+with wide credibility intervals (structured interviews: .42, 80% interval .18–.66), applied here as
+fixed weights — they are not a prediction about any individual, and this implementation has not been
+validated against anyone's real performance. The prior is a user-set assumption. The model ignores
+the incremental-validity question entirely (two correlated methods do not add as much as the sum of
+their validities), beyond the crude repeat-discounting above. No manager has used this module on a
+real hiring round, and no browser, screen reader or mobile device was available in this container,
+so rendering, keyboard traversal and assistive-technology behaviour remain **[UNVERIFIED]**.
+
+## 37. Candidate-record retention, dependency risk, and what "validated" can honestly mean here (Session 27)
+
+### Research retrieved 2026-10-25
+
+**Data minimisation and retention.** GDPR Art. 5(1)(e) (storage limitation) requires that personal
+data be kept "no longer than is necessary for the purposes for which the personal data are
+processed"; Art. 17 (erasure) creates a right to have it removed; Art. 5(1)(c) (minimisation) means
+holding a rejected candidate's interview notes indefinitely is not neutral. Recital 39 ties both to
+time limits being *set* and *reviewed*. The ICO's guidance on storage limitation is explicit that an
+organisation should be able to justify each retention period and should review records rather than
+hold them "just in case". Two practical consequences shaped the design:
+
+- The obligation is to **decide**, not necessarily to delete on a schedule. A single-manager local
+  tool with no server, no processor and no transfer sits in an unusual position: there is no
+  controller/processor split to manage, but the data is still personal data, sitting in a browser
+  profile that may be shared, backed up to a synced folder, or left on a laptop.
+- A timer that erases is *also* a data-integrity risk: if a rejection is challenged, the rationale
+  and the evidence behind it are the record that defends the decision. Automated erasure trades one
+  compliance risk for another, silently, at a moment nobody chose.
+
+So the shipped behaviour is a **review prompt with a visible exemption mechanism**, and the reasoning
+is written into the code comments (`retentionReview`) rather than only into this document. The
+"keep in touch" exemption matters because a silver medallist you intend to call about the next opening
+is *necessary* data — the point of surfacing exemptions is that "we kept this on purpose" becomes an
+auditable statement instead of an omission.
+
+**Dependency risk.** The advisory set behind `next@16.2.6` is unusually bad for a "just upgrade it
+later" posture: unauthenticated RCE in the Image Optimization API for AVIF/SVG inputs, RCE in
+`next/og`'s `ImageResponse`, RCE in `use cache` functions returning typed arrays, SSRF in Image
+Optimization, SSG/ISR cache poisoning that lets one user's render be served to another, and a DoS in
+Server Actions. All of those are reachable only by a *running Next server* — which is precisely why
+the honest finding is not "the risk was accepted" but "this tree cannot be built, so the advisories
+have no path to execution". The upgrade is still correct (the packages are installed, `next build` is
+a documented command, and a future repair should not inherit an RCE), but it changes the audit
+counter, not the deployment risk.
+
+**What "validated" can mean without a browser or a screen reader.** A theme worth naming, because it
+recurs in this project: the difference between *well-formed* and *usable*. axe-core answers
+well-formedness; a heading outline, accessible names and a focus trap answer more of usability; none
+of them answer comprehension. The literature on accessibility conformance (WebAIM's annual
+"WebAIM Million" consistently finds automated tools catch roughly a third to a half of WCAG failures,
+with the remainder needing human judgement; the WCAG-EM evaluation methodology mandates manual and
+assistive-technology testing) says exactly this: automated coverage is necessary and insufficient. The
+session therefore ships the automated part, states the gap in the report, and refuses to describe a
+green suite as accessibility validation.
+
+### Design consequences
+
+- **Prompt, never erase.** Retention is a decision the leader makes with the app's help. The reminder
+  names the window, the age, the evidence that will go with the record, and that it cannot be undone.
+- **Exemptions are visible and counted.** A deliberate retention is listed; a silent one is how a
+  policy becomes a fiction.
+- **Unknown age is unknown.** No date means no age, not "assume old". Guessing age is how a reminder
+  turns into an accusation about a record the leader may have created last week.
+- **Invalid configuration fails safe.** A negative window falls back to the default rather than to
+  zero, because "off" must be a deliberate act.
+- **Deletion stays a single, named, confirmed act** — which is what surfaced the confirmation bug.
+- **Confirmation primitives must be boringly correct.** A destructive dialog that returns immediately
+  is worse than no dialog: it teaches the user that the dialog is decoration. The fix (a promise that
+  only settles when the dialog closes, with `onConfirm` still supported) is now covered by tests for
+  confirm, cancel, Escape and single execution.
+- **Scale tests assert invariants and print numbers.** Counting records and resolving edges catches
+  the failure mode that matters (silent truncation); printing timings catches the one that does not
+  throw (the quadratic scan).
+- **The dependency finding got a decision, not a badge.** Four moderate advisories remain, with the
+  reason they are not reachable, and the cost of the offered "fix" recorded.
+
+### Rejected this session, with reasons
+
+| Idea | Why rejected |
+|---|---|
+| Auto-delete candidate records after the window | Trades a privacy risk for an evidence-loss risk, at a moment nobody chose, in a tool that also holds the audit trail. The prompt keeps the decision with the person who can justify it. |
+| `npm audit fix --force` to clear the last four moderates | It "fixes" a dev-only esbuild advisory by downgrading `drizzle-kit` to 0.18.1 — a breaking change to the migration tool, applied blind, to silence a counter. |
+| An `overrides` pin forcing `esbuild@0.25` under `@esbuild-kit/core-utils` | Attempted and reverted: the package pins a 0.18.20 platform binary, so npm reported the tree `invalid` and the CLI would have run an untested combination. A broken tree is worse than an explained advisory. |
+| Repairing the legacy Next build in this session | 6,977 TypeScript errors and missing modules across a non-canonical tree is its own project, and the product decision (repair vs archive) belongs in the roadmap, not in an accessibility-and-scale session. |
+| Claiming JSDOM + axe as "screen-reader validated" | It is not what was run. The report says block, explains the commands and their failures, and lists exactly which questions remain open. |
+| Rendering the retention card as a plain alert bar | A record-by-record decision needs names and ages side by side with the delete control; a banner would push the decision back into a settings page where it would never be made. |
+
+### Verification and limits
+
+`npm test` → **408 passed, 0 failed across 29 suites** (368 → 408: +23 retention, +5 scale, +12
+accessibility). `npm audit --omit=dev` → 0 vulnerabilities. `next build` → fails identically on both
+dependency sets (pre-existing, documented). Playwright/Chromium: not runnable in this container
+(recorded with the exact error). Real screen-reader output, comprehension, visual contrast in a
+rendering engine, zoom/reflow, touch targets and large-workspace behaviour on a phone remain
+**[UNVERIFIED]**, as does any claim that the retention prompt changes anyone's behaviour.
+
+---
+
+## 38. Organizational Design, Team Topologies, Veto Coalitions & Shewhart XmR Statistical Process Control (Session 28)
+
+### The two structural gaps
+
+Auditing the full canonical product (`app/**`, 63 modules prior to Session 28) surfaced two missing
+layers across management, systems engineering, economics, political science, statistics, and
+lean/production operations:
+
+1. **No separation between common-cause noise and special-cause signal.** `#/health` reported 30-day
+   and multi-window deltas, and `#/cases` recorded point-in-time FMEA RPNs, yet neither distinguished
+   routine period-to-period variation ("noise") from a genuine shift in the underlying operating
+   system ("signal"). As Deming (*Out of the Crisis*, 1986) and Wheeler (*Understanding Variation*,
+   2000) demonstrate, reacting to common-cause fluctuations as if they were special causes ("tampering")
+   increases variance and demoralises teams.
+2. **Every module treated team boundaries, APIs, and charters as immutable.** `#/cases` could diagnose
+   that a recurring failure was caused by a 5-way cross-team deployment handoff or cognitive overload
+   (5-Whys / Swiss-Cheese systemic barrier), `#/capacity` could show Kingman queue blowup, and
+   `#/onboarding` could scaffold individual `role-transition` plans — yet nowhere could a leader design,
+   stress-test, govern, execute, and statistically verify an **organizational boundary, topology, or
+   process redesign** itself.
+
+### Cross-domain theoretical synthesis
+
+- **Production / Six Sigma / Statistics — Shewhart (1931) & Wheeler (2000) Individual & Moving Range (`XmR`) Process Behaviour Charts:**
+  For sequential operational observations $X_1, \dots, X_n$ with adjacent moving ranges $mR_i = |X_i - X_{i-1}|$:
+  $$\bar{X} = \frac{1}{n}\sum_{i=1}^n X_i, \quad \overline{mR} = \frac{1}{k}\sum mR_i, \quad \hat{\sigma}_{\text{within}} = \frac{\overline{mR}}{d_2}\; (d_2 = 1.128)$$
+  $$\text{UNPL} = \bar{X} + 2.66\,\overline{mR}, \quad \text{LNPL} = \bar{X} - 2.66\,\overline{mR}, \quad \text{URL} = D_4\,\overline{mR}\; (D_4 = 3.267)$$
+  Unlike parametric $t$-tests that assume i.i.d. sampling, $\hat{\sigma}_{\text{within}}$ estimates
+  dispersion from consecutive differences so a step-change in the mean does not artificially inflate
+  control limits to mask itself. Missing windows (`null`) break adjacency rather than interpolating
+  across gaps. Western Electric / Wheeler rules (`WE-1` beyond UNPL/LNPL, `WE-2` moving-range jump
+  $> \text{URL}$, `WE-3` 8 consecutive points on one side of $\bar{X}$, `WE-4` 3-of-4 beyond $2\hat{\sigma}$)
+  classify direction-aware `favorable` vs `adverse` special causes.
+- **Systems Engineering & Architecture — Conway (1968), Skelton & Pais (*Team Topologies*, 2019), Sweller (1988) & Brooks (1975):**
+  Models the Inverse Conway Maneuver explicitly (`stream-aligned`, `platform`, `enabling`,
+  `complicated-subsystem` × `x-as-a-service`, `collaboration`, `facilitating`), tracks before/target
+  Sweller cognitive load and cross-team blocking handoffs, and computes Brooks's inter-team bilateral
+  coordination channels $N(N-1)/2$ for $N = 1 + \text{collaboratingTeamsCount}$, flagging permanent
+  multi-team collaboration overload (`TT-COLLAB-OVERLOAD`), coupled platforms (`TT-PLATFORM-COUPLED`),
+  high residual cognitive load (`TT-HIGH-TARGET-LOAD`), and rising handoffs (`TT-HANDOFF-INCREASE`).
+- **MBA / Organizational Economics — Galbraith's 5-Point Star (1977), Porter's Trade-Offs (1996) & Holmström–Milgrom Multitask Principal-Agent Theory (1991):**
+  Evaluates alignment across Strategy, Structure, Processes, Rewards, and People plus explicit
+  *non-goals* ("what this team stops doing"). When Structure or Processes are redesigned while Rewards /
+  KPIs are left blank, LeadOS surfaces an explicit Holmström–Milgrom incentive-mismatch warning ("hoping
+  for A while rewarding B").
+- **Leadership & Change Execution — Kotter's 8-Step Model (1996), Lewin's Force-Field Analysis (1951) & Watkins's 30-60-90 Transitions (2003):**
+  Tracks Kotter stages 1–8 with live evidence backing and foundational-skip detection (`skippedSteps`);
+  models Driving ($+$) vs. Restraining ($-$) forces where mitigating a barrier halves its effective drag
+  (teaching leaders to weaken barriers rather than pile on top-down pressure into a `high-tension-stalemate`);
+  and links impacted team members directly to Watkins 30-60-90 `role-transition` plans (`RULE-CHG-03`).
+- **Political Science — Mendelow Power × Interest & Tsebelis (*Veto Players*, 2002):**
+  Extends stakeholder mapping with explicit `vetoPlayer` gatekeepers whose agreement is structurally
+  required to shift the status quo; unaligned veto players tighten briefing cadences (`RULE-CHG-04`),
+  discount economic feasibility, and propagate risk to dependent OKRs (`RULE-CHG-05`).
+- **Finance / Operations — Beta-PERT Transition Reserves & Satir J-Curve Payback Economics:**
+  Computes 3-point Beta-PERT transition effort ($\mu = (O + 4M + P)/6$, P10–P90), reserves active
+  effort in `#/capacity` (`RULE-CHG-01`), cascades vertically into `RULE-CAP-02` if combined reserves
+  plus role-transition supply ramps push utilisation past 100%, and computes feasibility-discounted net
+  horizon benefit and payback months.
+
+### Rejected this session, with reasons
+
+| Idea | Why rejected |
+|---|---|
+| Individual employee "change readiness" or "ADKAR resistance" scores | Turns structural boundary friction and healthy engineering skepticism into personal compliance grades, destroying psychological safety during reorganizations. |
+| Linear interpolation across missing health/metric windows in XmR charts | Creates artificial near-zero moving ranges (`mR`), shrinking `2.66 mR̄` limits and firing false special-cause alarms. |
+| Student's $t$-test / $p$-value badges on 4–8 operational data points | Short sequential operational time series violate independence and normality assumptions; Wheeler's XmR limits are mathematically grounded for small sequential series. |
+| Auto-rewriting `person.role` when a `#/changes` record becomes Active | Boundary experiments and phased handovers precede HR title changes; `RULE-CHG-03` scaffolds 30-60-90 transition support while keeping roster titles deliberate. |
+| Copying organizational change friction into `reviews.js` performance packets | Punishes engineers who take on messy structural migrations (Satir J-curve dip); change records stay strictly excluded from individual performance review evidence. |
+
+### Verification and limits
+
+`npm test` → **415 passed, 0 failed across 30 suites** (`tests/app/changes-spc.test.mjs` + extended
+`tests/app/access-audit.test.mjs` + `tests/app/scale.test.mjs` across all 20 CSV scopes). `npx eslint app scripts tests/app`
+→ 0 errors and 0 warnings across `app/**`, `scripts/serve.mjs` and `tests/app/**`. Live HTTP serving
+verified via `scripts/serve.mjs`. Real-browser visual rendering, assistive-technology screen-reader
+traversal, print layout, and field validation with managers running a live reorganization remain
+**[UNVERIFIED]**.
+
+---
+
+## 39. Seeded Monte Carlo Portfolio & Coupled J-Curve Simulation, Contextual-Integrity Export Governance & Chromium 143 Reflow Audit (Session 29)
+
+### The four structural gaps addressed in Session 29
+
+1. **Deterministic / CLT portfolio forecasts hid Sam Savage's *Flaw of Averages* and Goldratt's *Critical Chain* owner bottlenecks.**
+   `capacity.js` previously summed PERT expected values ($\mu = (O + 4M + P)/6$) and Normal-approximated
+   standard deviations ($\sigma = (P - O)/6$). For small portfolios ($N = 4\text{–}10$) of right-skewed
+   tasks ($P - M \gg M - O$) concentrated on one tech lead, two compounding errors occur:
+   - **Flaw of Averages (Savage, 2009):** A plan at $98\%$ expected utilisation looks feasible on average,
+     yet right-skewed Beta-PERT draws breach horizon capacity $>50\%$ of the time.
+   - **Fungible-team fallacy (Goldratt, *Critical Chain*, 1997; Brooks, 1975):** Summing team-wide supply
+     assumes person-days are interchangeable across specialists. On the LeadOS demo workspace, fungible
+     team completion at `P80` is `2026-11-13` (`19` calendar days), whereas owner-constrained Critical-Chain
+     contention on Mei Lin Chen pushes joint `P80` completion to `2026-11-24` (**`+11` calendar days slip**).
+2. **Organizational change J-curves were isolated from live portfolio congestion.**
+   `changes.js` previously discounted monthly benefit by static Kotter/force-field/veto feasibility,
+   ignoring that an overloaded engineering team stretches transition effort and delays benefit ramp-up.
+3. **Retention (`HIRE-08`) and candid coalition stances lacked export-boundary contextual integrity.**
+   Candidate records past `candidateRetentionDays` raised an in-app banner on `#/hiring`, and operational
+   JSON exports offered conflict omission — yet exporting JSON or CSV could silently bundle expired
+   candidate evaluations or candid `skeptical`/`resistant`/`opposing` stakeholder & veto-player stances
+   recorded for private manager sensemaking into shareable files.
+4. **Legacy `src/**` / root `.tsx` disposition and real-engine CSS/ARIA verification.**
+   Non-canonical Next/Vite artifacts needed an explicit architectural quarantine gate (`ADR-0007`), and
+   `jsdom` could not evaluate real CSS contrast compositing, WCAG 2.5.3 label-in-name matching, or
+   `390px`/`320px` flex reflow.
+
+### Cross-domain theoretical synthesis
+
+- **Mathematics / Statistics / Risk Engineering — Mulberry32 PRNG, Marsaglia & Tsang (2000) Gamma & Vose (2008) Beta-PERT:**
+  For a 3-point estimate $(O, M, P)$ with shape parameter $\lambda = 4$:
+  $$\mu = \frac{O + 4M + P}{6}, \quad \alpha = 1 + 4\frac{M - O}{P - O}, \quad \beta = 1 + 4\frac{P - M}{P - O}$$
+  Drawing $G_1 \sim \text{Gamma}(\alpha, 1)$ and $G_2 \sim \text{Gamma}(\beta, 1)$ via Marsaglia–Tsang
+  rejection over Box–Muller normals seeded by Mulberry32 (`seed = 42` default, configurable 250–5,000
+  trials) yields exact Beta-PERT variates $X = O + \frac{G_1}{G_1 + G_2}(P - O)$ with 100% bit-reproducible
+  quantiles (`P10`, `P25`, `P50`, `P80`, `P90`) and zero `Math.random()` non-determinism.
+- **Operations Research / Production — Goldratt (*Critical Chain*, 1997) & Variance-Share Sensitivity:**
+  Each trial accumulates both team-wide demand and per-owner committed demand against individual
+  allocatable supply, computing `ownerBottleneckBreachProbability`, `bottleneckCompletion` (`P50`/`P80`/`P90`),
+  `slipDaysVsTeamP80`, and item-level `varianceShare` sensitivity drivers.
+- **Finance / Organizational Strategy — Coupled Stochastic Satir J-Curve & `RULE-CAP-05`:**
+  In `simulateChangeJCurve`, each trial samples transition effort, realization delay, and 3-point monthly
+  benefit while coupling portfolio overload congestion (`overloadStretch`) into the ramp curve — widening
+  the J-curve valley (`troughValueP50`, `troughValueP90Worst`) and shifting payback quantiles (`2.4 mo`
+  deterministic vs. `5.5 mo` coupled `P50` on `chg-demo-1`). `RULE-CAP-05` propagates tail-risk warnings
+  to linked OKRs (`<50%` MC target probability while deterministically on-track) and opens an idempotent
+  DACI trade-off decision when `flawOfAveragesTrap` (`utilisation <= 100%` and `overloadProbability >= 50%`)
+  triggers.
+- **Privacy / Governance / Political Science — GDPR Art. 5(1)(c)/(e) & Nissenbaum (*Contextual Integrity*, 2009):**
+  Information shared safely inside one context (a manager's local encrypted workspace) violates contextual
+  integrity when transmitted across an export boundary without scope transformation. `inspectExportGovernance`
+  audits `EXPORT-RET-01`, `EXPORT-RET-02`, `EXPORT-CFL-01`, `EXPORT-STK-01`, and `EXPORT-HIR-01` before
+  download, offering export-only `pruneOverdueCandidates` and `redactStakeholderStances` redactions while
+  leaving live workspace records untouched.
+
+### Rejected this session, with reasons
+
+| Idea | Why rejected |
+|---|---|
+| Unseeded `Math.random()` Monte Carlo draws | Makes P80 dates, insights, and `RULE-CAP-05` non-reproducible across page renders and automated tests. |
+| Pairwise task-correlation matrix inputs (Gaussian/t-copulas) | Demands $O(N^2)$ subjective correlation numbers that managers cannot calibrate reliably; coupled capacity congestion + shared-owner Critical-Chain contention captures structural coupling from real records. |
+| Silent automatic deletion of expired candidate records during export | Mutates or hides records without informed consent; opt-in export pruning with explicit counts preserves human agency and auditability. |
+| Deleting legacy files & removing `eslint-config-next` | Breaks offline transitive `axe-core` availability and creates noisy multi-hundred-file diffs; ADR-0007 + `check:boundary` enforces strict zero-leak isolation cleanly. |
+
+### Verification and limits
+
+`npm run verify:canonical` → `eslint .` (`0` errors/warnings), `check:boundary` (`73` ES modules, `34`
+suites, `0` leaks), `check:links` (`0` broken links), and **`427/427` passing tests across 34 suites**.
+Real Headless Chromium `143.0.7499.0` pass (`docs/VALIDATION-2026-10-25-session-29.md`) audited 11 routes
+at `1440×1000`, `390×844`, and `320×800` + 4 live modals → **7 real contrast/label/reflow/float defects
+fixed, `0` `axe-core` WCAG 2.1 AA violations, `0` horizontal overflows**. Spoken screen-reader output
+(NVDA/JAWS/VoiceOver/Orca), Firefox/WebKit engines, print pagination, and real-manager field trials
+remain **[UNVERIFIED]**.
+
+---
+
+## 40. Counterfactual Scenario Sandboxing, Pareto Frontier Dominance, Brooks’s Law Onboarding Drag & One-at-a-Time Tornado Sensitivity (Session 30 — Schema v20)
+
+Session 29 added seeded Monte Carlo portfolio and coupled J-curve simulation (`app/core/domain/simulation.js`), diagnosing when a plan suffers from Savage’s *Flaw of Averages* (`SIM-01`) or Goldratt’s *Critical Chain* owner bottleneck (`SIM-02`). However, a first-time manager facing an overloaded plan could not test counterfactual trade-offs — deferring lowest-CD3 items, absorbing an executive interrupt, mitigating an active operational case, phasing an org change, or accelerating an offer — without mutating live records and polluting the append-only audit ledger. Session 30 resolves this gap with `app/core/domain/scenarios.js`, `app/views/scenarios.js` (`#/scenarios`), `tornadoChart` (`app/ui/charts.js`), `RULE-SCN-01` (`app/core/domain/automation.js`), `SCN-01` (`app/core/domain/insights.js`), and the `sensitivity` CSV scope (`app/core/csv.js`), grounded in nine cross-domain frameworks:
+
+1. **Decision Analysis & Tornado Sensitivity — Howard (1968), Eschenbach (1992), Saltelli et al. (2008).**
+   - Howard, R. A. (1968). *The Foundations of Decision Analysis*. IEEE Transactions on Systems Science and Cybernetics, 4(3), 211–219; Eschenbach, T. G. (1992). *Spiderplots versus Tornado Diagrams for Sensitivity Analysis*. Interfaces, 22(6), 40–46; Saltelli, A., et al. (2008). *Global Sensitivity Analysis: The Primer*. Wiley.
+   - `computeSensitivityTornado(state, opts)` perturbs every funded portfolio item (optimistic `a` vs. pessimistic `b`), active incident/change/hiring capacity reserve (`0d` resolved vs. `1.5×` escalation), operational interrupt reserve (`−5pp` vs. `+10pp`), and focused hours/week (`+4h/wk` vs. `−4h/wk`) one factor at a time under Common Random Numbers, ranking drivers strictly by total owner-constrained P80 completion swing (`|ΔP80_high − ΔP80_low|`) and rendering an accessible diverging SVG `tornadoChart` with an expandable keyboard-reachable `<details><table>` fallback.
+2. **Variance Reduction via Common Random Numbers (CRN) — Law & Kelton (2000).**
+   - Law, A. M., & Kelton, W. D. (2000). *Simulation Modeling and Analysis* (3rd ed., §11.2). McGraw-Hill.
+   - `evaluateScenario` and `compareScenarios` drive Baseline and every candidate scenario through `simulateJointWorkspace` with the identical Mulberry32 `seed` (`settings.simulationSeed`), inducing positive correlation across shared random streams so scenario deltas (`ΔOverload`, `ΔP80`, `ΔValue`) reflect structural lever changes rather than Monte Carlo sampling noise.
+3. **Multi-Objective Pareto Optimality & Dominated-Option Elimination — Keeney & Raiffa (1976).**
+   - Keeney, R. L., & Raiffa, H. (1976). *Decisions with Multiple Objectives: Preferences and Value Tradeoffs*. Wiley.
+   - Rather than collapsing schedule risk, overload probability, and economic value into an arbitrary utility score, `computeParetoFrontier(evaluations)` tests strict dominance across `{overloadProbability ↓, effectiveP80Days ↓, netRiskAdjustedValue ↑}` (whenever ≥1 scenario measures currency value; otherwise the 2D `{overloadProbability ↓, effectiveP80Days ↓}` projection), flagging dominated options alongside the exact peer scenario that beats them.
+4. **Constrained Optimization, Opportunity Cost & Shadow Pricing — Samuelson (1947); Reinertsen (2009).**
+   - Samuelson, P. A. (1947). *Foundations of Economic Analysis*. Harvard University Press; Reinertsen, D. G. (2009). *The Principles of Product Development Flow*. Celeritas Publishing.
+   - `evaluateScenario` computes a multi-ledger risk-adjusted net economic objective across the single currency present (`portfolio PERT μ_value − unmitigated FMEA case PERT μ_fin − mitigation spend + active Change risk-adjusted net benefit`), marking multi-currency mixes `mixedCurrency: true` instead of inventing FX rates, and computes the **implied marginal shadow price of capacity** (`λ = ΔValue / ΔCommittedDays`) alongside Reinertsen CD3 trim presets (`buildSuggestedScenarios`).
+5. **Software Systems Dynamics & Onboarding Drag — Brooks (1975); Watkins (2003).**
+   - Brooks, F. P. (1975). *The Mythical Man-Month*. Addison-Wesley; Watkins, M. D. (2003). *The First 90 Days*. Harvard Business School Press.
+   - `projectScenarioState` models simulated requisitions (`hireSimulated`) with three coupled effects inside the current planning horizon: (a) prorated newcomer availability via `personSupply` (`startDate > today` `inHorizonShare`) × Watkins 50% new-hire ramp factor, (b) Brooks’s Law mentoring & coordination drag (`mentoringDragDaysPerWeek`, default `1.25d/wk`) deducted as a dedicated committed `onboarding` portfolio reserve during in-horizon active days, and (c) optional interview-loop reserve release once the role closes — demonstrating mathematically why late hires slip near-term P80 dates while early hires with freed interview load add net capacity.
+6. **Strategic Scenario Planning & Pre-Commitment Rehearsal — Schoemaker (1995); Kahneman & Tversky (1979); Tetlock & Gardner (2015).**
+   - Schoemaker, P. J. H. (1995). *Scenario Planning: A Tool for Strategic Thinking*. Sloan Management Review, 36(2), 25–40; Kahneman, D., & Tversky (1979). *Prospect Theory: An Analysis of Decision under Risk*. Econometrica, 47(2), 263–291; Tetlock, P. E., & Gardner, D. (2015). *Superforecasting*. Crown.
+   - All scenario mutations occur on ephemeral `structuredClone` snapshots (`SCHEMA_VERSION = 20` unchanged; zero `localStorage` or `events` writes during exploration), countering planning fallacy and framing bias by comparing explicit counterfactual options (`peerScenarios`) before recording a calibrated DACI review date (`reviewOn`).
+7. **Double-Loop Learning vs. Single-Loop Tweaks — Argyris & Schön (1978).**
+   - Argyris, C., & Schön, D. A. (1978). *Organizational Learning: A Theory of Action Perspective*. Addison-Wesley.
+   - The sandbox separates single-loop item toggles (funding/deferring items, injecting hypothetical urgent work) from double-loop governing-variable levers (`operationalLoadPct`, `capacityHoursPerWeek`, `wipLimitPerPerson`) so leaders can compare trimming scope against structural WIP and interrupt-shielding policy shifts.
+8. **Coalition Feasibility & Veto-Player Gate — Tsebelis (2002); Gilpin & Rogers (2008).**
+   - Tsebelis, G. (2002). *Veto Players: How Political Institutions Work*. Princeton University Press.
+   - Scenarios that defer funded work linked to an OKR, pause an active organizational change, or rely on an unblocked veto coalition compute a deterministic `coalitionRisk` check surfacing opposing high-power veto players and impacted goals before commitment, and feed DACI `options` (`pros`/`cons`) directly into `RULE-SCN-01`.
+9. **Verification Boundaries.**
+   - Verified via `tests/app/scenarios-sensitivity.test.mjs` (7 tests covering zero-mutation isolation, CRN determinism, Brooks’s Law crossover, Pareto dominance, Tornado OAT ranking, `RULE-SCN-01` cascades, all 7 Session-30 cross-module audit fixes, and interactive `#/scenarios` modal commitment), `tests/app/access-audit.test.mjs` (`axe-core` 0 violations on `#/scenarios`), `tests/app/scale.test.mjs` (`sensitivity` CSV #21 at enterprise scale), and live HTTP module checks over `scripts/serve.mjs`. Graphical browser layout/contrast of `#/scenarios` in Session 30, spoken screen-reader output, and manager field comprehension remain **`[UNVERIFIED]`**.
+
+## 41. Forecast Calibration, Planning-Fallacy Measurement & Reference-Class Learning (Session 31 — Schema v21)
+
+Through Session 30, LeadOS predicted constantly — Beta-PERT effort/value triples on every plan item, deterministic and Monte Carlo P50/P80/P90 delivery dates, Common-Random-Numbers scenario odds, DACI decisions with scheduled outcome reviews — but **never scored a single prediction against its outcome**. Decisions recorded `good/mixed/bad` at review with no probability ever stated at decide time; plan items completed with only a `completedOn` date and no actual effort; the scenario engine's overload odds were written into decision prose, unverifiable later. A system that predicts without scoring cannot learn; it can only re-assert. Session 31 closes the loop with `app/core/domain/calibration.js`, `RULE-FCT-01`/`RULE-FCT-02`, signals `FCT-01`…`FCT-04`, the reliability diagram `calibrationChart`, the delivery-actuals dialogs, and the `calibration` CSV scope (#22), grounded in eight cross-domain frameworks:
+
+1. **Proper Scoring Rules & Brier Scores — Brier (1950); Gneiting & Raftery (2007).**
+   - Brier, G. W. (1950). *Verification of Forecasts Expressed in Terms of Probability*. Monthly Weather Review, 78(1), 1–3; Gneiting, T., & Raftery, A. E. (2007). *Strictly Proper Scoring Rules, Prediction, and Estimation*. JASA, 102(477), 359–378.
+   - Decisions capture `forecastProbability` ("P(this works out well)", Cromwell-clamped to 5–95%) at the moment of commitment — inside `decideDecision`, the Decide dialog (with the leader's own reviewed base rate shown as the outside view), and automatically for scenario decisions as `100 − CRN overload odds`. Outcome reviews score `good/mixed/bad → 1/0.5/0` with per-decision Brier contributions surfaced on the decision card, in the `decisions` CSV, and aggregated on `#/decisions` with a skill score against the base-rate climatology forecast.
+2. **Skill Decomposition & Reliability Diagrams — Murphy (1973).**
+   - Murphy, A. H. (1973). *A New Vector Partition of the Probability Score*. Journal of Applied Meteorology, 12(4), 595–600.
+   - `murphyDecomposition` partitions the Brier score into reliability (calibration error), resolution (discrimination), and uncertainty (base-rate variance) over forecast quintiles, rendered as an accessible SVG reliability diagram with an expandable data table. Because `mixed` outcomes enter at 0.5, the decomposition identity is approximate — the residual is computed and reported rather than hidden (the test suite pins it at −0.008 on a known 5-pair fixture).
+3. **Calibrated Judgement Under Feedback — Tetlock (2005); Tetlock & Gardner (2015).**
+   - Tetlock, P. E. (2005). *Expert Political Judgment*. Princeton University Press; Tetlock, P. E., & Gardner, D. (2015). *Superforecasting: The Art and Science of Prediction*. Crown.
+   - Two Tetlock rules are enforced in code, not prose: (a) score the forecast that was made — `RULE-FCT-01` freezes the funding-time PERT belief into an immutable `forecastSnapshot`, and decision forecasts freeze at outcome review (`updateDecision` rejects post-review edits), so hindsight cannot rewrite history; (b) frequent, granular feedback — every outcome review updates the curve immediately, and verdicts refuse to render below n=5 so an anecdote is never dressed as a statistic.
+4. **The Planning Fallacy & the Outside View — Kahneman & Tversky (1979); Kahneman & Lovallo (1993).**
+   - Kahneman, D., & Tversky, A. (1979). *Intuitive Prediction: Biases and Corrective Procedures*. In *Judgment Under Uncertainty*; Kahneman, D., & Lovallo, D. (1993). *Timid Choices and Bold Forecasts*. Management Science, 39(1), 17–31.
+   - Delivered work is scored as actual ÷ funding-time-expected ratios; a median ≥1.25× (or ≤0.80× padding) raises `FCT-01`. Interval honesty is measured separately (`FCT-02`: share of actuals inside [optimistic, pessimistic] and P10–P90 vs the ≈80% target), because centring and precision are different virtues and the classic failure is a centred mean inside fiction-narrow ranges.
+5. **Reference-Class Forecasting — Flyvbjerg (2006).**
+   - Flyvbjerg, B. (2006). *From Nobel Prize to Project Management: Getting Risks Right*. Project Management Journal, 37(3), 5–15.
+   - The observed ratio distribution becomes the uplift: median ratio recentres new point forecasts, the ratio P80 gives the "budget this for an 80% chance of holding" figure, shown alongside (never silently folded into) the CLT delivery forecast on `#/capacity`. `RULE-FCT-02` turns proven systematic optimism (n≥5, median ≥1.25×) into exactly one DACI decision offering the median uplift, the P80 uplift, an estimation-practice investigation, or explicit acceptance — linked to the worst overrun, idempotent while unreviewed.
+6. **Honest Missingness as a First-Class Signal — Little & Rubin (2002).**
+   - Little, R. J. A., & Rubin, D. B. (2002). *Statistical Analysis with Missing Data* (2nd ed.). Wiley.
+   - Actuals are never back-filled from estimates and forecasts never default to 50%: unknown stays null through schema normalization, migration, and export. Delivered-without-actuals is counted and surfaced (`FCT-04` at ≥3) with a one-click backfill dialog whose fields start blank — pre-filling an "actual" from the forecast would fabricate the very calibration being measured. Schedule adherence (target vs completed) is computed from dates alone precisely so some evidence exists before effort actuals accumulate.
+7. **Case-Cost Calibration — deliberately deferred.**
+   - Operational cases carry PERT financial exposure but no settled-actual field; scoring case cost estimates requires a resolution-time actuals capture in the case dialog and its own ledger semantics (mitigation spend vs realised exposure are different quantities). Recorded here as the next calibration ledger, not silently folded into portfolio ratios where it would double-count capacity-reserve effort.
+8. **Verification Boundaries.**
+   - Verified via `tests/app/calibration.test.mjs` (12 tests: Brier/Murphy/curve maths pinned to hand-computed fixtures, anti-hindsight freeze, `RULE-FCT-01` freeze/clear/re-freeze, actuals validation and backfill, ratio/interval/uplift statistics, `RULE-FCT-02` single-shot governance linked to the worst overrun, `FCT-01`…`FCT-04` firing and demo-baseline silence, scenario auto-forecast equality with CRN odds, v20→v21 additive migration with null-preservation, `calibration` CSV + CWE-1236 safety, and the JSDOM `#/decisions` card + `#/capacity` Deliver-dialog flow with zero axe violations), plus the full `npm run verify:canonical` gate (446 tests). Graphical browser rendering/contrast of the calibration card, spoken screen-reader output, and whether Brier feedback changes a real manager's forecasting behaviour over a quarter remain **[UNVERIFIED]** — the last is the field study this feature now makes possible.
+
+## 42. Case-Cost Calibration: Actuarial Loss Development & FAIR Frequency × Magnitude Scoring (Session 32 — Schema v22)
+
+Session 31's §41.7 deliberately left one prediction class unscored: operational cases carried three-point PERT financial exposure, planned mitigation spend and diverted-capacity estimates (Session 23), and `RULE-CAP-01` already converted their capacity triples into committed portfolio reserves — but resolution recorded only a date and a note. The system therefore assessed risk quantitatively and then never learned whether its risk numbers were worth anything. Session 32 closes the third ledger with `cases[].forecastSnapshot` + `cases[].actuals` (Schema v22), `RULE-FCT-03`/`RULE-FCT-04`, signals `FCT-05`…`FCT-07`, the `#/cases` case-cost card + `caseRatioChart`, and case rows in the `calibration` CSV, grounded in seven cross-domain frameworks:
+
+1. **Quantitative Risk Decomposition — FAIR / Open FAIR (Freund & Jones, 2015; FAIR Institute Standard v3.0, 2025).**
+   - Freund, J., & Jones, J. (2015). *Measuring and Managing Information Risk: A FAIR Approach*. Butterworth-Heinemann; FAIR Institute (2025). *Factor Analysis of Information Risk (FAIR) Model*, Standard Artifact v3.0.
+   - FAIR defines risk as Loss Event Frequency × Loss Magnitude, each estimated as a calibrated range rather than a point. The case ledger scores exactly those two legs **separately**, because they fail independently: the **frequency leg** compares the FMEA-implied occurrence probability (`min(1, max(0.1, p/10))` — the same mapping `computePertImpact` has always used for expected loss) against whether the failure mode materialised, Brier-scored per case; the **magnitude leg** compares realised exposure against the PERT cost distribution (expected value, [optimistic, pessimistic] and P10–P90 coverage) on materialised cases only. A contained risk contributes no magnitude score — dividing zero by the expectation would reward the forecast for the mitigation working, which is a category error FAIR's decomposition exists to prevent. The interval-coverage check targets FAIR's best-documented practitioner failure: 90%-confidence ranges that contain the truth barely half the time.
+2. **Actuarial Loss Development & Case-Reserve Adequacy — Chain Ladder / Bornhuetter–Ferguson tradition (Mack, 1993; England & Verrall, 2002).**
+   - Mack, T. (1993). *Distribution-free Calculation of the Standard Error of Chain Ladder Reserve Estimates*. ASTIN Bulletin, 23(2), 213–225; England, P. D., & Verrall, R. J. (2002). *Stochastic Claims Reserving in General Insurance*. British Actuarial Journal, 8(3), 443–518.
+   - Insurers judge a book of case reserves by how settlements **develop** against the initial estimate: the age-to-ultimate development factor. The ledger's aggregate `Σ(realised exposure + mitigation spend) ÷ Σ(expected unmitigated loss)` over complete settlements (single-currency, both money legs recorded — never summing a partial settlement as zero) is that factor for a team-sized book, and the median per-case ratio is the reserve-adequacy diagnostic: ≥1.25× is **deficient** reserving, ≤0.8× is **redundant**. `RULE-FCT-04` converts proven deficiency (n≥5) into exactly one DACI decision offering the observed development factor as a contingency uplift on new case exposures, P80 reserving for High-priority cases, an assessment-practice investigation, or explicit self-insured acceptance — linked `decides` to the worst under-assessment, idempotent while unreviewed, mirroring `RULE-FCT-02`'s contract for effort.
+3. **Score the Forecast That Was Made — Tetlock (2005); Tetlock & Gardner (2015).**
+   - Case estimates *should* be refined as mitigation proceeds — unlike funded work, updating a risk estimate is good practice, not gaming. But the numbers that drove the escalate/mitigate/accept call (and that `RULE-DEC-01` thresholds on for its automatic DACI decision) are the opening ones. `RULE-FCT-03` therefore freezes the first measured PERT exposure, capacity expectation, planned mitigation spend and pre-mitigation FMEA probability into an immutable `forecastSnapshot` the first time an open case is quantified (at creation or at the edit that first quantifies it), and settled actuals score against it. Freezing is never retroactive: a case already resolved is never frozen, and pre-v22 settlements fall back to the resolution-time estimate labelled `resolution-estimate`, the weaker evidence named as such in every UI and CSV surface.
+4. **The Planning Fallacy in Risk Assessment & Reference Classes — Kahneman & Tversky (1979); Flyvbjerg (2006); Hubbard (2020).**
+   - Kahneman, D., & Tversky, A. (1979). *Intuitive Prediction*; Flyvbjerg, B. (2006). *From Nobel Prize to Project Management*; Hubbard, D. W. (2020). *The Failure of Risk Management* (2nd ed.). Wiley.
+   - Hubbard's central indictment — risk registers full of unscored ordinal scores that are never compared with outcomes — described pre-v22 cases precisely. `caseReferenceClassAdjustment` turns the materialised-exposure ratio distribution into median/P80 contingency uplifts for new case assessments (hint floor n≥3, verdict floor n≥5, shared with the effort ledger), so the team's own settlement history becomes the outside view for the next FMEA money column instead of the assessor's mood.
+5. **Four Independent Quantities, Four Independent Scores (Session 31 §41.7's caveat, implemented).**
+   - Mitigation spend vs plan (spend discipline) and diverted days vs the PERT capacity expectation are scored as their own legs, never netted against exposure. The diverted-days leg closes an explicit Session 31 debt: `calibration.js` excluded `capacity-reserve` plan items from the effort ledger because "their actual is the case outcome, which is a separate ledger" — this is that ledger, so `RULE-CAP-01` reserves now have an accuracy read (median days ratio) for the first time. Occurrence is read jointly with spend, because mitigation is *supposed* to push realised occurrence below the pre-mitigation assessment: `FCT-06` says so in its copy rather than crying wolf at successful mitigation, while a positive gap (things materialise more often than assessed) has no such excuse and fires at severity 4.
+6. **Honest Missingness & Settlement Integrity — Little & Rubin (2002).**
+   - Every actuals leg stays null when unrecorded: an unknown exposure is not zero, a case resolved without actuals joins `missingCaseActuals` (and `FCT-07` at ≥3) instead of vanishing, and dialog fields start blank — pre-filling an "actual" from the estimate would fabricate the calibration being measured. Reopening a case voids its settlement (actuals leave the ledger, exactly as the resolution note is voided) while retaining the frozen opening forecast, and `reconstructStateAt` rewinds actuals (and post-cutoff snapshots) out of point-in-time snapshots so historical reads never see a settlement that had not happened.
+7. **Audit findings & repairs (Session 32).**
+   - **Defect 1 (cross-module, capacity integrity):** closing a case through the Edit dialog (`updateCase` status → resolved/closed) routed through `propagateCaseEvent`, which ignores closed cases — so the `RULE-CAP-01` capacity reserve stayed `open` forever (silently shrinking apparent team capacity) and the `RULE-GOAL-01` resolution check-in never fired. The edit path now runs `propagateCaseResolution` identically to `resolveCase`; regression-pinned in `tests/app/case-calibration.test.mjs`.
+   - **Defect 2 (live/reload divergence):** `reopenCase` cleared `resolvedOn` but left `resolutionNotes` in live state, while schema normalisation blanks them on reload — the same divergence class as Session 31's `'wanted'` lever. Both `reopenCase` and `updateCase`'s open branch now clear `resolutionNotes` and `actuals` in step with the schema.
+8. **Verification Boundaries.**
+   - Verified via `tests/app/case-calibration.test.mjs` (10 tests: hand-pinned FAIR-leg maths incl. Brier 0.16 occurrence fixtures and the 2.4592 aggregate development factor, snapshot-first vs resolution-estimate scoring, `RULE-FCT-03` freeze/no-refreeze/quantify-later, resolve-time + backfill capture with validation, reopen voiding, both defect regressions, `RULE-FCT-04` single-shot governance linked to the worst settlement, `FCT-05`…`FCT-07` firing + demo silence, demo baseline "collecting evidence" at 1.1939×, point-in-time actuals rewind, v21→v22 additive migration with dirty-record repair, `cases`/`calibration` CSV + CWE-1236, and the JSDOM `#/cases` card + detail panel + both dialogs with zero axe violations), plus the full `npm run verify:canonical` gate (456 tests, 37 suites) and live `serve.mjs` HTTP 200 checks. Graphical browser rendering/contrast of the case-cost card and `caseRatioChart`, spoken screen-reader output (NVDA/JAWS/VoiceOver/Orca), Firefox/WebKit engines, print pagination, and whether development-factor feedback measurably improves a real team's exposure assessment over a quarter remain **[UNVERIFIED]** — the field study this ledger now makes possible joins the existing one from §41.
+
+---
+
+## 43. Operational-case capacity calibration becomes a live portfolio control (Session 33)
+
+### Research checked 2026-10-26
+
+- Flyvbjerg, Hon & Fok (2016), *Reference Class Forecasting for Hong Kong's Major Roadworks Projects*, reports retrieval of forecast and actual outcomes for 25 roadwork projects and comparison against a wider class of 863 comparable projects. Its use of observed outcome distributions to set decision-maker risk-appetite uplifts supports learning from actuals—not copying an infrastructure percentage into unrelated engineering work. [Paper (arXiv PDF)](https://arxiv.org/pdf/1710.09419); [PMI-hosted Flyvbjerg, 2006 article](https://www.pmi.org/learning/library/nobel-project-management-reference-class-forecasting-8068).
+- Atlassian's current Jira Plans / Advanced Roadmaps guidance describes capacity planning against work and scenario-specific what-if planning. LeadOS already has a counterfactual sandbox and seeded Monte Carlo; the gap was that recorded case diverted-days never fed back into its live operating plan. [Atlassian: Manage capacity in Advanced Roadmaps](https://support.atlassian.com/jira-software-cloud/docs/manage-capacity-in-advanced-roadmaps/); [Atlassian: Scenarios in Advanced Roadmaps](https://confluence.atlassian.com/jirasoftwareserver102/scenarios-in-advanced-roadmaps-1473872949.html).
+- Cross-domain rationale: **operations research / queueing** (Little's Law, Kingman's utilization penalty) makes a capacity reserve an input to WIP and delay; **statistics** requires scoring actual diverted-days against the frozen forecast and separating a point estimate from the original estimate; **economics** treats this reserve as a contingency with real opportunity cost, so the resulting over-allocation creates the already existing DACI trade-off rather than silently taking more capacity; **production quality** makes calibration a closed-loop correction with audit provenance; **political/leadership governance** keeps the manager's input explicit and visible rather than auto-editing their judgment.
+
+### Gap and implementation
+
+`RULE-CAP-01` already reserved a case's PERT diverted person-days, and the Session 32 case-cost calibration ledger already scored actual diverted-days versus the opening forecast. But settlement did not update other open reserves or re-run the portfolio forecast: the loop ended at a report. Added pure `caseCapacityReferenceClassAdjustment` and event-driven `RULE-CAP-06` (`app/core/domain/calibration.js`, `app/core/domain/automation.js`, `app/actions.js`):
+
+1. Use *days actuals vs days forecast*, not financial-loss ratios. This preserves dimensional validity and separates operational capacity from financial risk.
+2. Wait for at least `CALIBRATION_MIN_SAMPLES` (currently five) and a median actual/forecast ratio ≥1.25 before applying any automatic reserve-only correction. The 1.25 trigger follows the existing product under-reserving policy; five is a conservative product minimum, not a statistical confidence guarantee.
+3. Use the empirical median for ordinary cases and P80 for high Action Priority cases. Scale the reserve's three PERT legs, not `case.financial` and not the immutable `forecastSnapshot`; that snapshot remains the baseline for whether the historical forecast was good.
+4. On resolution-time settlement or actuals backfill, resize every currently open case reserve in the same atomic store mutation. Re-run the established `RULE-CAP-02` capacity trade-off and `RULE-CAP-05` seeded Monte Carlo tail-risk checks so decision and goal telemetry see the revised capacity immediately.
+5. Preview the selected multiplier, reference sample size, adjusted/raw expected days, and the no-evidence threshold in the operational-case dialog. Audit the resulting reserve update with its source rule ID.
+
+### Deliberately rejected
+
+- **Use exposure-cost uplift to inflate capacity-days** — dimensions and causal mechanisms differ. Use the diverted-days calibration ledger instead.
+- **Rewrite the case estimate or frozen forecast when a new settlement arrives** — that would score against a moving target and hide whether the old forecast was accurate.
+- **Apply a multiplier at n=1–4 or when the median is below 1.25×** — not enough local evidence for this product's automatic action; these limits do not prove n=5 is sufficient.
+- **Automatically lower reserve estimates when the team has been conservative** — no shrinkage or discount is applied in this increment; over-reserving requires deliberate trade-off review because false precision has operational cost too.
+- **Add a new vendor integration, backend, schema field, or user-configurable setting** — the required evidence, provenance and atomic event path already exist; additions would add setup/data risk without a demonstrated need.
+
+### Verification and boundaries
+
+`tests/app/case-calibration.test.mjs` proves four settled examples do not trigger automatic reserve inflation; the fifth settlement refreshes an existing open case's reserve to the median (and high-priority sizing uses P80), emits `RULE-CAP-06`, leaves the frozen opening estimate unchanged, and exposes the adjusted value in the dry-run preview. Full verification passed: `npm run verify:canonical` (ESLint, canonical boundary, documentation links, 457 tests/37 suites). No schema migration or runtime dependency was added. Real-world predictive benefit, calibration quality at n=5, Firefox/Safari visual layout, and spoken assistive-technology behavior remain **[UNVERIFIED]**.
+
+## 44. Case closeout must reach the next coaching conversation (Session 34)
+
+### Research checked 2026-10-26
+
+- Google SRE's postmortem guidance defines a learning record as impact, response, causes and follow-up actions; its workbook explicitly recommends tracking action items so follow-up does not disappear after the postmortem. LeadOS already registers operational cases and creates support topics in 1:1 prep, but the topic stayed framed as active incident response after resolution. [Google SRE, Postmortem Culture](https://sre.google/sre-book/postmortem-culture/); [Google SRE Workbook, Postmortem Practices](https://sre.google/workbook/postmortem-culture/).
+- Leadership and safety application: psychological safety and blameless learning require asking what conditions and safeguards shaped the outcome, not re-labelling the individual's conduct as performance evidence. This is a bounded prompt transformation, not a sentiment/competence inference.
+- Product pattern: incident-management systems retain action ownership beyond closure. LeadOS adapts that continuity to the manager's next 1:1 rather than adding an external ticketing integration or claiming to schedule a conversation.
+
+### Gap selected and shipped
+
+The prior engine propagated an active case to an employee's 1:1 agenda, but case resolution only released capacity and updated a linked goal. The case support topic could remain stale; reopening did not restore active support if the user had already cleared it. Added `RULE-COACH-02` in `app/core/domain/automation.js`, using a case-reference marker in the generated topic to identify and reversibly update only that system-generated item. Resolution changes it to a systemic-learning prompt; reopening restores/queues active support. Employee-entered topics are not parsed, rewritten or removed; reviews are not touched. The action emits normal append-only propagation events. No schema migration was needed because the existing topic string and typed case→person coaching edge suffice; no new service or dependency was added.
+
+### Deliberately rejected
+
+- Automatically place a case summary in a performance review — confuses incident learning with individual performance and undermines candid reporting.
+- Delete every case-related 1:1 topic on resolution — can erase unspoken follow-up; instead leave a relevant, learning-oriented topic for the next real conversation.
+- Infer learning, confidence, sentiment or blame from notes — no validated evidence or need; keep the prompt deterministic and manager-reviewed.
+- Auto-schedule or send reminders for a conversation — the browser-local app has no background scheduler, and pretending otherwise is a silent failure.
+- Rewrite untagged legacy talking points based only on title text — title collisions and manager edits make ownership ambiguous; legacy strings are intentionally left as-is.
+
+### Verification boundaries
+
+`tests/app/cases-automation.test.mjs` traces case creation → typed 1:1 support topic → resolution → case-learning topic → reopen → active-support restoration, checks the `RULE-COACH-02` propagation entries, and proves an employee-authored topic survives unchanged. Spoken screen-reader output, real manager comprehension, and whether the new prompt improves operational learning remain **[UNVERIFIED]**; Google SRE practice is design guidance, not evidence of LeadOS field impact.
+
+## 45. Negotiation Workbench: BATNA discipline, ZOPA geometry and agreement ownership (Session 35 — Schema v23)
+
+### Research checked 2026-10-26
+
+- **Fisher & Ury, *Getting to Yes* (1981).** Principled negotiation separates the people from the
+  problem, focuses on interests rather than positions, generates options for mutual gain, and
+  insists on objective criteria. Its operational anchor is the **BATNA** (Best Alternative to a
+  Negotiated Agreement): the concrete course of action taken if no deal is reached. A negotiator
+  without a BATNA cannot honestly know a walk-away price, and Fisher & Ury warn against negotiating
+  without one. LeadOS turns this into a weighted preparation checklist in which the BATNA and a
+  recorded reservation price carry double weight, and raises signal `NEG-01` when a high-stakes
+  record lacks either.
+- **Raiffa, *The Art and Science of Negotiation* (1982).** The decision-analytic school models each
+  issue with reservation prices (walk-away limits) for both sides; the interval between them, when
+  it exists, is the **Zone of Possible Agreement (ZOPA)**. Where envelopes do not overlap, the
+  measured *gap* quantifies how much new options, criteria or BATNA improvement must close —
+  pressure alone cannot manufacture overlap. LeadOS computes ZOPA bounds, width and midpoint per
+  measurable issue for both minimize- and maximize-direction issues, and treats missing estimates as
+  `incomplete` rather than zero, because a coerced zero manufactures a false no-ZOPA verdict.
+- **Lax & Sebenius, *The Manager as Negotiator* (1986).** Negotiation jointly creates value
+  (integrative, enlarging the pie through package options and traded differences) and claims value
+  (distributive). Agreements fail in execution when commitments lack an owner. LeadOS therefore
+  requires package options and objective criteria in prep, and on agreement converts each *owned*
+  term into a tracked delegation (`RULE-NEG-02`); an ownerless term is surfaced as an explicit
+  ownership gap, never silently assigned.
+- **Walton & McKersie (1965)** frame the same tension as integrative vs. distributive bargaining;
+  the workbench keeps both visible at once — ZOPA coverage measures distributive feasibility while
+  options/interests capture the integrative work.
+- **Nash (1950, "The Bargaining Problem", *Econometrica*)** formalizes the midpoint-like axiomatic
+  split; LeadOS surfaces the Raiffa midpoint as an *analytical reference*, never as a recommendation
+  the manager is nudged to accept.
+
+### Gap selected and shipped
+
+No canonical module could hold a bargaining record: vendor renewals, internal resource trade-offs
+and scope/deadline deals had no BATNA, no reservation prices, no ZOPA, and no path from impasse or
+agreement into the existing operational graph. Shipped as Schema v23 (`negotiations` collection,
+additive migration): a domain engine (`app/core/domain/negotiation.js`), register/edit and agreement
+dialogs with live ZOPA and propagation previews, list and detail views at `#/negotiations`, six
+insight signals `NEG-01`..`06`, a Today triage card, the 23rd formula-safe CSV scope, and three
+event-driven rules. `RULE-NEG-01` links impacted goals and 1:1 coaching and raises a pursue-deal-vs-
+execute-BATNA DACI mandate for high-stakes work; `RULE-NEG-03` turns an impasse into exactly one
+operational escalation case (idempotent on repeated deadlocks); `RULE-NEG-02` fans agreed terms out
+as delegations or visible gaps. All fan-out is graph-edge based, idempotent, and per-record
+switchable via `autoPropagate`. A same-unit-only BATNA cross-check deliberately stays silent across
+mixed units rather than comparing dollars against days.
+
+### Deliberately rejected
+
+- Auto-assign ownerless agreed terms to the negotiation owner — ownership is a commitment the
+  system cannot make; the gap stays visible (`NEG-06`) until a human assigns it.
+- Treat a missing counterparty estimate as zero — `Number(null) === 0` once fabricated false
+  no-ZOPA gaps; null now means "not recorded" end to end, locked by a regression test.
+- Recommend an opening offer, target price or the Nash midpoint as advice — the app computes the
+  geometry and leaves the judgement to the manager; no behavioural nudge engine is claimed.
+- Auto-send anything to a counterparty — the app is local-first with no network capability by
+  architecture; all outputs are records for the leader's own preparation.
+- Parse free-text notes to infer reservation prices or sentiment — no validated extractor; every
+  number is an explicit, confidence-labelled user entry.
+- Auto-fire negotiation rules from the demo seed — the three demo records are a healthy baseline
+  that fires zero `NEG-*` signals, asserted by test, so demo data never masquerades as findings.
+
+### Verification boundaries
+
+`tests/app/negotiation.test.mjs` (18 tests) pins ZOPA/gap math for both directions, the weighted
+prep checklist, dimensional BATNA silence, transition guards, the full RULE-NEG-01/02/03 propagation
+trace with idempotency and scoped delete cascade, insight firing and demo silence, CSV round-trip
+including CWE-1236 neutralization, v22→v23 additive migration with repair-not-reject semantics, and
+a JSDOM + axe-core list/detail/dialog workflow with zero violations. Whether the framework
+discipline improves real negotiation outcomes, and how screen readers and managers experience the
+views, remain **[UNVERIFIED]** — no browser engine, assistive technology or field study runs in this
+container; the cited literature supplies design principles, not evidence of LeadOS field impact.
+
+## Session 36 — Agreement is not delivery (2026-10-26)
+
+### Research and gap decision
+Re-read the Session 35 negotiation inventory and traced agreement → delegation → persistence
+→ completion/return → goal/insight UI. Fisher & Ury/BATNA and Raiffa/ZOPA address agreement
+quality, not execution evidence. Apply **PDCA**: agreement is Plan, delegation is Do,
+observed completion/return is Check, explicit recovery is Act. Financial discipline keeps
+recorded deal value separate from realised return; statistical discipline does not equate
+a task completion with a measured goal result. Political accountability preserves ownership
+rather than silently assigning returned work to someone else.
+
+External benchmark read this session: https://github.com/opf/openproject (repository README,
+retrieved 2026-10-26). It explicitly inventories project/portfolio, task collaboration,
+time/cost/budgeting, meeting records and integrations. Adapt the connected execution-record
+pattern, not its backend or accounts. This is a README-level benchmark, not a hands-on
+product evaluation or validation of comparative superiority. A separate attempted VA design
+README URL returned 404 and contributed no evidence. Prior framework/product inventory
+remains applicable; no fresh review of every cited framework is claimed.
+
+**Implemented:** RULE-NEG-04 completion/return feedback to negotiation history and goal
+telemetry; current-term delivery states; NEG-07 recovery findings; persisted delegation
+source IDs. Existing v23 shape gains preserved optional provenance, no migration required.
+**Planned:** explicit recovery/redelegation with term lineage; browser/AT validation;
+settled financial outcomes with evidence rather than inferred savings.
+**Rejected:** automatic goal progress or savings; auto-reassignment; treating empty terms
+as 100% delivered; reporting superseded terms as current delivery failures.
+
+Limits: old stored delegations whose provenance was already stripped cannot reliably be
+mapped back to a specific term using a negotiation-level edge alone. No heuristic repair is
+performed. Full legacy line review and field effectiveness remain **[UNVERIFIED]**.
+
+---
+
+## Session 37 — Returned-commitment recovery lineage (`RULE-NEG-05`) and ex-post agreement settlement governance (`RULE-NEG-06`, `NEG-08`) (2026-10-26)
+
+### Cross-domain frameworks applied
+
+1. **Leadership & Management — Oncken & Wass (1974) *"Management Time: Who's Got the Monkey?"*, *Harvard Business Review*, and Grove (1983) *High Output Management* (Task-Relevant Maturity):**
+   When a delegated outcome is returned to the manager (`status: 'returned'`), two anti-patterns commonly occur: either the commitment remains indefinitely on the manager's desk as an unowned "monkey", or the manager re-assigns it by overwriting the original record — erasing who previously held it, why it returned, and what changed in scope, authority, or support. Oncken & Wass and Grove establish that re-delegating a returned outcome requires an explicit transfer of ownership accompanied by adjusted authority or support commensurate with task-relevant maturity, while preserving the historical return record.
+2. **Engineering & Safety Systems — Hollnagel (2014) *Safety-I and Safety-II* & Closed-Loop Corrective Action (CAPA):**
+   In safety-critical engineering, a failed or returned execution attempt is never deleted when a countermeasure is launched; the failure record is linked to its corrective successor (`priorDelegationId` ↔ `supersededByDelegationId`) with a mandatory countermeasure note (`recoveryNote`), and cycle-safe graph traversal (`repairDelegationRecoveryChains`, `deriveDelegationLineage`) prevents corrupted imports from creating infinite loops.
+3. **Economics & MBA/Strategy — Williamson (1985) *The Economic Institutions of Capitalism* (Transaction Cost Economics & Ex-Post Governance) and Hart & Moore (1988) *"Incomplete Contracts and Renegotiation"*, *Econometrica*:**
+   Signing an agreement is ex-ante contracting; real economic value is determined during ex-post execution and settlement, where incomplete contracts encounter opportunism, scope drift, or environmental shocks. A negotiation workbench that stops at `status: 'agreed'` conflates paper terms with realised outcomes.
+4. **Finance & Investment — Perold (1988) *"The Implementation Shortfall: Paper vs. Reality"*, *Journal of Portfolio Management*:**
+   Perold formalizes implementation shortfall as the difference between the performance of a paper decision and the actual realised outcome after execution slippage. In LeadOS (`evaluateNegotiationSettlement`), signed `stakesValue` and per-term `agreedValue` are compared directionally against recorded `settlement.realisedValue` and `term.settledValue` to compute `realisationRatio` and `shortfallRatio` without ever pre-filling or fabricating actuals from the paper agreement.
+5. **Decision Science, Game Theory & Political Science — Raiffa (1982) *The Art and Science of Negotiation* (Ex-Post BATNA Regret) & DACI Governance:**
+   A walk-away BATNA (`ourBatnaValue`, `ourBatnaUnit`) is the reservation floor that justified signing the agreement rather than walking away. If the ex-post settled outcome (`realisedValue` or `settledValue` in the same unit) is worse than `ourBatnaValue` in the issue's optimization direction, or if `counterpartyDelivered === false`, the agreement suffered BATNA regret or counterparty breach, triggering `RULE-NEG-06` to open a linked DACI settlement review decision (*Execute walk-away BATNA / Invoke contract remediation / Accept realised variance*).
+6. **Mathematics & Statistics — Dimensional Analysis & Survivorship-Bias-Free Point-in-Time Reconstruction:**
+   `evaluateNegotiationSettlement` compares `realisedValue` against `ourBatnaValue` only when `stakesCurrency` and `ourBatnaUnit` match (`sameUnitDealBatna`), refusing to compare dollars against weeks or percentages. `reconstructStateAt(state, asOf)` rewinds post-cutoff agreements, settlements, and delegation recovery links so longitudinal health and trend series remain free of look-ahead bias.
+7. **Production & Lean / Six Sigma — Deming (1986) PDCA Act Phase & Poka-Yoke Mistake-Proofing:**
+   Completes the PDCA loop started in Session 36: Plan (prep/ZOPA) → Do (delegate agreed terms, `RULE-NEG-02`) → Check (observe delivery/return, `RULE-NEG-04`, and score settlement actuals, `evaluateNegotiationSettlement`) → Act (explicitly recover returned commitments with a countermeasure, `RULE-NEG-05`, and trigger DACI governance on adverse settlement, `RULE-NEG-06`).
+
+### Implemented in code
+
+- **Schema & Normalization (`app/core/schema.js`)**: Added `priorDelegationId`, `supersededByDelegationId`, `recoveredOn`, and `recoveryNote` on `delegations[]` with cycle-safe `repairDelegationRecoveryChains`; added `priorOwners` and `settledValue` on `negotiations[].agreedTerms[]` and `settlement` (`settledOn`, `realisedValue`, `counterpartyDelivered`, `note`) on `negotiations[]` via `normalizeNegotiationSettlement`.
+- **Domain Engines (`app/core/domain/delegations.js`, `app/core/domain/negotiation.js`, `app/core/domain/automation.js`, `app/core/domain/insights.js`)**:
+  - `deriveDelegationLineage(state, delegationId)` and `delegationSummary` (`unrecoveredReturned`, `recoveredReturned`).
+  - Lineage-aware `negotiationDelivery` (`chain`, `priorOwners`, `attemptCount`, `recovered`, `inProgress`) and `evaluateNegotiationSettlement(record)`.
+  - `RULE-NEG-05` (`propagateReturnedDelegationRecovery`) and `RULE-NEG-06` (`propagateNegotiationSettlement`), expanding `AUTOMATION_RULES` from 31 to 33 rules.
+  - `NEG-07` scoped to unrecovered returned commitments (`!d.supersededByDelegationId`), plus `NEG-08` firing on adverse settlement governance triggers or completed high-stakes agreements awaiting settlement.
+- **Actions, UI & CSV (`app/actions.js`, `app/ui/modals.js`, `app/ui/negotiation-modals.js`, `app/views/delegations.js`, `app/views/negotiation.js`, `app/core/csv.js`)**:
+  - `redelegateReturnedOutcome`, `recoverNegotiationTerm`, and `recordNegotiationSettlement`.
+  - `openRedelegateDialog`, `openRecoverNegotiationTermDialog`, `openNegotiationSettlementDialog`, lineage badges on `#/delegations` and `#/negotiations/:id`, and the *Agreement settlement & realization* card on `#/negotiations/:id`.
+  - Additive lineage columns on `delegations` CSV and settlement columns on `negotiations` CSV.
+- **Store, Rewind & Test Determinism (`app/core/store.js`, `app/core/domain/health.js`, `tests/app/*.test.mjs`)**:
+  - `store.clearDemo()` scrubs dangling demo references on retained user `negotiations`.
+  - `reconstructStateAt()` rewinds `negotiations` and delegation recovery lineage as of `asOfDay`.
+  - Synchronous `app.navigate(...)` + `app.destroy?.()` in `case-calibration.test.mjs` and `calibration.test.mjs`; `delegations`, `negotiations`, and `changes` added to `scale.test.mjs`.
+
+### Deliberately rejected
+
+- Overwriting a returned delegation record in place when re-assigning — erases accountability and return reasons; rejected in favor of immutable returned records linked to a successor (`priorDelegationId` / `supersededByDelegationId`).
+- Auto-assigning a returned commitment to the negotiation owner or a fallback person — violates political accountability; recovery requires an explicit human choice and countermeasure note.
+- Pre-filling `realisedValue` or `settledValue` from `stakesValue` or `agreedValue` in the settlement dialog — manufactures fake zero-shortfall precision; fresh settlement inputs start blank.
+- Comparing `realisedValue` to `ourBatnaValue` when units differ — rejected; `sameUnitDealBatna` stays `false` when units do not match.
+
+### Verification boundaries
+
+Verified by `npm run verify:canonical`: **483/483 tests passing across 38 test suites** (`0` failures), `0` ESLint errors, `0` boundary leaks, and `88/88` internal markdown links. Real graphical browser rendering of the Session 35–37 Negotiation Workbench views, spoken assistive-technology output, and field manager comprehension remain **[UNVERIFIED]**.
+
+---
+
+## 46. Negotiated-versus-realised settlement calibration (`RULE-NEG-07`, `NEG-09`) — Session 38 (2026-10-26)
+
+### Why this gap matters
+
+A signed negotiation value is a forecast/contract baseline, not evidence that the value was delivered. Session 37 added an explicit settlement capture and a BATNA/governance loop; the remaining gap was that the observed signed-versus-realised pair did not feed an outside-view reference class or improve preparation for later, comparable negotiations. The fourth calibration ledger is deliberately a derived read model over the existing `negotiations[]` and `evaluateNegotiationSettlement()` contract, not a second editable source of financial truth.
+
+### Frameworks applied across domains
+
+1. **Strategy and decision science — Flyvbjerg (2006), reference-class forecasting.** A forecast is improved by comparing it with the observed distribution of genuinely comparable past cases, not by extrapolating from the current negotiation's inside view. The arXiv abstract explicitly describes basing forecasts on actual performance in a reference class of comparable projects to bypass optimism bias and strategic misrepresentation ([paper record](https://arxiv.org/abs/1302.3642)). LeadOS uses currency and issue direction as minimum comparability boundaries; this is an outside-view *context*, not a promised forecast or automatic target.
+2. **Finance — Perold (1988), implementation shortfall.** Signed paper value is distinct from realised outcome after execution/slippage ([journal record, *The Implementation Shortfall*](https://doi.org/10.3905/jpm.1988.409150)). The calibration pairs use the existing evaluator's direction-adjusted variance and shortfall, but do not relabel either as audited procurement savings or P&L impact.
+3. **Economics — Williamson (1985) ex-post governance; Hart & Moore (1988) incomplete contracts.** Value can leak after signature through scope, usage, timing, performance or renegotiation. A median shortfall should prompt review of contract execution and the baseline before any attribution. Existing `RULE-NEG-06` remains the governance path; `RULE-NEG-07` only refreshes the comparison read model.
+4. **Statistics — descriptive estimands, missingness and small-sample discipline.** A pair requires an explicit positive signed value and an explicitly recorded realised value. Unknowns remain in a follow-up queue, never imputed as zero or as the signed amount. Cohorts are keyed by currency and direction and never FX-converted. Below n=5 the UI and cohort CSV show counts only; at n≥5 the median and empirical P80 are descriptive, with a 20% median shortfall as an operational review guardrail. Neither n=5 nor the 20% threshold establishes statistical significance, causality or forecast coverage; the P80 is not a confidence interval.
+5. **Leadership and political accountability — fair process, DACI and blameless learning.** `NEG-09` is cohort-level and routes to the Decisions calibration view; it explicitly instructs the manager to check baseline, scope, usage and delivery before assigning cause. It is not a ranking of negotiators, an employee-performance measure, or a substitute for the agreement owner's judgement. Existing BATNA breach and counterparty-remedy governance remains separate.
+6. **Production practice — Deming PDCA / event-driven idempotency.** Settlement is the Check input after Plan (BATNA/ZOPA) and Do (delegation/delivery); the review is the Act. `RULE-NEG-07` executes in the same safe-write transaction as `RULE-NEG-06`, returns typed propagation metadata, and deduplicates an identical audit propagation. Statistics remain recomputed from the source records rather than stored as mutable copies.
+7. **Engineering and information integrity — dimensional analysis and privacy of unknowns.** Comparing EUR with USD or cost-minimising with value-maximising issues would manufacture meaning. `calibration.js` consumes `dealDirection`, `stakesCurrency`, `stakesValue`, `realisedValue`, `favorableValueVariance`, and `shortfallRatio` from the settlement evaluator; no `schema.js` change or external service is required. Preparation excludes the current negotiation from its own reference class to prevent self-scoring.
+
+### Product-pattern benchmark (not a comparative efficacy study)
+
+- **Oracle Cloud EPM Financials** documents separate actual, plan and forecast scenarios and explicit calculation/roll-up steps ([tutorial](https://docs.oracle.com/en/cloud/saas/planning-budgeting-cloud/planning-tutorials-calculating-actuals-and-preparing-plans-and-forecasts/index.html)). Adapted pattern: keep actuals and forecasts distinct, label how comparisons are computed. LeadOS is not a financial consolidation or accounting system.
+- **Coupa Direct Material Sourcing** markets a connected strategy-to-contract-to-invoice/value-realisation loop and scenario modelling across cost, capacity, lead time and risk ([vendor product page](https://www.coupa.com/products/direct-material-sourcing/)). Adapted pattern: follow signed terms through execution; boundary: Coupa's sourcing, CLM and invoice-matching capabilities are vendor claims and were not independently tested here.
+- **Suplari's procurement savings article** argues for agreeing the baseline/methodology before negotiation and checking invoice/ledger evidence after signature ([vendor-authored article](https://suplari.com/blog/realize-savings-in-procurement-how-to-prove-what-your-team-actually-delivered)). Adapted pattern: preserve baseline provenance and do not call a negotiated number "realised savings". The article is a commercial vendor publication, not independent evidence; LeadOS currently records manager-entered amounts and does not validate invoices or general-ledger transactions.
+
+### Implemented design and cross-module path
+
+- `app/core/domain/calibration.js`: `negotiationSettlementPairs()`, `negotiationSettlementCalibration()` and `calibrationSummary().negotiations`; only explicit, positive-baseline pairs enter cohorts, while incomplete settled records carry a human-readable reason and remain countable.
+- `app/core/domain/automation.js` + `app/actions.js`: `RULE-NEG-07` is called in the `recordNegotiationSettlement()` transaction beside `RULE-NEG-06`; repeat application is idempotent for the same emitted cohort outcome, while source settlement events remain in the audit history.
+- `app/core/domain/insights.js`: reserved `NEG-09` triggers for a sufficient cohort at the 20% median-shortfall guardrail and links to `#/decisions`; it makes no causal or employee-level assertion.
+- `app/views/decisions.js`: fourth calibration readout, counts-only small cohorts, accessible table, and a record-by-record follow-up list for missing values.
+- `app/views/negotiation.js`: prior comparable cohort context appears in preparation only when a same-currency issue direction is recorded; current negotiation is excluded, small cohorts remain counts-only, and no targets are rewritten.
+- `app/core/csv.js`: additive `negotiation-settlement`, `negotiation-reference-class` and `negotiation-missing-actual` rows in the existing `calibration` scope. Cohort summary rows stay counts-only under n=5; raw pair rows are explicitly recorded source observations, not a pooled verdict.
+
+### Gaps, rejected shortcuts and boundaries
+
+- **Not implemented:** invoice/GL verification, a procurement integration, FX conversion, automatic savings claims, automatic changes to BATNA/targets, causal attribution to negotiation skill, or use of settlement statistics in performance reviews. Those would exceed the current evidence and may require consent, baseline methodology, transaction provenance and finance review.
+- **Rejected:** putting different currencies into a common mean, treating a cheaper realized price as adverse for every agreement, filling missing actuals from the signed value, hiding incomplete settlements, or calling the 20%/n=5 guardrails research-validated.
+- **Gap analysis:** the ledger now links negotiation → settlement → calibration → insight/decision → future preparation. The largest remaining evidence gap is source verification: actual amounts are user-entered and may not reconcile to invoices, usage, volume or the agreed baseline. Real-world performance, manager interpretation, and whether n=5/P80 is useful for a live team are **[UNVERIFIED]**.
+- `npm run verify:canonical` passed: **485/485 tests across 38 suites**, 0 ESLint errors, 0 canonical-boundary leaks and 89/89 internal Markdown links. Repository-sync outcome is recorded in Session 38 of `AI-SESSION-LOG.md` after the push. Graphical browser rendering, spoken screen-reader output, finance-system reconciliation and field comprehension remain **[UNVERIFIED]**.
+
+## 47. Budget envelopes & financial commitments: encumbrance accounting, budgetary control and the fifth calibration ledger (Session 39 — Schema v24)
+
+### Gap found by audit
+
+Before this session, money in LeadOS existed only as scattered estimates — a case's PERT
+exposure, a portfolio item's value triple, a negotiation's stakes and settled actuals. No
+record answered the first-time leader's most concrete finance question: *what envelope do I
+have, what have I already committed against it, what has actually been spent, and am I forecast
+to breach?* Session 38's roadmap also left settlement actuals with no "finance-approved
+baseline" home. The missing module was a budget ledger — the finance/capital-allocation leg of
+the cross-domain mandate — not another estimate field.
+
+### Frameworks applied (named, not paraphrased)
+
+1. **Finance / management accounting — budgetary control & variance analysis (Anthony &
+   Govindarajan, *Management Control Systems*).** Control is exercised on the *forecast at
+   completion* (recorded actuals + open commitments) against the approved ceiling while
+   corrective action is still possible. Post-period variance reporting alone is archaeology.
+2. **Public-sector finance — commitment/encumbrance accounting (GASB budgetary accounting;
+   Oracle Commitment Model documentation).** Encumbrance reserves budget authority when an
+   obligation is entered into (PO/contract), before any invoice; the encumbrance is reversed
+   when the actual expenditure is recorded ([encumbrance vs expenditure summary](https://gao.fo.uiowa.edu/managing-grants-contracts/encumbrances),
+   [Oracle Commitment Model](https://docs.oracle.com/cd/E18727_01/doc.121/e13418/T343030T346715.htm)).
+   Hence four line states — `planned`, `committed`, `spent`, `released` — never one "spent" column.
+3. **Economics — expiring budgets (Liebman & Mahoney, 2017, *American Economic Review*).**
+   Federal spending in the final week runs 4.9× the weekly average and year-end IT projects
+   are 2.3–5.6× more likely to score below-median quality ([paper/abstract](https://www.nber.org/papers/w19481)).
+   Design consequence: an envelope is a ceiling, not a target — underspend is never scored as
+   failure, FIN-05's period-end copy says so explicitly, and nothing recommends spending to
+   protect a future envelope (also Hope & Fraser's *Beyond Budgeting* critique of fixed
+   budget-as-contract).
+4. **Statistics / strategy — reference-class forecasting (Flyvbjerg, 2006) and the planning
+   fallacy (Kahneman & Tversky, 1979).** Recorded actuals are scored as actual÷committed
+   ratios. Ratios are dimensionless, so they may pool across currencies without FX conversion;
+   amounts never pool. Counts-only below n=5, as in every other ledger. The 1.20× median
+   overrun trigger and 80% watch share are product guardrails, not validated constants.
+5. **MBA / decision governance — DACI with explicit opportunity cost.** A forecast breach
+   opens exactly one decision whose options are concrete: release/defer the largest
+   encumbrances (returning named amounts of authority), request a named envelope increase, or
+   accept the breach explicitly. No silent re-baselining.
+6. **Engineering / production — closed-loop control (Deming PDCA) and dimensional honesty.**
+   One currency per envelope by construction; missing actuals and unpriced commitments make
+   the forecast *labelled understated* instead of being silently zero-filled.
+
+### Implemented design and cross-module paths
+
+- `app/core/domain/finance.js` (new, pure): `evaluateBudget`, `summarizeBudget`,
+  `budgetsRollup`, `commitmentCalibrationPairs/Calibration`, `calibratedForecast`,
+  `sourceCompletion`, `formatMoney`.
+- Schema v24 (`budgets` collection, `budgetWatchPct` setting, additive 23→24 migration):
+  dead owners/sources are cleared while amounts survive; a zero/blank ceiling means
+  tracking-only; actuals only exist on `spent` lines.
+- `RULE-FIN-01` (budget write → decisions/graph): forecast breach opens one idempotent DACI
+  trade-off, linked `budget →decides→ decision`.
+- `RULE-FIN-02` (bidirectional): sourced lines create typed `funds` edges and neutral,
+  idempotent goal funding check-ins (confidence/progress untouched); in reverse, case
+  resolution, negotiation settlement and portfolio delivery stamp matching encumbrances
+  `actualsDueOn` inside the completing transaction.
+- `RULE-FIN-03` (actual recorded → calibration): typed propagation + idempotent audit event;
+  the fifth ledger appears in `calibrationSummary()`, the Decisions calibration card and the
+  `calibration` CSV (`budget-commitment`, `budget-reference-class`, `budget-missing-actual`).
+- Signals `FIN-01..05` (Finance domain), Today finance triage card, `#/finance` + `#/finance/:id`
+  views, budget/line/actual dialogs (live forecast readout; actual never pre-filled), `finance`
+  CSV scope (#24), Settings watch-% convention, healthy demo envelope (zero FIN findings),
+  `clearDemo` scrubbing and `reconstructStateAt` rewind parity.
+
+### Deliberately rejected / deferred
+
+| Idea | Reason |
+|---|---|
+| Copying committed amounts into blank actuals | Would fabricate a perfect 1.0× calibration score from no evidence — the single worst failure mode for this module. |
+| Auto-converting case exposures / portfolio values / negotiation stakes into budget lines | Those are estimates in different units of meaning; an envelope the leader never recorded is invented financial data. |
+| FX conversion to a "workspace total" | No rate source exists locally; a converted total would be a fabricated precision claim. Ratios pool; amounts don't. |
+| Scoring underspend or "budget utilisation" as performance | Directly creates the Liebman & Mahoney year-end surge incentive. Ceilings are limits, not quotas. |
+| Earned-value % -complete / CPI-SPI forecasting | Requires percent-complete judgements this record cannot evidence; FAC from actuals + encumbrances is the honest subset. |
+| Invoice/GL integration or bank sync | Network + accounts violate the local-first invariant; needs an ADR, not a feature flag. |
+| Auto-increasing ceilings or rewriting committed amounts from calibration | The reference class informs the next human decision; restating recorded figures destroys the audit trail it is scored from. |
+
+### Boundaries
+
+Recorded amounts are leader-entered evidence, not reconciled to invoices, POs or a general
+ledger — validation against source finance systems, real-browser/screen-reader behaviour of
+the new views, manager comprehension, and the field usefulness of the 80% watch share and
+1.20× median-overrun guardrails remain **[UNVERIFIED]**. Verification numbers are recorded in
+Session 39 of `AI-SESSION-LOG.md`.
+
+---
+
+## 48. Stakeholder Influence Register: four-lens political analysis with cross-module propagation (Session 40 — Schema v25)
+
+### Why now and what the category actually does
+
+The Session 39 roadmap named the Stakeholder Influence Register the natural next module.
+The published 2025–26 category audit of stakeholder relationship management (SRM) software
+shows the commercial field is oriented to **engagement logistics** — communication logs,
+GIS, grievances, sentiment NLP and compliance reporting — not to political analysis:
+
+- **Borealis**, the infrastructure/energy SRM reference platform, generates only "basic
+  stakeholder maps … on a grid with parameters like power, level of interest, and level of
+  influence" and is independently reviewed as lacking "advanced analytics … qualitative
+  analysis, sentiment analysis, tagging, and relationship health scores" plus "linking
+  between stakeholder records and other relevant tools and records"
+  ([Simply Stakeholders' Borealis alternatives page](https://simplystakeholders.com/borealis-alternatives/),
+  vendor-published comparison — treat as a commercial claim, not independent evidence).
+- **Simply Stakeholders (formerly Darzin)** goes furthest methodologically with a proprietary
+  six-attribute scoring model (Criticality, Position, Effort, Interest, Impact, Influence)
+  and relationship network views, but the model is a closed proprietary score, not a
+  transparent published framework; its own category comparison rates automated workflows
+  "basic" against CRMs and markets 3–6 month implementations
+  ([salesmotion 2026 tool round-up](https://salesmotion.io/blog/stakeholder-mapping-tools);
+  [Simply Stakeholders compare page](https://simplystakeholders.com/compare/)).
+- Even the category leader concedes the core technique's weakness: the power-interest grid
+  "can oversimplify complex relationships" and depends on "subjective positioning of
+  stakeholders" ([Borealis stakeholder mapping guide](https://www.boreal-is.com/blog/stakeholder-mapping-identify-stakeholders/)).
+- CRMs (Salesforce, Dynamics, HubSpot) are repeatedly rejected as the system of record
+  because the sales pipeline is linear whereas engagement is multi-faceted and
+  multi-decade, and CRMs lack salience/veto constructs entirely
+  ([Borealis CRM vs engagement](https://www.boreal-is.com/blog/crm-vs-stakeholder-engagement-whats-the-difference/);
+  [Simply Stakeholders vs CRM](https://simplystakeholders.com/comparison/simply-stakeholders-vs-crm/)).
+
+### Academic anchors actually implemented (not name-dropped)
+
+1. **Mendelow (1981/1991) power × interest** — quadrant, cadence defaults and guidance;
+   reused the canonical classifier already proven on case/change stubs since Schema v16,
+   so the 5×5 matrix and embedded-stub vocabulary stay consistent.
+2. **Mitchell, Agle & Wood (1997), *Academy of Management Review* 22(4), 853–886** — all
+   seven salience classes (dormant, discretionary, demanding, dominant, dangerous,
+   dependent, definitive) from power/legitimacy/urgency possession at threshold ≥4; raw
+   score /15 with an evidence-confidence adjustment (high ×1.0, medium ×0.85, low ×0.7).
+   The MAW twenty-year retrospective (Wood, Mitchell, Agle & Bryan) documents salience
+   *flux* — an actor's class changes as urgency rises or coalitions align — which is why
+   the register carries append-only stance history and recalculates class on every read,
+   rather than persisting a label
+   ([Ronald Mitchell publications](https://www.ronaldmitchell.org/publications/20%20years-AS%20ACCEPTED%20(pre-publication).pdf)).
+   Agle, Mitchell & Sonnenfeld (1999) found urgency the strongest of the three predictors
+   of managerial salience — the empirical basis for RULE-STK-04's high-urgency-without-
+   contact-plan signal rather than treating all low-power actors as ignorable
+   ([MAW guide with empirical summary](https://umbrex.com/resources/frameworks/organization-frameworks/stakeholder-salience-model-mitchell-agle-wood/)).
+3. **Tsebelis (1995, 2002) veto players** — agreement gates shrink the win-set. LeadOS
+   implements an explicit, labelled *heuristic*: each veto player contributes at most 25
+   difficulty points from stance distance (ordinal 0–4 ÷ 4) × power (rating ÷ 5) × 25;
+   cohesion penalties follow Tsebelis's own empirical emphasis on ideological distance
+   and cohesion among collective veto actors (+5 spread ≤1 ordinal, +8 unified blocker
+   front), producing feasible (0–33) / contested (34–66) / blocked (67–100) bands with a
+   per-analysis confidence label. The UI states it is an operational proxy, not the formal
+   spatial win-set model ([empirical veto-player applications review](https://www.researchgate.net/publication/225845382_Empirical_Applications_of_Veto_Player_Analysis_and_Institutional_Effectiveness)).
+4. **Nissenbaum (2009) contextual integrity** — political assessments are governed by
+   context-specific appropriateness: stances, veto bases and influence notes exist for
+   internal decision quality but are neutralized by the existing redaction machinery
+   (`redactStakeholderStances`) before any copy leaves the device, with a scrub count in
+   the export metadata.
+
+### What makes this ahead of the commercial category
+
+| Capability | LeadOS Schema v25 | Commercial SRM (Borealis / Simply Stakeholders / Quicker) |
+|---|---|---|
+| Transparent published-theory analytics | MAW salience classes + Tsebelis difficulty bands, formulas visible in-app | Proprietary six-attribute scores; method closed; power/interest grid only |
+| Reconciliation | Strict exact-name/person matching of embedded initiative stubs against one persistent register, coverage % with unmapped count as a hygiene signal | Records typically per-project; category-wide linking flagged as a gap even in Borealis reviews |
+| Event-driven action | `RULE-STK-02` opens a DACI alignment decision in the **same transaction** as the adverse veto signal; `RULE-STK-03` queues a blameless 1:1 talking point on a stance shift | Workflows are task/reminder automation on engagement records, not theory-driven cross-entity governance |
+| Coalition graph | Union-find alliance blocs with power-weighted stance centroids, directional opposition/influence edges, hidden-influencer detection (low power, high out-influence) | Network views exist in premium tiers but without bloc-leaning or hidden-influencer computation documented |
+| Privacy posture | Local-first, contextual-integrity redaction with metadata counts, full CSV/JSON export by design; no account, cloud or AI training path | Cloud SaaS; competitor comparisons themselves document export limits/paid add-ons and onboarding fees above $12k AUD |
+| Point-in-time | Stance/contact rewind with explicit approximate-fidelity note | Not found in category materials |
+
+### Deliberately rejected / deferred
+
+| Idea | Reason |
+|---|---|
+| Fuzzy/near-name auto-linking of embedded stubs | A guessed political edge is worse than a counted gap; near-misses stay unmapped and surface as STK-02 hygiene findings. Strict matching is the test-pinned contract. |
+| Persisting salience class or Mendelow quadrant as a stored field | MAW is dynamic by construction; stored labels go stale the moment urgency changes. Class is pure derivation from current ratings (and rewinds correctly under point-in-time). |
+| A formal spatial win-set / indifference-curve model | Requires ideal-point estimation the ordinal data cannot support; the stance-distance heuristic is honestly labelled in every UI surface and rationale string. |
+| Sentiment NLP on contacts/notes | Needs a network service and a model; violates local-first and contextual integrity. Stance is explicit leader evidence, never inferred from text. |
+| Converting embedded case/change/negotiation stubs into register records at migration | Would invent named actors the leader never registered; the v24→v25 migration is additive and the register starts empty, reconciling through RULE-STK-01. |
+| Auto-scheduling meetings or sending outreach | No network primitives by ADR-0006; cadence proposes the next contact date, the leader acts. |
+| Graph visualization beyond lists/chips | A force-directed canvas adds rendering/AT complexity without evidence of better decisions; blocs, edges and the 5×5 grid carry the same information accessibly. |
+
+### Boundaries
+
+All ratings are leader-entered ordinal evidence with explicit confidence labels; the
+cohesion thresholds (+5/+8), band edges (33/66) and confidence factors (0.85/0.7) are
+transparent product guardrails, not empirically validated constants, and remain
+**[UNVERIFIED]** in field use. Vendor feature claims above are marketing-page evidence
+about competitors, not independent benchmarking; no accounts were created or trials run.
+Real-browser graphical rendering, spoken screen-reader output and field usefulness remain
+**[UNVERIFIED]**. Verification numbers are recorded in Session 40 of `AI-SESSION-LOG.md`.
+
+---
+
+## 49. Cross-ledger Forecast Integrity: conformal outside views, decision-native scoring and the 2026 competitive hunt (Session 41 — Schema v26)
+
+### Why this was the highest-leverage gap
+
+Sessions 31–40 built five honest calibration ledgers: decision probabilities (Brier/Murphy),
+delivery effort (planning-fallacy ratios), case exposure/occurrence (FAIR), negotiated value
+(implementation shortfall) and budget commitments (encumbrance accuracy). Each was a
+rear-view mirror. A first-time leader about to commit money, time or political capital still
+had to open five screens, mentally combine unlike quantities, and guess whether the team's
+history was a real base rate or five anecdotes. No module answered: **"what range of
+outcomes should I plan for, and how much should I trust it?"**
+
+Commercial "calibration" in HR software means something else entirely: calibrating
+*performance ratings* across managers, not calibrating the leader's own forecasts against
+recorded outcomes. That distinction is the product opportunity.
+
+### The 2026 competitive hunt — what the best in the world are actually doing
+
+**AI forecasting and proper scoring are advancing fast, but on external events.**
+- Bridgewater AIA Labs' **AIA Forecaster** technical report reports Brier 0.108 vs a
+  superforecaster median 0.111 on two resolved ForecastBench rounds and 0.1002 on a live
+  n=64 forward evaluation; it uses agentic search and Platt scaling as a final recalibration
+  stage ([arXiv:2511.07678](https://arxiv.org/html/2511.07678v1)). This is a cloud research
+  agent forecasting public questions, not a manager's private delivery promises.
+- A 2026 survey of eleven AI-forecasting analyses reports logistic recalibration (Platt
+  scaling) improving binary Brier scores by 0.016 (p=0.00052) and notes that 86% of
+  competition winners ensemble or aggregate forecasts
+  ([EA Forum, July 2026](https://forum.effectivealtruism.org/posts/Spyz3wESZu2eeqhDj/ai-forecasting-in-2026-what-11-analyses-say),
+  [LessWrong mirror](https://www.lesswrong.com/posts/a82q6yd8zKpYk56cF/ai-forecasting-in-2026-what-11-analyses-say)).
+- ForecastBench's updated methodology introduces a **difficulty-adjusted Brier score** so
+  forecasters who answered non-overlapping questions can be ranked
+  ([ForecastBench methodology PDF](https://www.forecastbench.org/assets/pdfs/forecastbench_updated_methodology.pdf)).
+  A 2026 arXiv paper restates the Murphy decomposition into uncertainty, reliability and
+  resolution and warns that detecting a small Brier edge needs hundreds of resolved binary
+  predictions ([arXiv:2605.00420](https://arxiv.org/html/2605.00420v2)).
+- The Good Judgment Project found "comparison classes" — reference-class forecasting —
+  correlated with forecasting accuracy
+  ([AI Impacts evidence summary](https://aiimpacts.org/evidence-on-good-forecasting-practices-from-the-good-judgment-project/)).
+  A 2025 review of reference-class forecasting documents both the planning-fallacy rationale
+  and unsolved problems of class selection and uniqueness bias
+  ([Production Planning & Control, 2025](https://www.tandfonline.com/doi/full/10.1080/09537287.2025.2578708)).
+
+**Decision-intelligence platforms remember decisions but do not score the decision-maker's own estimates.**
+- Gartner's 2026 decision-intelligence market page describes Aera Decision Cloud's real-time
+  recommendations and scenario modelling and Quantexa's entity-resolved contextual decisions
+  ([Gartner Reviews](https://www.gartner.com/reviews/market/decision-intelligence-platforms)).
+  Aera's 2026 announcement markets a "decision memory" that captures context, action and
+  outcome for later recommendations
+  ([Aera Technology](https://www.aeratechnology.com/news/aera-technology-named-leader-2026-gartner-magic-quadrant-decision-intelligence-platforms/)).
+- Cloverpop documents a **Decision Bank** storing what was decided, why, by whom and with what
+  outcome, plus D-Sight agentic recommendations and AI forecasting
+  ([Cloverpop platform](https://www.cloverpop.com/resources/what-you-get-in-the-cloverpop-decision-intelligence-platform),
+  [CloverPlan forecasting](https://www.cloverpop.com/planning-forecasting)).
+- Quantexa announced a **Simulation Lab** for modelled realities
+  ([Quantexa, Sept 2026](https://www.quantexa.com/blog/building-better-decisions-through-simulation-and-context/)).
+  A 2026 buyer guide says Gartner's inaugural Magic Quadrant evaluated 17 vendors and named
+  FICO, Aera, SAS, IBM, ACTICO and Quantexa Leaders
+  ([Market Intelligence Tools](https://marketintelligencetools.com/rankings/decision-intelligence-platforms/)).
+- These are enterprise, cloud, integration-heavy systems aimed at recurring operational
+  decisions. None of the cited materials describes a transparent Brier/Murphy score for the
+  leader's own probability forecasts, a distribution-free prediction band over that leader's
+  money/time estimates, or a same-transaction challenge fan-out across decisions, budgets,
+  cases and coaching. Vendor materials are capability claims, not independent benchmarks; no
+  accounts or trials were run here.
+
+**People-analytics vendors predict employees, not the manager's promises.**
+- Lattice's 2026 State of People Strategy report positions AI as an aid to manager calibration
+  and consistency in performance reviews
+  ([Lattice](https://lattice.com/state-of-people-strategy/2026));
+  a 2026 comparison describes predictive attrition modelling and AI coaching suggestions
+  ([HR Tools Nav](https://hrtoolsnav.net/blog/lattice-vs-15five-vs-culture-amp-2026)).
+- Betterworks' 2026 calibration guide describes rating matrices, distributions and activity
+  logs — rating calibration, not forecast calibration
+  ([Betterworks](https://www.betterworks.com/magazine/best-performance-calibration-software-for-2026)).
+  A people-analytics survey lists predictive attrition, theme detection and anomaly detection
+  as current AI uses while naming causal inference and cross-source harmonisation as unsolved
+  ([PeoplePilot, Oct 2026](https://www.peoplepilot.io/blog/state-of-people-analytics-2026)).
+- These claims are vendor/aggregator evidence. The relevant gap is not "add an LLM"; it is
+  that the manager's own estimate→outcome loop is unscored in the tools they already use.
+
+### Academic anchors actually implemented (not name-dropped)
+
+1. **Brier (1950) proper scoring + Murphy (1973) decomposition.** Decision probabilities are
+   scored separately from magnitudes and decomposed into reliability, resolution and
+   uncertainty. The UI prints Brier and bias in percentage points, with counts-only below n=5.
+   The 2026 arXiv paper above states the decomposition and its small-sample power limits.
+2. **Kahneman & Tversky (1979), Flyvbjerg (2006), Good Judgment Project.** Dimensionless
+   actual÷forecast ratios are the outside view. Classes stay segmented by quantity, currency
+   and deal direction; no FX, no inferred actual, no "our project is different" exception.
+3. **Exact two-sided sign test.** A median ratio alone can be one outlier. LeadOS computes the
+   exact binomial p-value around ratio=1 (excluding ties) and requires p≤0.10 plus a
+   1.25×/0.80× median guardrail before issuing any challenge. At n=5 all five above the line
+   gives p=0.0625; below n=5 no verdict is rendered.
+4. **Split conformal prediction.** With n calibration residuals and k=⌈(n+1)(1−α)⌉, the
+   k-th ordered absolute relative residual yields a band with marginal coverage ≥ k/(n+1)
+   for a fresh exchangeable outcome. Angelopoulos & Bates state the non-asymptotic,
+   distribution-free guarantee and the impossibility of general conditional coverage
+   ([arXiv:2107.07511](https://arxiv.org/html/2107.07511v6),
+   [Berkeley PDF](https://people.eecs.berkeley.edu/~angelopoulos/publications/downloads/gentle_intro_conformal_dfuq.pdf)).
+   A 2026 neural-operator paper restates the 1/(n+1) finite-sample gap and the exchangeability
+   assumption ([arXiv:2606.09923](https://arxiv.org/html/2606.09923)).
+   LeadOS therefore states **marginal coverage only**, shows the finite-sample bound, and
+   refuses a band below n=5.
+
+### What makes Schema v26 ahead of the surveyed category
+
+| Capability | LeadOS v26 | 2026 tools surveyed |
+|---|---|---|
+| Unit of learning | One typed prediction atom across decision probabilities, plan effort, case exposure/days/spend, budget commitments and negotiated value | AI forecasters score public-event questions; HR tools score people; decision platforms log enterprise decisions |
+| Uncertainty representation | Distribution-free conformal band with finite-sample coverage bound and visible exchangeability caveat | Vendor forecasting accuracy claims; no published per-manager conformal band found in the surveyed materials |
+| Proper scoring of the leader | Brier/Murphy for probabilities; exact sign test for ratios; counts-only below n=5 | Rating calibration, attrition scores, proprietary model confidence |
+| Propagation | One post-commit rule fans a single outcome into challenges, typed graph links, DACI decisions, a measurement-recovery delegation, signals and a board brief in the same transaction | Workflows/approvals and recommendations; no same-transaction cross-ledger outside-view challenge found |
+| Data posture | Local-first, zero-build, deterministic, no cloud LLM, full CSV/JSON export | Cloud enterprise platforms; integration and account requirements |
+| Human authority | Source forecasts are immutable; a leader accepts/adapts/dismisses with a written reason | Automated/assisted/advised decision spectra; model recommendations may be accepted or overridden |
+
+### Deliberately rejected / deferred
+
+| Idea | Reason |
+|---|---|
+| Automatically rewriting estimates from the reference class | Destroys the immutable forecast being scored and hides the learning loop. Challenges are separate, reviewable records. |
+| A single "confidence score" over money, days and probabilities | Incommensurable units and different proper scoring rules. Probability, ratio and pooled descriptive views stay separate. |
+| Normal/log-normal ±1.28σ intervals | Small, heavy-tailed operational samples do not justify a parametric error model; conformal quantiles require only exchangeability and state it. |
+| Conditional coverage claims for each person/vendor/class | Distribution-free conditional coverage is impossible in general. The guarantee is marginal; low-evidence classes get a labelled low-confidence pooled prior, not a precise promise. |
+| Pooling amounts across currencies or inferred FX | Ratios are dimensionless and can pool; amounts cannot. Currency/direction cohorts remain segmented. |
+| LLM-generated forecasts or sentiment from notes | Network dependency, unverifiable inference, and private data leave the device. All numbers derive from explicit outcomes in this workspace. |
+| Treating missing actuals as zero or as the estimate | Survivorship bias and fabricated perfect calibration. Missing outcomes are counted and trigger one blameless recovery delegation at three gaps. |
+| Employee/team performance scores from forecast error | The error belongs to the planning system, not a person. Signals are blameless and process-oriented. |
+
+### Boundaries
+
+Conformal coverage is marginal and assumes future errors are exchangeable with calibration
+errors; a process change, new vendor class or learning effect can break that assumption.
+n=5, 1.25×/0.80×, p≤0.10 and 80% target coverage are transparent operational guardrails,
+not externally validated constants. The board brief is deterministic text from recorded
+evidence, not an LLM opinion or invoice/GL reconciliation. Real-Chromium graphical rendering,
+spoken assistive technology, manager comprehension and field usefulness remain
+**[UNVERIFIED]**. Verification numbers are recorded in Session 41 of `AI-SESSION-LOG.md`.
+
+---
+
+## 50. One-file offline distribution: why a standalone HTML artifact, and what it can honestly promise (Session 42)
+
+### User need and gap found in the current app
+
+The canonical app is zero-build but not zero-folder: `index.html` loads
+`./app/main.js`, which imports 88 more modules. Over HTTP this is elegant. Copied
+alone to a different PC and opened as `file://`, it fails because module scripts
+are fetched with CORS semantics and local files have an opaque origin
+([MDN: JavaScript modules](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules),
+[MDN: CORS request not HTTP](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CORS/Errors/CORSRequestNotHttp),
+[WHATWG HTML issue #8121](https://github.com/whatwg/html/issues/8121)).
+A non-engineer cannot be expected to copy a whole folder, install Node, or start
+a browser with `--allow-file-access-from-files`.
+
+### Competitive / pattern hunt — genuinely new findings this session
+
+- **TiddlyWiki is the canonical single-file local-first app.** Its GitHub
+  organisation describes "a standalone portable wiki in a single HTML file" that
+  works offline from a USB stick with no server or installation
+  ([Tiddly-Wiki GitHub](https://github.com/Tiddly-Wiki)); the mature
+  TiddlyWiki5 repository documents both single-file browser use and an optional
+  Node server ([TiddlyWiki5](https://github.com/TiddlyWiki/TiddlyWiki5)).
+  Independent 2026 coverage notes that the entire editor, UI and content can
+  live in one file, but saving behaviour depends on browser savers, IndexedDB or
+  a download fallback — the HTML file itself is not magically writable
+  ([WindowsForum local-first roundup](https://windowsforum.com/news/local-first-web-apps-tiddlywiki-excalidraw-minipaint-openreel-and-super-productivity.401547/),
+  [MakeUseOf](https://www.makeuseof.com/open-source-apps-that-run-entirely-in-browser-dont-touch-cloud/)).
+- **Single-file build tooling is a real 2026 pattern.** `vite-plugin-singlefile`
+  explicitly targets offline apps bundled into one HTML file you can double-click
+  with no server, and lists `localStorage`, hash-based SPA routing and relative
+  links as supported patterns
+  ([npm package](https://www.npmjs.com/package/vite-plugin-singlefile)).
+  A 2026 developer report describes shipping a ~1.7 MB single-file wedding
+  planner with IndexedDB first, `localStorage` fallback and a loud "download a
+  backup" path when neither write succeeds
+  ([DEV Community](https://dev.to/spectrtech/a-web-app-in-one-offline-html-file-indexeddb-a-localstorage-fallback-and-a-hand-written-zip-459e)).
+- **The category's honest limit is storage, not computation.** A 2025 HN
+  discussion of two dozen single-file tools lists ~5 MB `localStorage`, no Cache
+  API and CORS restrictions as the real constraints
+  ([Hacker News](https://news.ycombinator.com/item?id=46353359)). An
+  awesome-list of single-file tools frames the benefit as "no npm install, no
+  complex build pipelines, zero telemetry"
+  ([awesome-singlefile-tools](https://github.com/tschnorpfeil/awesome-singlefile-tools)).
+- **Why LeadOS is not just copying a pattern:** the existing product already has
+  explicit JSON import/export, an append-only event log, optional AES-GCM
+  encryption and 26 governed CSV scopes. The portable artifact therefore
+  separates *application portability* from *data portability* instead of
+  pretending a browser can reliably rewrite its own HTML file.
+
+### Decision implemented
+
+`scripts/build-standalone.mjs` uses `esbuild` **at build time only** to inline the
+entire ES-module graph as one classic IIFE, inlines `app/styles.css`, removes all
+external script/stylesheet references, injects a `connect-src 'none'` CSP and a
+source fingerprint, and writes `LeadOS-standalone.html`. Details and rationale:
+[ADR-0009](docs/adr/0009-single-file-offline-distribution.md).
+
+The standalone page sets a distinct `leados.standalone.v1` storage key, shows a
+banner that the app travels but records do not, and adds a Settings card with a
+download link (served mode) or export/import guidance (standalone mode). The
+static server now exposes only that one deliberate artifact outside `app/**`.
+
+### Deliberately rejected
+
+| Idea | Reason |
+|---|---|
+| Ask users to install Node and run `scripts/serve.mjs` on each PC | Contradicts "copy one file and run locally"; adds a command-line dependency. |
+| Keep ES modules and require Chrome's `--allow-file-access-from-files` | Insecure flag, still needs the whole folder, and fails in other browsers. |
+| Write records back into the standalone HTML file | Browser file-write APIs are inconsistent and permissioned; silent data loss is worse than explicit JSON export. TiddlyWiki's own saver complexity is evidence. |
+| Inline a CDN-hosted framework or fonts | No network guarantee; would break offline and create a tracking surface. |
+| Electron/Tauri installer | An installer is not "one HTML file"; adds a runtime and update burden. |
+| Claim `localStorage` always works for `file://` | Browsers treat local files as opaque origins; Firefox/Chrome behaviour differs. The app degrades to in-memory with a visible warning. |
+| Claim standalone encryption always works | Web Crypto availability depends on the browser's secure-context policy for local files. The UI disables it honestly. |
+| Reuse the served workspace's storage key | A local file and an HTTP origin in the same browser could silently overwrite each other's records. |
+
+### Boundaries
+
+JSDOM proves the generated file boots from a `file://` URL with an arbitrary
+filename, renders Today/Settings/Forecast Integrity, uses hash routing, makes no
+`fetch`/WebSocket call and has zero axe-core violations in the scanned empty
+workspace. It cannot prove graphical rendering, real `localStorage` policy,
+Web Crypto support, Blob downloads, browser-specific file-origin isolation,
+spoken screen-reader output or manager comprehension in Chrome, Firefox or
+Safari; those remain **[UNVERIFIED]**. The committed artifact is a build output:
+regenerate it with `npm run build:standalone` after any canonical source change.
+
+## 51. Natural-language intake triage: confidence-gated human-in-the-loop routing, on-device (Session 43 — Schema v27)
+
+### What the 2026 market actually does
+
+The 2026 competitive hunt focused on intelligent triage — the closest market category to
+LeadOS's intake requirement — across ITSM, case management and HR/NLP privacy:
+
+- **Confidence-threshold routing is the state of practice, not a differentiator.** Moveworks
+  describes intelligent triage as inherently probabilistic: classifications and routing
+  outcomes carry confidence scores, and low-confidence or ambiguous cases go to human
+  reviewers or clarification flows rather than being forced through ([1](https://www.moveworks.com/us/en/resources/blog/what-is-intelligent-triage-it-support)).
+  Elementum's 2026 roundup reports configurable AI-versus-human decision thresholds as a
+  standard feature, with high-confidence routing autonomous and borderline cases escalated
+  ([2](https://www.elementum.ai/blog/ai-tools-for-it-support-ticket-triage)).
+- **The four uncertainty controls.** A widely cited 2026 practitioner synthesis recommends
+  defining uncertainty with checks you control rather than the model's own confidence: a
+  rule/validity check, a completeness check for thin inputs, an agreement check, and a
+  stakes check that routes high-value labels to humans regardless of score — any one firing
+  is enough ([3](https://www.pravinkumar.co/blog/how-to-route-low-confidence-ai-classifications-to-a-human-2026)).
+  LlamaIndex's routing glossary uses 0.50/0.75 probability bands for escalation vs
+  clarification vs autonomous handling ([4](https://www.llamaindex.ai/glossary/confidence-based-routing)).
+- **Overrides are the training signal.** Iris Agent's 2026 playbook: teams approaching
+  100% auto-triage track every manual re-route as feedback, start narrow (3–5 intents), and
+  attach the AI's reasoning to every human fallback — "it never forces a wrong decision"
+  ([5](https://irisagent.com/ai-ticket-automation/)). Public-sector case-management guidance
+  prescribes weekly blind-review sampling with override-rate KPIs and pre-agreed rollback
+  thresholds ([6](https://blog.primereadysub.com/blog/ai-for-case-management)).
+- **Calibration beats decoration.** Regulated-workflow guidance (Nov 2025, still cited in
+  2026): a confidence number is meaningless without calibration — "90% confidence is right
+  roughly 90% of the time" — and field-level scores with audit trails outperform one
+  document-level number ([7](https://www.multimodal.dev/post/using-confidence-scores-to-reduce-risk-in-ai-driven-decisions)).
+- **LLM confidence is itself suspect.** An ICLR 2026 cascade paper found LLMs poorly
+  calibrated and replaced naive confidence thresholding with explicit epistemic-risk
+  estimates ([8](https://proceedings.iclr.cc/paper_files/paper/2026/file/51b3bf54f2a06c3c844b09d20b70eadb-Paper-Conference.pdf)).
+- **HR text defaults to on-device/on-prem processing.** The FINDHR survey of NLP for human
+  resources documents pervasive data-protection constraints and data-donation/anonymization
+  as the standard research path ([9](https://arxiv.org/html/2410.16498v2)). 2026 products in
+  client-side DLP (PrivacyScrubber's zero-egress browser processing) and hybrid medical
+  triage (local phi-4-mini parsing behind a privacy gate) show the emerging architecture:
+  sensitive parsing stays on the machine, only sanitized summaries cross a gate
+  ([10](https://privacyscrubber.com/),
+  [11](https://www.foundrylab.fr/hybrid-ai-lab-triage.html)).
+- **Transparent classifiers still win well-defined classes.** A 2026 enterprise ITSM study
+  (MDPI *Systems* 14(2):223) found logistic-regression classifiers reliable for
+  high-frequency, well-defined requests while transformers only added real value on
+  semantically overlapping, underrepresented classes — evidence that a transparent
+  weighted-evidence scorer is defensible for operational leadership vocabulary.
+
+### What LeadOS ships that the category does not
+
+1. **On-device by architecture, not policy.** The triage engine is a pure ES module with no
+   network API and no runtime dependency, so it runs identically in the served app and the
+   double-clickable standalone HTML file. Employee text structurally cannot egress.
+2. **Four uncertainty controls made explicit and visible:** completeness gate, top-1/top-2
+   margin ambiguity flag, NegEx negation windowing, and a stakes check that forces human
+   review on safety/legal/confidentiality markers — each surfaced in the UI with its reason.
+3. **Every suggestion is evidence-linked.** Term weights, negated matches, sentence offsets
+   and extraction spans are shown next to the label; softmax probabilities are shrunk toward
+   uniform and labeled heuristic until the ledger can measure agreement empirically.
+4. **A conflict privacy wall.** Interpersonal-conflict language never auto-creates a case
+   or a graph link; the leader must open the confidential conflict workspace themselves,
+   consistent with the existing `FORBIDDEN_LINK_TYPES` boundary.
+5. **Routing lands in a real cross-module propagation engine.** A confirmed triage creates
+   its case through the same validated `addCase` path as every other module, so DACI
+   decisions, delegations, coaching, capacity reserves and stakeholder schedules propagate
+   in parallel via the existing event-driven rules — no parallel glue code.
+6. **An honest calibration ledger from day one.** RULE-INTAKE-07 measures *human agreement*
+   (never mislabeled accuracy), counts only below n=5, and exports a data-minimized CSV with
+   no free text — the override-as-training-signal discipline without a cloud training loop.
+
+### Deliberately rejected
+
+| Idea | Reason |
+|---|---|
+| Cloud LLM classification endpoint | Violates ADR-0006/0007 zero-network boundary and the offline standalone promise; HR/safety text would leave the device. |
+| Auto-creating cases without a human confirm | Contradicts 2026 human-review thresholds and the product doctrine's human-accountable-owner requirement; the engine proposes, the leader disposes. |
+| Calling softmax outputs "calibrated probabilities" | No empirical calibration exists at n=0; bands are labeled heuristic until RULE-INTAKE-07 agreement data exists (ICLR 2026 calibration warning). |
+| Auto-resolving ambiguous first-name matches | Picking one of two "Priyas" silently invents an attribution; ambiguity is surfaced and excluded from auto-selection. |
+| Storing raw notes in the calibration CSV export | Data minimization; the analytics export carries bands, categories and edit counts, never source text or dismiss reasons. |
+| Training/finetuning a local model | No model runtime in the zero-build architecture; a transparent lexicon scorer is auditable, deterministic and testable, and 2026 evidence supports it for well-defined classes. |
+
+### Boundaries
+
+The engine is deterministic lexicon scoring, not semantic language understanding: novel
+phrasing with no term overlap returns an honest *insufficient evidence* verdict instead of a
+guess. Multi-word intent, sarcasm and non-English text beyond Danish number/currency
+conventions are **[UNVERIFIED]** and mostly out of scope. The agreement ledger measures
+acceptance, not truth; real classifier accuracy would need labeled outcomes the local-first
+architecture deliberately does not collect.
+
+## 52. Decision tempo: pricing the option to wait, and measuring the latency a leader actually has (Session 44 — Schema v28)
+
+### The gap this session attacked
+
+Every module in the product up to Session 43 modelled decisions that *get made*: DACI roles,
+options, rationale, a review date, and (from Session 41) forecast integrity over their stated
+probabilities. None of them modelled the far more common failure: the decision that is
+deferred, re-deferred, and quietly paid for. The roadmap had named "decision-delay scenario
+simulation (`what happens if I wait two weeks?`) with conformal bands and an auto-generated
+board pack" as the next priority for two sessions. This is that terminal, plus the economics
+that make it honest rather than rhetorical.
+
+### Competitive / market findings (2026)
+
+- **The cost is being quantified in public, which raises the bar for a vague tool.** A 2026
+  vendor study puts the aggregate annual cost of enterprise decision delay at $630B across
+  the Global 2000, combining Splunk/Oxford Economics *Hidden Costs of Downtime 2026*
+  (~$600B of downtime, ~73% of it detection/triage/diagnosis rather than repair) with a
+  3.5%-of-net-profit estimate for non-IT decisions
+  ([1](https://przen.com/pr/new-research-puts-the-cost-of-enterprise-decision-delay-at-630-billion-year-across-the-global-2000-przen-33619058)).
+  West Monroe's 2026 *Speed Wins* survey (214 C-suite, 1,000 managers, US firms ≥$250M
+  revenue) reports nearly three in four leaders estimating up to 5% of annual revenue lost to
+  slow decisions, and labels it the **"Slowness Tax"** ([4](https://blog.flowmono.com/the-approval-bottleneck-why-good-decisions-are-taking-too-long-inside-growing-businesses/)).
+  Same survey, via CFO Dive: ~half the respondents estimate ≥4% of topline lost, 73% say
+  halving decision time would add ≥5% revenue, and the leading causes are *"the need for more
+  data or certainty"* followed by *"fear of risk and mistakes"*
+  ([10](https://www.cfo.com/news/slow-decision-making-can-lop-off-a-significant-chunk-of-revenue/811298/)).
+  That second-ranked cause is precisely what an EVSI calculation can price, and the first is
+  what it can bound.
+- **Category vendors still sell operational decisioning, not leadership tempo.** The 2026
+  decision-intelligence market is sized at $17.4B (2025) → $20.7B (2026) at ~19% CAGR
+  ([1](https://www.domo.com/learn/article/decision-intelligence-platforms)), and roughly
+  $20.7B → $42.5B by 2030 in a parallel estimate
+  ([17](https://www.researchandmarkets.com/reports/5896020/decision-intelligence-market-report)).
+  The 2026 platform rankings are dominated by credit/claims decisioning and DecisionOps —
+  FICO, SAS, IBM, ACTICO, Taktile, Pega, Decisions — with "decision modelling and
+  orchestration" and "DecisionOps" as the two named architectural approaches
+  ([4](https://marketintelligencetools.com/rankings/decision-intelligence-platforms/),
+  [8](https://growthbusiness.co.uk/top-decision-intelligence-solutions-2584150/)). None of
+  them models the *leader's* queue: what each unmade call costs per week, and whether the
+  next week of evidence is worth more than the wait.
+- **Decision-logging tools stop at the reminder.** A 2026 comparison of decision-logging
+  software describes the "lightweight" tier as decision capture plus 30/90/180-day review
+  reminders, explicitly noting that enterprise suites offer no confidence logging and that
+  passive repositories (Notion, Confluence, Obsidian) "offer no structured templates, no
+  reminder workflows for outcome reviews, no confidence tracking, and no pattern analysis"
+  ([10](https://reflect-os.com/blog/decision-intelligence-software-guide)). There is no
+  cost-of-delay rate, no information-value curve and no measured latency anywhere in the
+  category.
+- **Decision latency is becoming a named operational metric.** 2026 practitioner writing
+  proposes benchmarks such as *time to first decision* (<24h tactical), *approval cycle
+  time* (<2 days), and *revised-decision frequency* (<15%)
+  ([3](https://www.ai-infra-link.com/how-latency-shapes-product-decisions-in-2026-key-insights/)),
+  and a 2026 self-report instrument — the **Decision Latency Scale** — was proposed to
+  measure "the elapsed time and behavioral friction between recognizing a problem and
+  committing to a defensible course of action"
+  ([9](https://nutsaboutleadership.wordpress.com/2026/07/28/decision-latency-scale/)). Both
+  stop at self-report or process timestamps; neither prices the delay against the decision's
+  own value at stake.
+- **The binary 70% rule keeps being cited without arithmetic.** A 2026 Forbes column repeats
+  the widely taught heuristic that a leader should decide at ~70% of desired information and
+  argues that reversible decisions deserve a lighter process
+  ([5](https://www.forbes.com/sites/markmurphy/2026/03/10/slow-executive-decisions-cost-more-than-wrong-ones/)).
+  It is good advice with no way to check it against a specific decision. EVSI is the
+  arithmetic behind the heuristic: it says *when* the next unit of evidence stops paying for
+  the waiting it requires.
+- **Agentic decisioning is arriving, which makes a tempo ledger more valuable, not less.**
+  Gartner projections cited in the 2026 practitioner press: 15% of day-to-day work decisions
+  made autonomously by agentic AI by 2028 (from ~0 in 2024), 40% of enterprise applications
+  carrying task-specific agents by end-2026, and 65% of C-suite decisions AI-augmented by
+  2026 ([2](https://superkind.ai/blog/decision-latency),
+  [15](https://stealthagents.com/research/executive-decision-making-statistics-2026)). As
+  routine decisions get delegated to or drafted by agents, the scarce human judgment is
+  exactly the timing and framing of the decisions that remain — which is what this terminal
+  records.
+- **Statistical honesty matters more than another dashboard percentage.** The 2026 market is
+  full of unqualified "decision scores". The engineering literature LeadOS already uses —
+  split-conformal coverage bounds and exact sign tests (Session 41) — gives a defensible
+  alternative: show a coverage bound and suppress the number below n = 5.
+
+### The economics this terminal implements, named explicitly
+
+| Framework | Source | Where it lives in the code |
+|---|---|---|
+| **Cost of delay / CD3** | Reinertsen, *The Principles of Product Development Flow* (2009); CD3 = cost of delay ÷ duration (Black Swan Farming / Arnold); four delay profiles | `delayCostAt`, `derivedRatePerWeek`, `decisionCd3` |
+| **Preposterior analysis / EVSI** | Raiffa & Schlaifer, *Applied Statistical Decision Theory* (1961); EVPI ≥ EVSI; ENGS = EVSI − sampling cost | `expectedValueOfInformation`, `posteriorMeanSpread`, `switchProbability` |
+| **Option to wait / real options** | Dixit & Pindyck, *Investment under Uncertainty* (1994) | `evaluateDecisionTiming` (net = EVSI − carrying cost − evidence cost) |
+| **Decision taxonomy and tempo** | McKinsey, *Decision making in the age of urgency* (2019) — delegated, cross-cutting, big-bet; ~37% of decisions both fast and high quality | `classifyDecisionType`, `guardrailDaysFor`, RULE-DLY-05 |
+| **Conformal latency band** | Vovk et al. split conformal; order statistic k = ⌈(n+1)·coverage⌉ | `latencyBand`, `latencyByDecisionType` |
+| **Blameless escalation** | Deming / systems thinking; McKinsey ↔ Google re:Work psychological-safety evidence already used in the coaching modules | RULE-DLY-02 delegation copy |
+
+### What LeadOS ships that the category does not
+
+1. **A per-decision price for waiting, derived from records the app already holds.** The
+   value at stake is assembled from typed graph links — PERT case exposure, encumbered budget
+   lines, portfolio value, negotiated stakes — split by currency and never summed across
+   them. A decision with nothing linked is labelled *unpriced*, not priced at zero.
+2. **The counterweight, not just the alarm.** A full delay curve with EVSI, carrying cost,
+   evidence cost and net value of waiting, sampled at 0/3/7/14/30/60 days, plus the optimal
+   horizon and the switch probability. This is the first time a leadership tool shows the
+   *case for waiting* next to the case for deciding, on the same axis, for a specific
+   decision.
+3. **Measured, not assumed, latency.** `decidedOn` is stamped when the call is recorded;
+   the class band is an empirical conformal quantile with a finite-sample coverage bound,
+   counts-only below five samples, and legacy decided records stay unmeasured forever.
+4. **A commitment firewall.** Automation proposes a timebox and derives the money; it never
+   arms one and never records the believed edge or the uncertainty on the leader's behalf.
+   One click pauses all automatic tempo writes without disabling the read-side model.
+5. **Class-level governance instead of nagging.** When a decision *class* breaches its own
+   measured p80, exactly one DACI decision is opened with four real options (timebox at the
+   measured p80, delegate the class, add a standing evidence plan, or accept the tempo). The
+   engine never re-times an individual's recorded date.
+6. **A board brief that is arithmetic, not adjectives.** Deterministic text with position,
+   highest cost of delay, where waiting is already losing, what the empirical band says and
+   what is unmeasured — copyable, downloadable, and generated without a network call.
+7. **Data-minimised export.** CSV scope #28 carries timing economics (CD3, rates, EVSI,
+   verdicts, bands) and zero titles, rationale, notes or names, so tempo can be audited
+   without exporting the substance of the calls.
+
+### Deliberately rejected
+
+| Idea | Reason |
+|---|---|
+| Auto-arming timeboxes at a CD3 threshold | Arming is a commitment the leader owns; the engine cannot know the edge or the risk appetite (see ADR-0011). |
+| Monte Carlo for the wait decision | The normal/normal preposterior has an exact closed form; simulation would add variance to a number the leader will be asked to defend. |
+| Using `reviewedOn` or the logged date as a proxy for the decision moment | That fabricates latency evidence; unmeasured stays unmeasured. |
+| FX conversion to compare currencies | No honest rate source exists offline; currencies stay separate and only the dominant one drives the model. |
+| A per-person decision-velocity score | Turns a systemic symptom into a performance rating; the band is a class-level planning range. |
+| Blending in the confidential conflict or pulse data | Existing privacy walls; the engine reads only decisions, links, cases, budgets, portfolio and negotiations. |
+
+### Boundaries
+
+The economics assumes a two-option normal/normal preposterior: multi-option decisions are
+modelled as leading-vs-runner-up, and a skewed or heavy-tailed payoff distribution is
+**[UNVERIFIED]** against this closed form. Carrying-cost rates are conventions unless a rate
+is recorded; the cap at value-at-stake is a modelling choice, not a forecast. Latency bands
+are exchangeable-class planning ranges: a workspace whose decision mix changes materially
+will have a band that lags reality until new settlements arrive. The board brief is
+deterministic text, not an LLM narrative, and it deliberately avoids claims about causality
+between speed and outcome quality.
+
+---
+
+## 53. Operational Resilience, Dependency Topology & Continuity Calibration (Session 45)
+
+### Cross-domain theoretical synthesis
+
+1. **Production, Operations & Supply-Chain Risk — Simchi-Levi `TTS` / `TTR` / `REI`:**
+   Simchi-Levi, Schmidt & Wei (HBR 2014; *Operations Research* 2015; Gao, Simchi-Levi, Teo & Yan, *Operations Research* 2019; Purdue Business June 2026) replace subjective likelihood-by-impact grids with measurable temporal buffers: **Time-to-Survive ($\text{TTS}_j$)** (how long downstream operations can run before impact tolerance breaks) vs. **Time-to-Recover ($\text{TTR}_j$)** (time to restore full capability or cut over to a warm standby). Performance impact accrues over the unbuffered survival shortfall $\Delta_j = \max(0, \text{TTR}_{\text{eff},j} - \text{TTS}_j)$, normalized within each currency cohort into the **Risk Exposure Index $\text{REI}_j = \text{PI}_j / \max_k \text{PI}_k \in [0, 1]$**. Low-spend sole-source nodes routinely carry higher REI than high-spend diversified vendors.
+2. **Engineering & Systems Thinking — Directed Cascade Topology & Bus Factor:**
+   - **Avelino Minimal Hitting-Set Bus Factor** (Avelino et al., ICPC 2016; Jabrayilzade et al., 2022; *Information Sciences* Mar 2026): models human knowledge concentration as the smallest cut-set of active personnel whose simultaneous unavailability leaves $\ge 50\%$ of critical/important capabilities with zero verified stewards.
+   - **Multi-Tier / Nth-Party Cascades** (RiskLedger *Every Link Matters 2026*; DEMATEL RTII, *Applied Sciences* Mar 2026): 35%–45% of concentration risk sits in shared sub-tier dependencies beyond Tier-1 vendors, while only 30% of TPRM teams have sub-tier visibility. Propagating effective outage durations across a cycle-checked DAG exposes common-mode upstream initiators and sub-tier choke points ($\text{depth} \ge 2$).
+3. **Economics & Antitrust — Herfindahl-Hirschman Index (`HHI`) & Williamson Hold-Up:**
+   - **Supplier & Stewardship Concentration (`HHI`):** $\text{HHI} = \sum_i s_i^2$ on percentage shares ($0\text{–}10{,}000$; US DOJ/FTC & OECD Supply Chain Resilience Review 2025: $<1{,}500$ unconcentrated, $1{,}500\text{–}2{,}500$ moderate, $>2{,}500$ high), paired with top-1 concentration $\text{CR}_1$.
+   - **Transaction-Cost Hold-Up** (Williamson, *The Economic Institutions of Capitalism*, 1985): asset specificity + sole-source lock-in + $\text{TTR} > \text{TTS}$ + missing exit strategy gives suppliers structural bargaining power at renewal.
+4. **MBA / Corporate Strategy & Regulation — EU DORA Art. 11, 26 & 29:**
+   EU Digital Operational Resilience Act (in force Jan 2025; ESA critical ICT third-party oversight active 2025–2026; CRO Forum June 2026) mandates mapping Critical or Important Functions (CIFs), assessing ICT concentration and substitutability, documenting exit strategies (Art. 28/29), and proving recovery within impact tolerances via scenario drills rather than paper assertions (Art. 26).
+5. **Finance & Capital Allocation — Redundancy Payback & Expected Loss Avoidance:**
+   Evaluates annual expected disruption loss $p \times \text{BlastExposure}$ against `mitigationCost` to surface net annual benefit and ROI multiple without fabricating probabilities or FX conversions.
+6. **Political Science & Bargaining — External Veto Gatekeepers & Renewal Leverage:**
+   Connects sole-source vendor dependencies directly to `#/negotiations` (`RULE-RES-04`) and external `#/stakeholders` (Tsebelis veto players) so renewal prep accounts for real switching shortfalls before conceding commercial terms.
+7. **Mathematics & Statistics — Distribution-Free Split-Conformal Drill Calibration:**
+   Applies split-conformal prediction (`conformalBand` at 80% target coverage, finite-sample bound $\lceil (n+1)(1-\alpha)\rceil / (n+1)$, plus exact two-sided `ratioSignTest`) to `realizedTtrDays / estimatedTtrDays` across continuity drills and live incidents, strictly refusing quantiles below $n = 5$ paired observations.
+
+### 2026 competitive landscape benchmark
+
+| Category & 2026 Entrants | What they do well | Where they fall short for a manager | How LeadOS Session 45 Leapfrogs |
+|---|---|---|---|
+| **Enterprise Resilience Decision Systems (ERDS) & GRC** — Fusion Risk Management ERDS (Aug 2026), Archer, ServiceNow Operational Resilience, MetricStream | Map enterprise services, impact tolerances, and compliance registers for regulated financial institutions. | $100k+/yr enterprise deployments; disconnected from 1:1 coaching, team capacity, blameless cross-training delegations, and Cost-of-Delay decision timing. | Zero-setup local-first terminal connecting `TTS`/`TTR`/`REI` directly to People, Capacity, Delegations, Negotiations, Cases, and Decision Tempo (`RULE-RES-01..06` -> `RULE-DLY-03`). |
+| **TPRM & Sub-Tier Network Tools** — RiskLedger (2026), Vendorica, Prevalent, Bitsight | External vendor security ratings and Nth-party supplier graph discovery. | Blind to *internal* human Bus Factor, team capacity contention on surviving backups, and internal platform runbooks. | Unifies internal human stewards, systems, processes, and multi-tier vendors in one DAG with per-currency HHI and Williamson hold-up scoring. |
+| **Software Engineering Intelligence (SEI)** — Jellyfish (Oct 2026 AI Impact), Swarmia (Oct 2026), LinearB, Worklytics, Zoe Diagnostics | Git commit concentration, PR cycle times, and AI coding adoption telemetry ($15–$62/dev/mo SaaS). | Cloud surveillance model; equates commit volume with operational continuity and ignores vendor lock-in, financial blast exposure, and scenario drill calibration. | Strictly private, zero-network, blameless stewardship model with an explicit human verification firewall (`verifiedOn`) and conformal drill TTR calibration. |
+
+### Shipped in code (`app/core/domain/resilience.js`, `app/views/resilience.js`, Schema v29)
+
+- **Read-side signals (`RES-01..07`):** `RES-01` critical human SPOF (`busFactor <= 1`), `RES-02` unbuffered survival shortfall (`effectiveTtr > tts`), `RES-03` sub-tier / common-mode upstream choke point (EU DORA Art. 29), `RES-04` high vendor concentration (`HHI > threshold`) or high Williamson hold-up (`score >= 60`) near renewal, `RES-05` untested or stale continuity drills beyond `resilienceDrillDays`, `RES-06` optimistic recovery-time bias (`median realized/estimated TTR >= 1.25x` at $n \ge 5$), `RES-07` critical/important capabilities with unmeasured `TTS` or `TTR`.
+- **Post-commit cross-module rules (`RULE-RES-01..06`):**
+  - `RULE-RES-01`: maintains typed graph edges (`depends-on`, `stewards`, `impacts-goal`, `funds`, `negotiates`, `involves`, `consumes-capacity`) and refreshes `derivedDailyImpact` on $\ge 20\%$ linked drift.
+  - `RULE-RES-02`: critical non-vendor SPOF (`busFactor <= 1`) opens one blameless cross-training `Delegation` and queues a load-protection 1:1 talking point.
+  - `RULE-RES-03`: critical survival shortfall (`TTR > TTS`) opens one DACI continuity trade-off `Decision` which chains atomically into `decisionTempoRule` (`RULE-DLY-03`) in the same write.
+  - `RULE-RES-04`: high hold-up vendor appends renewal leverage warning to linked `Negotiation`.
+  - `RULE-RES-05`: breached continuity drill shifts underpinned `Goals` to `at-risk` and opens a linked remediation `Operational Case`.
+  - `RULE-RES-06`: completing a cross-training delegation records audit history without auto-fabricating `verifiedOn`.
+
+### Deliberately rejected
+
+- **Paper-backup Bus Factor inflation:** Unverified backups (`verifiedOn: null`) and `trainee` shadows remain `inTraining` and never raise Bus Factor.
+- **Auto-verifying backups on delegation completion:** Task completion is not proof of solo failover capability.
+- **Cross-currency summation:** HHI and REI stay strictly partitioned by ISO currency.
+- **Individual SPOF "risk grades" in performance reviews:** Being a sole steward is an org-design gap, never a performance penalty.
+
+---
+
+## 54. Coalition & Incentive War Room: computational political economy for a first-time leader (Session 46 — Schema v30, 2026-10-27)
+
+### The question no existing tool answers
+
+A first-time manager's hardest problem is not a dashboard — it is a *political* one: "Given who
+holds power and how everyone is incentivised, will my preferred outcome actually hold, and what
+do I say to the person who can block it?" This session hunted the 2026 market across
+decision-intelligence platforms, organisational-network-analysis (ONA) tools, AI-coaching
+products, and the academic state of the art in cooperative game theory and mechanism design, to
+find who answers it. None do — and the gap is structural, not incremental.
+
+### 2026 competitive landscape benchmark
+
+| Category & 2026 entrants | What they do well | Where they fall short for a manager | How LeadOS Session 46 leapfrogs |
+|---|---|---|---|
+| **Decision-intelligence platforms** — IBM Decision Intelligence (2026 Gartner MQ Leader / IDC MarketScape Leader), Aera Decision Cloud, Palantir Foundry/AIP, Quantexa, Tellius, Sisu/Pecan, Nected, Dot | Composite AI (rules + ML + GenAI), agentic orchestration, decision logs, explainability, governed "decision models from policy text". [IBM](https://www.ibm.com/products/decision-intelligence) · [bteanalytics/Aera-Palantir](https://bteanalytics.co/knowledge/what_are_the_best_decision_intelligence_platforms_in_2026_and_how_do_i_choose_one_for_my_team.php) · [getdot.ai 2026 list](https://www.getdot.ai/blog/decision-intelligence-software) · [Domo comparison](https://www.domo.com/learn/article/decision-intelligence-platforms) · [Neuroscale 2026](https://www.neuroscale.ai/blog/best-ai-decision-intelligence-platforms-2026) · [StartupStash Aera](https://startupstash.com/top-decision-intelligence-platforms/) | They reason over **warehouse/graph data and business rules** — not over the *power dynamics and incentives of a specific human decision*. Enterprise-priced, cloud, need data engineering; none compute a voting-power index or a Nash equilibrium for a leader's coalition. | Local-first, zero-setup, reasons over the leader's own stakeholder/payoff model with exact math, and **propagates the verdict into DACI decisions, delegations and 1:1s** — the human workflow, not just an analytic output. |
+| **Organisational Network Analysis (ONA)** — Worklytics, Microsoft Viva Insights, Humanyze, Time is Ltd. | Passive collaboration-graph mapping from M365/Slack/Google signals; centrality, AI-adoption analytics. [Worklytics 2026](https://www.worklytics.co/blog/best-organizational-network-analysis-tools) · [Microsoft Viva](https://learn.microsoft.com/en-us/viva/microsoft-viva-overview) | Maps who *talks* to whom; does **not** compute Banzhaf/Shapley-Shubik voting power, veto players, minimum winning coalitions, or which outcome is incentive-compatible. Survey/surveillance-adjacent, no coaching script. | A formal **weighted voting game** with exact power indices and Tsebelis veto-player theory, plus a mechanism-design transfer — opinionated math a first-time leader can act on. |
+| **AI leadership coaching / role-play** — BetterUp Grow, Skillsoft CAISY, Tough Tongue AI, Valence (Nadia), Coachello, Microsoft Copilot learning-agent role-plays (2026) | LLM conversation practice for difficult feedback/conflict, nudges in the flow of work, whole-person models. [Growthspace 2026](https://www.growthspace.com/blog/best-ai-leadership-coaching-platforms) · [Tough Tongue AI comparison](https://www.toughtongueai.com/blog/executive-coaching-llm-feedback-conversations-comparison/) · [Cloverleaf 2026](https://cloverleaf.me/blog/best-ai-coaching-platforms-for-managers-and-teams/) · [BetterUp Grow](https://www.betterup.com/products/betterup-ai-coaching) · [HR Digital Digest 2026](https://www.hrdigitaldigest.com/manager-coaching-ai-tools/) | Generate scripts generically; explicitly criticised for having **"no visibility into team dynamics, meeting context, or real conversation patterns"** and for being hard to measure. Cloud LLM, non-deterministic, no exact numbers. | The influence script is **deterministic and grounded in the computed equilibrium and power indices** for *this specific* conflict — auditable, testable, offline, and labelled as template generation, not an LLM. |
+| **Academic power-index & mechanism-design tooling** — `pouvoir-de-coalition` (Z3-verified Shapley-Shubik/Banzhaf, 2026), InfluenceNet (ML Banzhaf/Shapley prediction, 2025), adaptive-Banzhaf veto-distortion (2026), MIT/Duke/CMU game-theory courses, VCG/Clarke tax, revelation principle | Rigorous exact indices, formal verification, implementability theory. [InfluenceNet arXiv 2503.08381](https://arxiv.org/html/2503.08381v1) · [pouvoir-de-coalition GitHub](https://github.com/kaelag/pouvoir-de-coalition) · [adaptive Banzhaf 2026](https://jamie.tuckerfoltz.com/Papers/2026-07-PropensityBanzhaf/main.pdf) · [Shapley–Shubik](https://en.wikipedia.org/wiki/Shapley%E2%80%93Shubik_power_index) · [mechanism design](https://en.wikipedia.org/wiki/Mechanism_design) · [IC roadmap arXiv](https://arxiv.org/html/2402.12907v3) · [MIT 6.254](https://ocw.mit.edu/courses/6-254-game-theory-with-engineering-applications-spring-2010/) | Research code / pedagogy — no manager-facing product, no cross-module automation, no coaching script. A "Claude Nash Equilibrium skill" exists as an LLM prompt ([skillsdirectory](https://www.skillsdirectory.com/skills/deciqai-nash-equilibrium)), not a computational engine. | Ships the exact algorithms to a non-technical leader in a premium UI **and** wires them into an event-driven rules spine — the first product to do both. |
+
+### The gap, stated bluntly
+
+The best decision-intelligence platforms treat decisions as first-class *data objects* but not as
+*strategic games among people*. ONA maps networks but not formal voting power. AI coaches write
+scripts but without any model of team dynamics. Exact game theory and mechanism design exist only
+in academia. **No tool combines (a) exact cooperative power indices, (b) 2×2 Nash equilibria,
+(c) mechanism-design incentive alignment, (d) robustness-scored recommendations, (e) a
+deterministic influence script grounded in the analysis, and (f) atomic cross-module propagation
+that turns the analysis into decisions, delegations and 1:1 conversations.** Session 46 ships all
+six.
+
+### Frameworks implemented (named, not vague "best practice")
+
+- **Cooperative game theory:** Banzhaf power index (Banzhaf 1964; exact 2ⁿ coalitions),
+  Shapley–Shubik power index (Shapley & Shubik 1954; exact n! orderings), Riker minimum winning
+  coalitions (Riker 1962), Tsebelis veto players (Tsebelis 2002), dummy/dictator detection,
+  Penrose/Banzhaf power concentration (an HHI-style Σβ²), capped at n=8 for exact enumeration.
+- **Non-cooperative game theory:** pure & mixed Nash equilibria (Nash 1950), strictly dominant
+  strategies, Pareto efficiency, price of anarchy (Koutsoupias–Papadimitriou 1999;
+  Roughgarden–Tardos 2002), coordination loss / price of stability.
+- **Mechanism design:** minimal transfer for Nash incentive compatibility (Hurwicz 1960;
+  Myerson 1979; revelation principle, DSIC), with an explicit feasibility/headroom bound —
+  honestly scoped to a single-outcome transfer, NOT a full VCG mechanism.
+- **Decision quality:** an equilibrium robustness margin (distance to a best-response boundary)
+  combined with declared estimate confidence — confidence-weighted advice per the decision-
+  intelligence literature's emphasis on guardrails and human override.
+
+### Shipped in code (`app/core/domain/power.js`, `app/views/power.js`, Schema v30)
+
+- **Pure engine:** `computeBanzhafIndices`, `computeShapleyShubik`,
+  `minimumWinningCoalitions`, `analyzeVotingPower`, `solveNormalForm`, `incentiveAlignment`,
+  `equilibriumRobustness`, `powerConfidence`, `analyzePowerGame`, `buildInfluenceScript`,
+  `buildPowerBrief`, `buildPowerReport`, `powerSignals`, `powerRule`.
+- **Post-commit rules (`RULE-PWR-01..06`):** typed links + derived telemetry; blocked coalition
+  → one DACI decision (chained into Decision Tempo); misaligned target → one blameless delegation
+  + 1:1 talking point; coordination risk/fragility → one estimate-verification 1:1 prompt;
+  settlement → append-only calibration history; read-side signals + pause switch.
+- **Signals (`PWR-01..06`):** coalition blocked, misaligned target, no pure equilibrium, fragile
+  equilibrium, dummy ally, stale/low-confidence read.
+- **Integration:** `power` graph entity type, `powerGames` collection, v29→v30 additive
+  migration, `normalizePowerGames` repairs, `entityIdSetsForLinks`/`clearDemo` parity,
+  `reconstructStateAt` rewind, CSV scope #30 (counts only), 5-tab UI + `#/power/:id` dossier,
+  Today card, nav badge, Settings posture row.
+
+### Deliberately rejected
+
+- **LLM-generated strategy advice as the core:** non-deterministic, needs a network/backend
+  (violates local-first), untestable, fabricates numbers. A future *optional* on-device narrative
+  layer could sit on top, but the engine of record stays exact and auditable.
+- **Auto-syncing game stances from the stakeholder register:** situational estimates must never
+  be silently overwritten by a general register default ("never overwrite human inputs").
+- **Full N-player general-sum / VCG mechanism:** exact 2×2 + single-transfer scope is solvable,
+  explainable and useful to a novice; deferred to the roadmap.
+- **Heuristic power scores:** exact enumeration is cheap for n≤8 and defensible.
+- **Trusting game-theoretic outputs as predictions:** all payoffs are labelled as the leader's
+  estimates on an arbitrary scale; robustness/confidence bands are management conventions, not
+  statistical guarantees.
+
+## 55. Robust Strategy Lab — 2026-10-27 / Session 47
+
+### Fresh competitive hunt (web excerpts retrieved this session)
+
+- **Cloverpop** describes zero-code decision playbooks, living knowledge graphs and
+  asynchronous human/agent decision records. Benchmark: reasoned choices should flow
+  into a persistent decision, not a disconnected report.
+  [3](https://www.cloverpop.com/decision-intelligence-platform)
+- **Valence Nadia** markets personalised coaching at enterprise scale; its performance
+  page reports an observational association between heavy usage and performance-band
+  improvement. This is vendor evidence, not independently verified causality, and is
+  not a basis for scoring an employee in LeadOS.
+  [6](https://www.valence.co/performance-management)
+- **Lattice / Workday Peakon / BetterUp Grow:** fresh secondary-source inventory covers
+  performance/OKRs, sentiment-derived manager talking points, and hybrid AI/human
+  coaching. These are market-discovery leads, not hands-on product verification.
+  [1](https://hraitoolskit.com/articles/best-ai-performance-management-tools-2026/)
+  [2](https://www.boon-health.com/learn/resources/best-ai-coaching-platforms)
+- **Succession / predictive people analytics:** an independent buyer guide describes
+  Workday's predictive retention and succession positioning; competitor Engagedly
+  describes Lattice succession integrated with calibration. Product efficacy and
+  current availability [UNVERIFIED]; avoid treating individual forecasts as facts.
+  [7](https://www.viewpointanalysis.com/post/hr-ai-software-options-2026)
+  [8](https://engagedly.com/blog/best-succession-planning-softwares/)
+
+### Underused framework selected and implemented
+
+The US Climate Resilience Toolkit describes DMDU as seeking confidence in a decision
+rather than a particular model, using stress tests to find failure conditions.
+[4](https://toolkit.climate.gov/course-lesson/decision-making-under-deep-uncertainty)
+A 2025 framework comparison distinguishes robustness metrics (satisficing/regret)
+from vulnerability/scenario-discovery analysis.
+[2](https://www.sciencedirect.com/science/article/pii/S1462901125002412)
+
+**Gap:** the existing War Room computed nominal equilibria and one nominal concession,
+plus a heuristic fragility score. It did not test whether the same concession remained
+feasible under a leader-declared uncertainty set, or expose opposing robust criteria.
+**Choice:** extend the existing model and propagation rather than add another register.
+No claim that LeadOS is first in the market; no paid competitor hands-on evaluation.
+
+**Implementation:** independent additive ±d bounds on all eight payoff values, without
+clipping, no sampling and no probability distribution. With leader target slack L and
+counterparty slack R, a fixed nonnegative target-only transfer requires
+`max(0, -R + 2d) <= t <= L - 2d`. Its feasibility break point is
+`min(L/2, (L+R)/4)` when nominally feasible. Target Nash guarantee requires
+`min(L,R) >= 2d`. Savage pure-strategy worst regret is the largest alternative-row
+advantage under the same response plus `2d`, floored at zero. Wald security is the
+row's minimum payoff minus `d`. A separate fixed-electorate stress test flips each
+non-opposed stakeholder to opposition. These are conditional model guarantees, not
+confidence intervals, calibrated probabilities or predictions of human behaviour.
+
+**Converted into shipped automation:** stress failure enters derived verdicts and
+PWR-07 insights, extends RULE-PWR-02 DACI creation and RULE-PWR-04 owner verification,
+and changes influence scripts and exported briefs. Exact box formulas independently
+checked against every corner for 40 deterministic matrices × four target cells.
+
+**New backlog:** correlated uncertainty, mixed-policy minimax, adaptive signposts and
+explicit non-transferable-utility safeguards. **Rejected:** pass-rate probabilities,
+inferred uncertainty magnitudes, automatic concessions and personnel ratings.
+
+---
+
+## 56. Influence Network Intelligence — surveillance-free ONA from the leader's own records (Session 48, 2026-10-27)
+
+**Fresh competitive hunt (2026-10-27, first time these sources inform a session).**
+The 2026 people-analytics / decision-intelligence market has converged on
+"predictive + prescriptive + explainable", but the organisational-network half
+is either surveillance-based or cloud/enterprise-priced:
+
+- **SAS Intelligent Decisioning** (IDC MarketScape press release, 2026-09-01,
+  https://www.sas.com/en_in/news/press-releases/2026/september/intelligent-decisioning-idc-marketscape.html)
+  explicitly sells a *hybrid* of deterministic rules + predictive/prescriptive
+  analytics + GenAI in ONE governed flow, with data-to-decision lineage,
+  versioned audit trails and model cards (bias/sensitivity). This is the
+  strongest benchmark for "explainable, auditable, defensible" hybrid
+  decisioning — and exactly the posture LeadOS's post-commit rules spine
+  (ADR-0008) already embodies, now extended to structural graph decisions.
+- **AI-native people analytics platform guides** (Knowlee 2026 buyer's guide,
+  https://www.knowlee.ai/blog/people-analytics-platform-guide; Workhuman 13
+  best tools 2026, https://www.workhuman.com/blog/people-analytics-software/;
+  Windmill/One Model/Visier/ChartHop comparison,
+  https://gowindmill.com/resources/lists/top-ai-people-analytics-tools-early-stage-companies/)
+  describe Workday People Analytics (Illuminate AI, Skills Cloud), SAP
+  SuccessFactors (Joule + Talent Intelligence Hub), Visier (Vee NL queries,
+  25,000+ orgs, prescriptive analytics), ChartHop (live org model), One Model
+  (explainable predictive modeling) and **Windmill**, which builds ONA "from
+  work tools/conversations". Phenom acquired Included (agentic people
+  analytics) in 2026. **Gap:** these infer networks from communication
+  telemetry or require a cloud data warehouse; none is a free, instant,
+  local-first tool a first-time leader can use without HRIS integration.
+- **State of People Analytics 2026** (PeoplePilot, 2026-10-01,
+  https://www.peoplepilot.io/blog/state-of-people-analytics-2026) reports a
+  demand/deployment gap: manager-effectiveness analytics wanted by 70%+ but
+  deployed by ~20%; predictive attrition 75%/~25%; engagement→outcome 60%/~15%.
+  Betterworks/SHRM 2026 (https://www.betterworks.com/magazine/how-ai-is-transforming-hr-the-future-of-people-analytics)
+  found 87% of CHROs forecast greater AI adoption but most orgs use AI for
+  isolated tasks rather than an integrated predictive intelligence layer.
+- **Analytical-rigor sources** (AIHR Institute worked precision/recall example,
+  https://www.aihr-institute.com/people-analytics-in-2026-from-reporting-dashboards-to-predictive-workforce-models;
+  PlotStudio, https://www.plotstudio.ai/articles/predictive-analytics-platform;
+  Pecan/DataRobot, https://www.pecan.ai/blog/predictive-analytics-tools/;
+  Neuroscale decision-intelligence comparison,
+  https://www.neuroscale.ai/blog/best-ai-decision-intelligence-platforms-2026;
+  BTE Analytics, https://bteanalytics.co/knowledge/what_are_the_best_decision_intelligence_platforms_in_2026_and_how_do_i_choose_one_for_my_team.php;
+  Viewpoint Analysis, https://www.viewpointanalysis.com/post/hr-ai-software-options-2026)
+  all stress time-based validation, calibration, subgroup performance, feature
+  contributions for explainability (EU AI Act), and a red flag on "a single
+  accuracy number without validation context". Palantir/Aera/Infoveave are
+  priced $250K–multi-million per year.
+
+**Honest positioning.** No claim that LeadOS is first to market, and no paid
+competitor was evaluated hands-on (secondary sources only, [UNVERIFIED] beyond
+the cited pages). LeadOS does NOT do predictive attrition, sentiment inference,
+or communications surveillance — it cannot (and should not) without violating
+its local-first/privacy premise. What it CAN do, that the enterprise tools do
+not offer a first-time manager for free, is compute **exact, reproducible
+network structure from records the leader already owns** and fuse it with the
+succession/continuity Bus Factor the app already models.
+
+**Frameworks converted to code this session (`app/core/domain/orgNetwork.js`).**
+
+- **Newman (2001) / Latapy–Magnien–Del Vecchio (2008) bipartite co-affiliation
+  projection:** people are linked when they co-appear in a shared work context
+  (case, decision, delegation, goal, change, negotiation, dependency, war-room
+  game, typed link). Edge weight = number of distinct shared contexts. No
+  self-edges; confidential conflict/pulse endpoints are excluded (privacy).
+- **Relative strong-tie backbone (this session's modelling choice):** raw
+  co-affiliation over many contexts tends toward a complete graph that hides
+  structure. A tie must be at least `networkTiePct`% (default 50) as strong as
+  the strongest tie. This is a leader-configurable *visualisation threshold*,
+  not fabricated data; `networkTiePct = 0` shows every real tie. Documented as
+  a management convention, not a statistical law.
+- **Freeman (1978/1979) degree & betweenness centralization; Brandes (2001)
+  betweenness** (O(V·E), normalised by (n-1)(n-2)/2); **Wasserman–Faust
+  normalised closeness** for disconnected graphs; **Page/Brin/Motwani/Winograd
+  (1999) weighted PageRank** (damped power iteration) as "influence";
+  **Watts–Strogatz (1998) weighted local clustering**; **Burt (1992) network
+  constraint** c_ij = (p_ij + Σ_q p_iq·p_qj)² for structural holes (low
+  constraint = brokerage); **Tarjan articulation points & bridges** (single
+  points of connection); **Latora–Marchiori (2001) global efficiency**
+  (Σ 1/shortest-path over all pairs) for the **node-removal key-person stress
+  test** — a deterministic what-if on the recorded graph, not a prediction.
+- **Simchi-Levi continuity Bus Factor fusion (extends §53):** a structural
+  key-person is a load-bearing broker who is ALSO the primary steward of
+  operational dependencies without a verified backup. This fuses network
+  science with the resilience ledger already shipped in Session 45.
+
+**Converted into shipped automation.** `RULE-ORG-01..05` run inside the store
+transaction (ADR-0008) on a network scan or any event declaring
+`rules:['network']`: they reconcile typed person↔person collaboration links
+(01), open a blameless cross-training delegation + 1:1 prompt for a structural
+key-person (02), open a DACI org-design decision for a fragmented team (03),
+and queue blameless 1:1 check-ins for isolates (04) and over-loaded brokers
+(05) — with idempotent markers and self-cleaning prompts. Read-side
+`ORG-01..05` signals feed `buildInsights`, the Today triage card and the nav
+badge continuously. CSV scope #31 exports only dimensionless scores and
+integer counts keyed by an opaque node index — no names, titles or free text.
+All findings are blameless: a structural position is a fact about the recorded
+work graph, never a rating of a person.
+
+**Deliberately rejected (recorded, not silently dropped).** Predictive attrition
+or turnover probability, sentiment/emotion inference, reading email/chat/
+calendar telemetry, scoring/ranking employees, inferring tie strength from job
+titles, and any claim that these centralities predict behaviour or performance.
+Below `ORG_MIN_TEAM = 2` active people the network is reported as unmeasurable,
+counts-only, never a fabricated zero. "Parallel propagation" = multi-target
+fan-out in one atomic transaction, not CPU parallelism.
+
+**Verification.** `tests/app/org-network.test.mjs`: exact Brandes/Freeman on
+path/star/complete graphs, PageRank summing to 1, Burt constraint 1/k on a
+star, Tarjan bridges, node-removal efficiency loss, purity (no state mutation),
+idempotent atomic fan-out, pause semantics, self-cleaning prompts, CSV
+data-minimisation (no leaked names), and JSDOM+axe across all five tabs.
+Full-gate results in the session log.
+
+---
+
+## 57. The Impact Ledger — pre-registered, placebo-checked evaluation of a leader's own interventions (Session 49, 2026-10-27)
+
+### 57.1 The market gap, restated with 2026 evidence
+
+The people-analytics market in 2026 remains arranged around **describing** and
+**predicting**, not around **testing**. Three observations, each drawn from
+sources read this session:
+
+1. **Practitioner roadmaps still stop at "pilot a predictive model."** The 2026
+   people-analytics guides describe four maturity levels — descriptive,
+   diagnostic, predictive, prescriptive — and place causal evaluation, if they
+   place it at all, in a footnote: *"test interventions using A/B or
+   quasi-experimental designs"* (MIHCM, *Predictive HR analytics: ultimate
+   guide 2026*, Jan 2026). The measurement advice is real; the product that
+   executes it is not.
+2. **The research literature says the missing ingredient is causal evidence.**
+   A July 2026 review in *IJRSI* closes by naming what people analytics needs
+   next: *"firmer theory, causal evidence rather than correlational snapshots,
+   governance frameworks built for algorithmic and AI-enabled HRM, and more
+   attention to how employees themselves experience being analysed."* That is a
+   near-exact description of what no HRIS ships.
+3. **The CIPD's evidence-based-HR guidance states the three conditions for a
+   causal claim explicitly** — association, temporality, and no other
+   explanation (a counterfactual) — and notes that only an RCT or before-after
+   design gives the third. Practitioners are told this; nothing in their tools
+   enforces it.
+
+Meanwhile the *effect sizes* tell you why tooling matters. Leader-targeted
+stress-management interventions pool at **g ≈ 0.13–0.18** across 21–25 studies
+(*SJWEH*, 2025); workplace interventions to improve work ability pool at
+**0.12** (2018); work-engagement interventions at **g ≈ 0.29**; even coaching,
+the best-supported practice, pools at **g ≈ 0.59** with acknowledged publication
+bias (*Academy of Management Learning & Education*, 39 RCTs, n = 2,528). A
+leadership intervention that genuinely works moves a weekly metric by something
+like **a fifth of a standard deviation**. A four-week before/after comparison on
+a noisy cadence metric has almost no chance of seeing that — which is precisely
+why dashboards report "engagement is up 4%" and nobody can say whether the
+intervention caused it.
+
+### 57.2 What the ledger does about it
+
+**Reconstruction without new telemetry.** `app/core/domain/vitals.js` rebuilds
+twelve weekly metrics from dated fields the leader already typed —
+`delegatedOn`/`completedOn`, `observedOn`/`date`, `openedOn`/`resolvedOn`,
+`decidedOn`, 1:1 `date` + `mood`, pulse responses, recognition dates. Three rules
+keep it honest, and each is a test:
+
+- **A bucket with no observation is `null`, never `0`.** The chart draws a gap.
+- **A closed record with no close date is excluded and counted in `undated`,
+  never interpolated.** Interpolating would manufacture the very quantity being
+  measured (cycle time).
+- **A metric whose underlying record does not reach back far enough is trimmed
+  at its coverage frontier**, so a young 1:1 log cannot render fifteen weeks of
+  imaginary zeroes. If the log has *no* records of that kind at all, the series
+  is empty with a reason rather than twenty-two confident zeroes.
+
+**Pre-registration as a database constraint, not a promise.** A study records
+the metric, the direction, the intervention date, the baseline length, the
+window, α and optionally a magnitude and confidence. `declaredOn` is stamped by
+the action and never supplied by the caller, so the grade is *derived*:
+`declaredOn ≤ windowStart` → **confirmatory**; otherwise **retrospective**.
+Once the window closes, the predictive fields are rejected by
+`updateImpactStudy` with an error; once the study is scored, the evaluation is
+frozen and `buildImpactReport` reports the frozen copy rather than recomputing
+it. A result that drifts when an unrelated record changes is not a result.
+
+**Inference that can fail loudly.** A segmented interrupted time series
+`y = b0 + b1·u + b2·post + b3·u·post` with **Newey–West HAC** errors (Bartlett
+kernel, bandwidth `⌊4(n/100)^(2/9)⌋`) because weekly cadence is serially
+correlated. Missing periods are **skipped, not zero-filled** — the model is
+fitted on observed periods at their true position on the time axis, which is
+standard unbalanced-panel practice and measurably changes the answer
+(substituting a zero biased a noiseless step from 5.00 to 5.29 and inflated the
+standard error from 0 to 0.51).
+
+Then four honesty devices:
+
+- **Minimum detectable effect.** `MDE = (z_α/2 + 0.8416) · SE(b2)` in the
+  metric's own units. A result smaller than its own MDE is reported as
+  **underpowered**, not as a null finding — the single most common error in
+  corporate before/after reporting.
+- **In-space placebo (Abadie-style).** Every other vital that is fully measured
+  on the same grid is treated in turn; the treated effect is ranked against
+  those placebo effects. The code reports the **finest attainable p**
+  (`1/(K+1)`) and refuses to use the test as a gate when that floor is above α.
+  A rank test that cannot reject must not be allowed to "pass".
+- **In-time placebo.** Fake interruption dates inside the pre-period produce a
+  distribution of t-statistics; a study whose real t is ordinary for that
+  distribution is not evidence.
+- **Breakdown trend (Rambachan–Roth style).** How large a differential trend,
+  sustained across the post-period, would reproduce the whole estimate — stated
+  as a percentage of baseline per week, and flagged *fragile* below 5%.
+
+**A pre-intervention power planner** (`designPower`) uses the metric's own
+moving-range noise (σ̂ = mean|Δ|/1.128, the I-MR estimator, so a trend does not
+inflate it) and the design matrix implied by the chosen pre/post weeks, and
+returns the smallest level shift the design could detect — before any
+post-period exists. The declare dialog runs it live and tells the leader when
+their intended effect is below their instrument's resolution. This is the
+calculation the DiD literature reports is almost never done, and it converts
+into a shipped feature here: with 8 pre and 4 post weeks, feedback cadence in
+the demo workspace has MDE ≈ 0.91 per-person notes and a predicted effect of
+0.30 — the tool says, in the dialog, *this study cannot see what you are hoping
+for*.
+
+### 57.3 Cross-module propagation (verified, not asserted)
+
+`RULE-IMP-01..06` run on the ADR-0008 spine before `decisionTempoRule`, in one
+store transaction, idempotently. A measured trace on the demo workspace:
+
+- Lock *Weekly feedback ritual* (verdict **supported**, estimate 0.618, MDE
+  0.244) → **1 DACI decision** ("Scale or protect: Weekly feedback ritual",
+  4 options), **2 typed links** (`impact →decides→ decision`,
+  `replication →replicates→ original`), **6 audited events**; a replication
+  study is proposed automatically (one positive result is an anecdote with a
+  p-value).
+- Lock *Ritual makes feedback more timely* (verdict **not-supported**, estimate
+  2.99 days worse, MDE 1.11) → **1 DACI stop/redesign decision**, no
+  replication, no congratulation.
+- `scanImpact()` immediately afterwards → `changed: false`, zero duplicate
+  artifacts.
+
+Both studies were declared **before** the same intervention date, which is the
+point: one intervention, two metrics, one supported and one contradicted, and a
+single-line dashboard could never have told you that.
+
+### 57.4 Deliberately rejected
+
+Causal-claim inflation (no "impact achieved" language anywhere in the surface),
+synthetic-control donor weighting fitted on the pre-period (a fitted donor pool
+can always be made to look convincing; the shipped composite is equal-weight and
+deliberately unfitted), any use of the ledger to rate people rather than
+interventions, backdating a declaration to manufacture a confirmatory grade, and
+rescoring a locked study.
+
+### 57.5 Verification
+
+`tests/app/impact.test.mjs` (56 tests): exact OLS/Neyman–Scott recovery,
+segmented-ITS coefficient recovery, HAC behaviour, MDE arithmetic, gap-skipping
+versus zero-substitution, coverage trimming, empty-history honesty, both placebo
+families including the resolution floor, every gate that can downgrade a verdict,
+the pre-registration firewall (frozen evaluation, refused post-window edits,
+refused rescoring), atomic idempotent fan-out with pause semantics, Schema v31
+normalisation and migration, signals, CSV data minimisation, and JSDOM + axe
+across all five tabs plus the empty state and the route/nav/badge/title wiring.
+Full gate: **754/754**.
+
+---
+
+## 58. Stakeholder communication drafts with a closure ledger (Session 50, 2026-10-27)
+
+### 58.1 The market gap, restated
+
+AI status-report tools in 2026 draft stakeholder updates from live project data. Asana's Status
+Reporter drafts "stakeholder-ready summaries from live data" [1]. Atlassian Rovo turns recent
+activity into "a structured draft status update" [2]. Microsoft Planner's agent generates reports
+with audience and tone controls [3]. Practitioner guidance says the same data should produce
+different versions for different audiences, and that a person checks each draft before it goes
+out [4]. The drafting half of the problem is well served.
+
+The incident-management half asks for something the drafting tools do not model. ITIL 4 guidance
+says that when stakeholders were told about an incident, its closure should be communicated to
+them too [5]. Incident guidance also says updates should run on a fixed schedule, because silence is read as
+"things getting worse" [6], and that a communications lead should own each message [7]. No snippet read this session describes a record
+of *who was actually told what*, a closure duty derived from that record, or the withdrawal of
+approved text when the facts beneath it change. These claims rest on search snippets and are
+**[UNVERIFIED]** against hands-on product trials.
+
+### 58.2 What LeadOS does about it
+
+`RULE-COMMS-01..04` (ADR-0016) generate drafts only from fields recorded on the case. Missing
+fields are shown as explicit gaps and gate approval. A sent brief creates a closure duty, and an
+unsent brief is withdrawn when the case closes. Reopening withdraws the closure note. A changed
+approved text withdraws its approval. Nothing is sent by the app. The design takes the
+"never invent progress, dates or percentages" rule that practitioner status-report guidance
+states [8], and makes it a property of the code path.
+
+### 58.3 Deliberately rejected
+
+- **Auto-send through email or chat.** Adds egress and a credential surface, against ADR-0006.
+- **LLM prose.** A line-by-line audit of a template is possible. A model's prose needs a
+  faithfulness check the repository does not have.
+
+### 58.4 Verification
+
+`tests/app/comms.test.mjs` (22 tests): audience selection, fact-only rendering with gaps and
+readiness, cascade through the real store, content-addressed idempotence, supersession and
+re-approval, the approval and dismissal gates, closed-loop closure after a logged touch, closure
+only for the briefed, reopen withdrawal, closure via a plain status edit, the non-case guard, the
+v31→v32 migration and normalizer repairs, signals, the demo seed, and JSDOM + axe over the outbox
+tabs. Full gate: **776/776**.
+
+### 58.5 Sources
+
+1. Asana Status Reporter, AI-generated stakeholder summaries: https://pmtoolscout.com/best/ai-pm-tools-status-reports.mdx/
+2. Atlassian, *Create status updates with Rovo*: https://support.atlassian.com/platform-experiences/docs/create-project-updates-with-rovo/
+3. Microsoft Planner Agent, AI-generated status reports with audience and tone controls: https://m365admin.handsontek.net/microsoft-planner-ai-generated-status-reports-planner-agent/
+4. Justin McKelvey, *AI for Project Managers* (one data source, several audience versions; human check before sending): https://justinmckelvey.com/blog/ai-for-project-managers
+5. AXELOS, *ITIL 4 Practice Guide: Incident Management* (closure communicated to stakeholders previously informed): https://s3.amazonaws.com/thinkific/file_uploads/381835/attachments/aba/2cf/226/Incident-management.pdf
+6. IT DevTech, *IT Major Incident Management: A Practical 2025 Guide* (fixed-schedule updates; silence read as worsening): https://itdevtech.com/blog/it-major-incident-management-process-guide
+7. Rootly, *Incident communication plans* (a communications lead owns every message; updates on a fixed cadence): https://rootly.com/incident-response/communication
+8. AI Agents Library, *Project Status Report skill* (never invent progress, percentages or dates): https://www.aiagentslibrary.com/skills/project-status-report/
+
+
+
+## 2026-10-27 — New hunt: decision-network assurance, not black-box action
+
+Fresh web-search findings (vendor statements, not independently validated product tests):
+
+- **Aera** describes a Decision Intelligence Network capturing context and outcomes, with
+  Workspaces and agents spanning structured and situational decisions.
+  [6](https://www.aeratechnology.com/blogs/the-next-chapter-of-aera-empowering-enterprises-with-people-centric-decision-intelligence/)
+- **Orgvue**, 6 October 2026, describes a WebMCP interface with visible agent interactions and
+  auditable/reversible human control points for workforce modeling.
+  [9](https://www.orgvue.com/news/orgvue-accelerates-ai-powered-workforce-design-with-innovative-webmcp-interface/)
+- **Culture Amp AI Coach in Performance** explicitly excludes final performance ratings and
+  fully automatic reviews. That is a useful human-authority boundary, not a reason to disguise
+  deterministic text as generative coaching.
+  [4](https://support.cultureamp.com/en/articles/12331162-ai-coach-in-performance)
+- **Betterworks** describes skills inferred from goals, outcomes, feedback and 1:1s with manager
+  verification. Treat competitor comparisons as vendor claims, especially privacy comparisons.
+  [3](https://www.betterworks.com/magazine/why-growing-companies-switch-from-lattice-to-betterworks)
+
+Conversion to shipped code this session: transactional savepoints (database failure isolation,
+implemented without a database), buffered publication of success audit events, disposable
+production-rule rehearsal, a per-rule write trace, and BFS shortest evidence trails over the
+existing typed graph. This is an automation-assurance capability, not probabilistic prediction,
+LLM reasoning or proof that LeadOS is unique in the market.
+
+Underused framework pursued: **transaction savepoints + graph provenance** as a manager-facing
+control surface. Rule-level failure containment protects fan-out integrity while preserving the
+source action and earlier successful effects. BFS establishes reachability, not causality.
+
+New ideas: historical event sourcing with frozen rule versions; preconditioned repair plans;
+worker-backed rehearsal; regression fixtures automatically generated from approved real-world
+case snapshots with privacy redaction. Rejected: causal risk percentages from generic links,
+automatic repair deletion, covert employee monitoring, and bypassing approval to send drafts.
+
+Research limit: tools were searched and primary vendor excerpts reviewed, not logged into or
+benchmarked hands-on. Earlier research sections were not all re-verified this session.
+
+## 59. The Allocation Governor — explore/exploit learning over a leader's own settled evidence (Session 51, 2026-10-27)
+
+### Fresh market hunt, retrieved 2026-10-27 (search snippets; hands-on status [UNVERIFIED])
+
+The October-2026 landscape for leadership/decision tooling clusters into four camps, none of
+which runs a learning allocation policy over a single leader's own records:
+
+- **Copilots over existing systems.** Microsoft 365 Copilot and Dynamics 365 Copilot summarise
+  meetings, draft documents and surface ERP context in natural language; Workday refactored
+  around Illuminate (generative assistant + retention-risk and succession prediction) after
+  acquiring HiredScore, Evisort, Paradox and Sana, with a Skills Ontology Engine launched
+  2026-07-02. SAP pairs Joule with a Talent Intelligence Hub. Strength: zero migration.
+  Weakness for our gap: they retrieve and draft; they do not *learn an allocation policy*.
+  ([viewpointanalysis.com HR AI buyer guide](https://www.viewpointanalysis.com/post/hr-ai-software-options-2026),
+  [hrleadershipweekly.com HR analytics 2026](https://hrleadershipweekly.com/hr-analytics-2026-descriptive-predictive-prescriptive/))
+- **People-analytics platforms going agentic.** Visier (Vee natural-language workforce
+  analysis; retention risk, scenario modelling), One Model ("One AI" auto-selects predictive
+  models and traces forecasts to source rows), ChartHop (live org model), Windmill (ONA from
+  work tools). Phenom acquired Included in 2026 to assemble an "agentic people analytics"
+  stack; Beamery shipped an agent ("Ray"). Predictive attrition at 75–85% claimed accuracy is
+  the mature use case. All are org-scale, cloud, and trained across customers/workforce
+  records — the opposite data posture from LeadOS.
+  ([knowlee.ai 2026 buyer's guide](https://www.knowlee.ai/blog/people-analytics-platform-guide),
+  [zapier.com predictive analytics 2026](https://zapier.com/blog/predictive-analytics-software/),
+  [gowindmill.com people analytics tools](https://gowindmill.com/resources/lists/top-ai-people-analytics-tools-early-stage-companies/))
+- **Decision-intelligence surfaces.** Dot (narrative answers from the warehouse into
+  Slack/Teams), ThoughtSpot/Tellius (conversational analytics), Tableau+Agentforce, IBM
+  watsonx/OpenScale with audit trails for regulated industries, Taktile/Nected/FICO/Pega for
+  operational decisioning. These explain business data; none measures a *manager's funding
+  behaviour* or learns what their team's work returned.
+  ([getdot.ai decision intelligence 2026](https://www.getdot.ai/blog/decision-intelligence-software),
+  [viewpointanalysis.com decision intelligence options](https://www.viewpointanalysis.com/post/decision-intelligence-software-options-2026))
+- **Regulatory gravity.** The EU AI Act classifies workforce-decision AI as high-risk (Annex
+  III); 2026 RFPs now default-require audit trails for predictions about hiring, promotion and
+  termination. This validates LeadOS's standing architecture: deterministic rules, append-only
+  event log, typed provenance, every number traceable to a record the leader wrote — and it is
+  a further argument against shipping black-box scores. ([knowlee.ai](https://www.knowlee.ai/blog/people-analytics-platform-guide))
+
+**The gap LeadOS takes:** allocation is the highest-frequency strategic decision a front-line
+leader makes (where does the next person-day go?), and every surveyed tool leaves it to
+intuition plus a static ranked list. A governor that (a) measures the explore/exploit mix of
+*actual funding behaviour*, (b) learns per-horizon returns from *settled* evidence, and
+(c) forces the rebalancing decision — locally, deterministically, auditably — has no direct
+analogue in the surveyed set [UNVERIFIED beyond search coverage].
+
+### Frameworks applied, named
+
+- **March (1991), "Exploration and Exploitation in Organizational Learning"** (Organization
+  Science): returns to exploitation are more certain and proximate, so adaptive organisations
+  systematically under-explore; exploitation "drives out" exploration (success trap / competency
+  trap). Design consequence: the Governor measures the exploratory share of *funded effort over
+  time* (behaviour), not the count of "innovative" items on a list, and treats a sustained
+  shortfall as an event requiring an owned decision.
+- **Nagji & Tuff (2012), "Managing Your Innovation Portfolio"** (HBR) / McKinsey Three
+  Horizons: total innovation returns correlate with maintaining roughly 70% core / 20% adjacent /
+  10% transformational allocation. Design consequence: horizons on every funded item and a
+  default 10% exploration floor — presented as a leadership convention to be owned and changed
+  explicitly (lowering it is one of the rebalancing decision's four options), never as a law.
+- **Auer, Cesa-Bianchi & Fischer (2002) UCB1** (Machine Learning): choose the arm maximising
+  mean reward + √(2·ln T / n); optimism in the face of uncertainty yields logarithmic regret
+  without priors. LeadOS scales the bonus by the pooled robust dispersion (1.4826·MAD) so the
+  bonus is denominated in the same units as the reward and cannot explode on tiny samples. The
+  n=5 counts-only floor is stricter than textbook UCB (which needs n≥1) — deliberately, to
+  match the house evidence standard (conformal bands, k-anonymity floors) over statistical
+  minimalism. Empirical support that this is how good allocators actually behave: UCB variants
+  best fit real lab resource-allocation decisions (Zhuo, 2025, "Navigating the
+  Exploitation-Exploration Tradeoff") — the terminal therefore formalises expert behaviour
+  rather than replacing judgement with an alien optimiser.
+  ([en.wikipedia.org/wiki/Multi-armed_bandit](https://en.wikipedia.org/wiki/Multi-armed_bandit),
+  [ranzhuo17.github.io ExploitExplore 2025](https://ranzhuo17.github.io/files/ExploitExplore_Sept2025.pdf))
+- **Gittins index (1979) — considered and rejected.** Optimal index policy for discounted
+  bandits, but it requires a known reward family and a discount factor; a first-time leader
+  cannot supply either, and an unauditable index would violate the traceability invariant.
+  Recorded as a deliberate rejection in ADR-0017.
+  ([fasterthannormal.co explore-exploit](https://fasterthannormal.co/mental-models/explore-exploit-tradeoff))
+
+### Design consequences and boundaries
+
+Rewards are **recorded actuals only** (`actualValue ÷ actualEffortDays`); a settlement without
+actuals is excluded and escalated as an evidence debt (RULE-ALLOC-03), never zero-filled —
+zero-filling would teach the arms that unmeasured work is worthless, the exact bias March
+warns about. Arms are segmented by currency (no FX fiction). The floor measures *chosen*
+funding: capacity reserves created from incidents are excluded, because an obligation is not
+an allocation choice. The rebalancing decision is the only automatic artefact; funding itself
+stays a human DACI call, priced by Decision Tempo. **Rejected this session:** time-decayed /
+discounted UCB (needs enough settled history to detect non-stationarity; listed as a second
+pass), Thompson sampling (randomised recommendations cannot be rehearsal-tested
+deterministically and read as caprice to a first-time leader), contextual bandits (feature
+vectors per item would be invented metadata), and inferring horizons from item kinds.
+
+### Research limit
+
+Vendor claims above come from search excerpts and secondary buyer guides retrieved this
+session, not hands-on trials; treat named-product capability claims as [UNVERIFIED]. The
+framework citations (March 1991; Nagji & Tuff 2012; Auer et al. 2002; Gittins 1979) are the
+load-bearing sources; the 70/20/10 split and the 10% floor are reported correlations and
+management conventions, not constants validated on a single team — the UI says so.
+
+---
+
+## 60. The Cognitive Load & Attention Governor — measured saturation on a role, queueing theory instead of surveillance (Session 52, 2026-10-27)
+
+### The gap
+
+Every LeadOS engine before this one priced *work* — effort, delay, funding,
+resilience, learning return. None measured the person-side constraint that
+decides whether any plan survives contact with the week: finite cognitive
+capacity. The fresh 2026 hunt found two product categories adjacent to the
+gap, neither of which closes it.
+
+**Workload/resource management (the heatmap category).** Toggl 2.0
+(toggl.com, 2026-08-17 refresh), Float, Asana workload, Teamwork's AI Smart
+Scheduler and Utilization Summaries (teamwork.com, 2026-10-14), Productive
+(productive.io capacity metrics), plus Runn, Smartsheet and Visier/One Model
+in people analytics. The common shape: booked-hour heatmaps, drag-and-drop
+rebalancing, predictive what-if scheduling in the cloud. What they measure
+is *time entered against tasks*, not cognitive load; none separates
+intrinsic from extraneous or germane load, none models the queueing damage
+of near-saturation, and none runs deterministic governance rules over a
+single leader's own on-device records. Productive's action convention
+(>2 overbooked weeks in 12 for a team, or one person overbooked three weeks
+running, before extra hours are approved) is the closest thing to a
+threshold policy found; it is adopted as inspiration for the leader-owned
+policy dial, labelled a convention, not a validated constant.
+
+**Surveillance-derived collaboration analytics.** Microsoft Viva Insights
+uses email, meeting and calendar signals and applies minimum-group sizes —
+an implicit admission that the underlying data is sensitive and
+identifying. The 2026 ONA/collaboration vendors (covered in §56) inherit
+the same model: infer load from communication metadata. LeadOS's ADR-0006
+boundary forbids the backend and the telemetry; more importantly, message
+volume is not attention consumed. No surveyed product offers a
+surveillance-free, queueing-aware, per-role saturation governor with
+auditable rules. Vendor claims here rest on search excerpts and buyer
+guides retrieved this session, not hands-on trials: **[UNVERIFIED]**.
+
+### The framework chain, and what each piece became in code
+
+- **Sweller's cognitive load theory (1988 onward).** Three load types —
+  intrinsic (the work itself), extraneous (how the work is organised;
+  switching, coordination, stewardship), germane (schema-building learning).
+  Became the four-component index: utilization (intrinsic, weight 0.40),
+  WIP switching (extraneous, 0.25), coordination (extraneous, 0.20),
+  commitments (extraneous, 0.15), with germane load *excluded from the
+  score* and protected instead by `RULE-LOAD-04`. Weights are exported
+  constants shown in the policy tab; there is no hidden model.
+- **Skelton & Pais, Team Topologies (2019; 2nd edition September 2025).** A
+  team fails when responsibility exceeds cognitive capacity; split on load,
+  not headcount; team size 5–9; interaction modes should be explicit.
+  Became the band vocabulary (headroom / managed / elevated / saturated /
+  overloaded), the per-role (never per-person-rating) framing stated on
+  every surface, and the Brooks `n(n−1)/2` channel count on the team panel.
+  The 80% saturation default and the "load on a role, not a score of the
+  human" stance are Team Topologies-flavoured conventions, marked as such in
+  the UI. See [martinfowler.com TeamTopologies bliki](https://martinfowler.com/bliki/TeamTopologies.html).
+- **Little's Law (`L = λW`) and Kingman's formula (1961).** Congestion is
+  non-linear near saturation: expected wait ≈ `(ρ/(1−ρ))·c·cycle`, so the
+  marginal thread at ρ=0.99 costs far more than at ρ=0.7. Became the
+  per-person queue tab: measured throughput from recorded completions,
+  median cycle time, Little expected cycle, Kingman expected wait with
+  `c = 1` exported as a house convention, and an explicit *unstable* state
+  at ρ≥1 that returns no finite wait rather than fabricating one. The
+  Capacity terminal already uses Kingman at team level (§capacity research);
+  this is the per-person completion, not a duplicate.
+- **Anderson, Kanban (2010).** Cap WIP; stop starting, start finishing.
+  Became the shared WIP-limit convention (twice the limit is the index
+  saturation point) and `RULE-LOAD-02`, the blameless WIP-breach talking
+  point that self-clears when WIP returns.
+- **Brooks's Law (1975).** Adding people to a late project adds
+  communication channels before output. Became the channel-density panel
+  and the coordination score (strong-tie degree via the §56 projection,
+  1.5 per direct report, weighted stewardships against a budget of ten).
+- **Goldratt, Theory of Constraints.** Optimising anyone but the bottleneck
+  cannot raise system throughput. Became the single system-constraint
+  (bottleneck) flag, the board brief headline, and the first decision
+  option ordering (shed from the constraint first).
+- **Reinertsen, CD3 (already implemented in the Decision Tempo engine,
+  §52).** Reused, not re-implemented: `RULE-LOAD-01` runs upstream on the
+  post-commit spine so the load-shedding DACI decision is priced for delay
+  inside the same transaction.
+- **PERT Beta-PERT Monte Carlo (existing simulation module, §capacity).**
+  Reused for the per-person fit probability against ramp-adjusted supply,
+  seeded and reproducible. Unmeasured commitments are counted, never
+  sampled as zero — the same anti-fabrication rule as every LeadOS engine.
+
+### Design consequences and boundaries
+
+The index and all queue statistics are **derived, never persisted** — a
+stored index would become a stale rating the moment a record changed, which
+is precisely the HR-file failure mode the governor exists to avoid. Schema
+v34 adds four policy settings and zero data collections. Evidence floors
+match the house standard: counts-only below two completions, learned at
+five; Monte Carlo probabilities stay `null` when no measured triples exist.
+The data-minimised CSV (#34) emits opaque person codes, never names or free
+text. An explicit pause (`loadAutoPropagate`) blocks event fan-out while
+measurement continues, but a human-triggered scan always runs.
+
+**Rejected this session.** (1) Calendar/email/meeting telemetry in the
+Viva style — privacy boundary, no-backend rule, and message volume is the
+wrong construct. (2) Utilization percentage alone — blind to switching,
+coordination and learning; the market's default metric, deliberately not
+LeadOS's. (3) Persisted or trend-graphed personal indexes — stale-rating
+and surveillance creep; the terminal recomputes live. (4) Hardcoded
+thresholds — replaced by the leader-owned, validated policy dial
+(50–100%). (5) Fabricated demo workload: synthetic portfolio items pushed
+the demo team to ρ≥1.0 and silenced the existing Capacity Kingman signal
+(CAP-02); the released demo instead lowers its own visible threshold to 70
+and exercises every path on records that already exist. (6) Effort-weighted
+throughput and correlation-aware Monte Carlo — listed on the roadmap as a
+second pass once workspaces carry enough dated completions; shipping them
+now would mean inventing the weighting.
+
+### Research limit
+
+The saturation weights (0.40/0.25/0.20/0.15), the 80% threshold, WIP
+multiple of two, coordination/ten and commitments/six budgets, and Kingman
+`c = 1` are transparent engineering conventions synthesised from the
+frameworks above, **not** constants validated on LeadOS teams; the policy
+tab says so and exposes them. Named-vendor capabilities are from 2026
+search coverage only and remain [UNVERIFIED] by hands-on trial. No source
+found in this hunt ships the combination: per-role cognitive bands,
+Little/Kingman per-person queues, a seeded fit Monte Carlo, and
+event-driven governance on-device without surveillance.
+
+---
+
+## 61. The Premise Sentinel — decision continuity, assumption ledgers and sequential evidence (Session 53, 2026-10-27)
+
+### Fresh 2026 competitive/domain hunt
+
+The 2026 decision-intelligence category has become explicit about **closed-loop**
+decisions: Gartner's first DIP Magic Quadrant (26 January 2026) covers modeling,
+orchestration, monitoring and governance across 17 vendors [2](https://www.gartner.com/en/documents/7363830); Gartner's category definition says DIPs monitor
+and assess outcomes, govern and improve decisions [7](https://www.gartner.com/reviews/market/decision-intelligence-platforms); the September 2026 IDC
+MarketScape frames decisions as ongoing assets whose outcomes feed the logic that made
+them, with deterministic rules, ML and GenAI combined and humans in the loop for
+regulated calls [3](https://www.sas.com/content/dam/sasdam/documents/2026-09/idc-marketscape-worldwide-decision-intelligence-platforms-2026-vendor-assessment.pdf) [6](https://www.sas.com/en_us/news/press-releases/2026/september/intelligent-decisioning-idc-marketscape.html). In
+parallel, AI-governance writing calls for an **assumption ledger** that captures the
+premise, dated evidence, accountable owner, invalidation signal and predefined
+response; the point is to change the sentence from "I think the strategy is wrong" to
+"the condition we agreed would reopen this decision has occurred" [1](https://www.business-powerhouse.com/ai-agents-need-an-assumption-ledger-before-strategy-moves-at-machine-speed). A second ledger proposal adds confidence, materiality, freshness and a validation
+path [2](https://myagents.plus/agent-oracle/blog/the-assumption-ledger-how-ai-detects-what-you-left-unsaid). Continuous-assurance research replaces one-time validation with drift,
+calibration, Brier/PSI thresholds, human review, rollback and documentation
+[1](https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2026.1870819/full) [2](https://pmc.ncbi.nlm.nih.gov/articles/PMC13462453/). Strategy/OKR buyers are offered AI goal drafting, at-risk
+flags, QBR prep and "strategy pillars, assumptions, and investment tracking" [12](https://www.okrstool.com/blog/best-okr-software) [13](https://www.tability.io/odt/articles/tability-ai-features-explained). No surveyed source described a local-first,
+deterministic assumption ledger with dated provenance, pre-declared invalidation
+triggers and **automatic cross-module re-decision** on a typed event spine. Vendor and
+analyst capabilities are search excerpts only, **[UNVERIFIED] by hands-on trial**.
+
+### Named frameworks converted into shipped code
+
+- **Dewar, Builder, Hix & Levin (RAND, 1993), Assumption-Based Planning.** A
+  load-bearing assumption is one whose failure would change the plan; signposts are
+  observable warnings; shaping actions control vulnerability; hedging actions prepare
+  the organisation for failure [1](https://catdir.loc.gov/catdir/samples/cam033/2002073460.pdf) [6](https://books.google.com/books/about/Assumption_Based_Planning.html?id=5deOuiMsJYkC&hl=en). Shipped as the premise record
+  (`statement`, `signpost`, `criticality`, `ownerId`, `reviewBy`) and the four breach
+  options: reaffirm + hedge (shaping), pause/renegotiate (hedging), reverse, or buy
+  information.
+- **Mitchell, Russo & Pennington (1989) prospective hindsight / Klein's pre-mortem.**
+  Imagining a failure as having already happened increases the number of concrete
+  reasons people generate; the popular "correctly identify +30%" phrasing overstates
+  the original study, which measured reason quantity, not quality [14](https://frameworklist.com/frameworks/premortem) [20](https://hbr.org/2007/09/performing-a-project-premortem). Shipped as
+  the register dialog's explicit frame ("assume this premise already failed — which
+  dated record would have warned you first?"). The UI says this is a prompt, not proof
+  the plan is safer.
+- **Bayes in log-odds / Good's weight of evidence / Cromwell's rule.** Priors are
+  leader-owned and clamped to 5–95%. Each dated observation contributes
+  `±ln(LR)`; the posterior is a sigmoid of prior log-odds plus the cumulative log
+  Bayes factor. Evidence older than `halfLifeDays` is discounted by
+  `2^(-age/halfLife)` with a 5% floor, so stale evidence weakens without being erased.
+- **Wald (1945) Sequential Probability Ratio Test.** Boundaries
+  `A = ln((1−β)/α)` and `B = ln(β/(1−α))` label support, challenge and continue
+  states [2](https://ucb-stat-159-s21.github.io/site/Notes/sprt.html) [6](https://metricgate.com/docs/sequential-probability-ratio/). Shipped with α=0.10, β=0.20 and an explicit
+  warning that heterogeneous leadership evidence is not IID; this is a sequential
+  discipline, not a p-value.
+- **Kullback–Leibler divergence.** Information gain in bits from prior to posterior is
+  shown in the evidence lab and CSV; exposure uses typed Decision Tempo value terms per
+  currency (never summed) but is labelled an attention indicator, not a cash forecast.
+- **Reinertsen CD3 / Raiffa–Schlaifer EVSI (existing Tempo engine).** A breach rule
+  declares `decisionTempo` on the same generalized event; Decision Tempo proposes a
+  timebox when the new DACI decision inherits priced links from the original decision.
+  The `event.rules` declaration — not a direct cross-module call — is the integration.
+- **AIAG-VDA FMEA, Simchi-Levi TTS/TTR, encumbrance accounting, PERT Beta estimates,
+  Brier/conformal forecast challenges, Little/Kingman cognitive load.** Eight sensors
+  translate these existing engines' dated facts into keyed evidence. Unrated FMEA,
+  unpriced budgets and missing actuals produce no fabricated evidence.
+
+### Implemented this session (verified by `tests/app/premises.test.mjs`)
+
+`app/core/domain/premises.js`, `app/views/premises.js`,
+`app/ui/premise-modals.js`, Schema v35 `premises` collection and five policy settings,
+`premise` link entity type with `tests`/`revisits` relations, `RULE-PREM-01..04` on the
+ADR-0008 spine, `PREM-01..05` signals, Today triage card, nav badge, `PREMISE_SENSORS`
+registry, two-hop typed scope, reviewed human reaffirmation cycles, explicit scan,
+opaque CSV scope #35, board brief, demo premises produced by the real sensor rule,
+ADR-0019, and 26 new tests including one priced cross-module cascade that asserts
+`RULE-DLY-03` chaining in the same transaction.
+
+### Planned (deliberately not shipped)
+
+1. **Empirical LR calibration.** Once workspaces carry enough reviewed premises with
+   known outcomes, score whether "strong" observations actually deserve LR 6 and expose
+   a per-sensor reliability table with counts-only below n=5. Shipping calibrated LRs
+   now would require invented data.
+2. **PSI / Brier drift dashboards for the sensor registry itself.** Continuous-assurance
+   research supports monitoring the monitor; this session ships transparent finite-state
+   sensing and explicit evidence gaps, not a second statistical control loop.
+3. **Board-pack export with redaction profiles.** CSV #35 is already opaque; a richer
+   printable board pack needs a purpose/recipient matrix before it can include any
+   premise free text.
+4. **Effort-weighted, correlation-aware evidence decay.** Half-life is a time convention;
+   correlated evidence from the same incident should eventually be clustered so one
+   bad week cannot masquerade as ten independent observations.
+
+### Rejected this session
+
+- **LLM-inferred premises or sentiment evidence.** Violates the zero-network canonical
+  boundary and confidential-data rules; also makes the likelihood ratio untraceable.
+- **Automatic reversal or auto-sending stakeholder messages on a breach.** A belief
+  crossing a policy threshold is not authority to act; the engine opens a DACI
+  decision, delegation and 1:1 prompt, and never sends anything.
+- **Hardcoded per-module `if` chains.** The declarative sensor registry and typed scope
+  exist so a new module adds one sensor object with event prefixes and a pure collector.
+- **Treating Wald boundaries as statistical significance.** Leadership evidence is
+  heterogeneous; the UI states the caveat in the evidence lab and board brief.
+- **Defaulting unrated case priority/FMEA to 5.** This was an explicit roadmap hazard;
+  the case sensor emits nothing until all three ratings exist.
+- **Silently rewriting evidence when a source record changes.** A changed state yields a
+  new keyed observation; append-only history plus half-life decay preserves both the old
+  and new facts.
+
+
+## 62. Premise sensor reliability: close the outcome loop without self-grading (2026-10-27)
+
+### Competitive hunt and gap
+
+The market is converging on two adjacent capabilities. Culture Amp's official Perform materials describe AI Coach drafting/refining manager reviews, talk tracks and role-play while leaving the manager in control ([Culture Amp Perform](https://www.cultureamp.com/platform/perform)). Dataiku's 2026 decision-intelligence overview explicitly describes capturing decision outcomes to recalibrate rules/models and continuous monitoring as an operating loop ([Dataiku, 2026-07-10](https://www.dataiku.com/blog/decision-intelligence-platforms)). Metaculus resolves forecasts against outcomes and uses long-run scores to give forecasters feedback; its scoring guide cautions that no one metric alone describes forecasting skill ([FAQ](https://www.metaculus.com/faq/), [scoring primer](https://www.metaculus.com/notebooks/22486/22486/a-primer-on-the-metaculus-scoring-rule/)). This triangulates performance coaching, enterprise decision monitoring and forecast calibration; it does **not** establish a complete feature-by-feature competitor gap. Official pages/search excerpts reviewed 2026-10-27; hands-on product trials and vendor claims are **[UNVERIFIED]**.
+
+**Gap selected:** LeadOS's new premise sensors carried named likelihood ratios, but there was no outcome ledger to test those evidence strengths against later reality. A self-referential score derived from the premise posterior would make the model grade its own inputs. The missing capability was a date-safe, human-owned outcome label with source lineage and small-sample protection.
+
+### Implemented in the same session
+
+- Schema v36 adds an append-only `premiseOutcomes` ledger with human `held`, `failed` and `inconclusive` assessments. No historical outcome is inferred and sensors cannot self-label. A premise accepts one conclusive outcome.
+- `RULE-PREM-05` adds idempotent `premiseOutcome --validates--> premise` and `premiseOutcome --revisits--> decision` typed links on the generalized post-commit spine.
+- A pure read model scores each sensor/premise only once. Repeated observations from the same typed source collapse to the latest state before the settlement date; post-settlement observations cannot leak into its score. Declared LR is translated to an implied forecast from a neutral 50% prior, then Brier, mean forecast vs held rate, calibration gap and threshold accuracy are computed.
+- Performance metrics are counts-only below n=5. PSI compares earlier and recent forecast-probability distributions only when both date-separated cohorts have at least n=10; same-day samples are never split; it is explicitly *forecast-mix shift*, not model-quality degradation. No LR is automatically tuned.
+- A keyboard-usable **Sensor calibration** tab, outcome capture dialog, opaque CSV scope #36, point-in-time filtering, demo-clear repair and additive migration ship together.
+
+### Named methods and limitations
+
+Brier (quadratic) score is a proper scoring rule for probability forecasts; calibration gap compares average stated probability with the observed event rate. PSI is used only as a descriptive binned-distribution shift statistic, with a half-count smoothing convention. The LR-to-probability mapping assumes a neutral prior solely to score a directional evidence claim; this does not validate a true likelihood ratio. Source collapse mitigates repeated rows from one source but does not remove correlation across different sensors that read the same incident. Human outcome labels can be wrong or selectively recorded. Small-sample floors do not make dependent samples independent. PSI is not an alarm threshold or causal signal.
+
+### Deliberately rejected
+
+- **Automatic LR recalibration from a handful of outcomes:** rejected because weak, dependent local samples can create unjustified confidence. It remains planned behind correlation clustering, uncertainty intervals and explicit human approval.
+- **LLM-generated outcome labels or sentiment-based truth:** rejected because this is a governance-grade ground-truth label and the local-first, non-surveillance boundary matters more than automation theater.
+- **Cross-person sensor ranking:** rejected because it could turn an operational evidence aid into a manager/employee ranking system.
+
+### Next research questions
+
+1. How should multiple sensors that read the same incident be clustered so five premise records do not masquerade as five independent tests?
+2. What interval estimator or hierarchical model can express uncertainty for per-sensor Brier/gap without hiding small n?
+3. After adequate evidence, should a leader be offered a shrinkage-based LR proposal with a side-by-side backtest rather than an automatic policy mutation?
+4. Can premise posterior uncertainty widen seeded P80/P90 schedule and cash tails without implying that belief probability is an actuarial frequency?
+
+
+## §61 Session 55 — Assumption-aware tails & correlated evidence (2026-10-28)
+Paired CRN premise-coupled Monte Carlo + leave-one-out attribution shipped (ADR-0021). Practitioner demand confirmed: "look only at runs that missed… rerun with that assumption held at its most likely value… rank assumptions by how much they move the odds" [3](https://profmarkprice.substack.com/p/stop-planning-for-one-future). Correlated-signal aggregation: naive log-odds summation double-counts shared priors/information; influence-aware clustering discounts dependent signals [1](https://arxiv.org/html/2604.24517v1) [8](https://bioengineer.org/ai-systems-can-be-fooled-by-echo-chambers-but-a-new-architecture-fights). LeadOS surfaces concentration (TAIL-03) instead of silently rewriting belief — deliberate divergence, leader decides. Rejected: Gaussian-only tail widening [5](https://alcapitaladvisory.com/research/frameworks/monte-carlo.html) (misses assumption-failure tails by construction).
+
+
+## 2026-10-28 — Decision intelligence and manager coaching benchmark
+
+- [15Five Kona](https://www.15five.com/blog/leveraging-15five-ai-in-your-performance-management-strategy) describes in-conversation AI coaching and performance context. Product claims, not independently evaluated.
+- [Betterworks](https://www.betterworks.com/magazine/best-performance-evaluation-software) describes OKR-to-review alignment and coaching nudges. Vendor comparison, not an independent evaluation.
+- [Visier and One Model](https://hrpresso.com/reviews/best-ai-people-analytics-tools) are compared on cross-source people analytics, scenario planning and model ownership. Capabilities not independently tested.
+- [Causa Kairos](https://causa.tech/) advertises causal mapping, robustness tests and uncertainty; [@RISK](https://lumivero.com/products/at-risk/) advertises simulation and sensitivity analysis. These are vendor claims, not verified product tests.
+- Gap: a link graph is not a causal model. LeadOS can already rehearse case rules, but collection totals hide whether a relationship was removed or redirected. Implemented: identity-free link-type delta and before/after graph diagnostics in the existing disposable production-rule rehearsal. This is an assurance aid, not a competitive claim of causal inference or prediction.
+- Planned: explicit causal assumptions with provenance and falsification tests, plus decision-timing counterfactuals linked to actual outcome measurement; deliberately rejected: predicting an individual's attrition from sparse local records (privacy and unvalidated inference).
+
+## 2026-10-28 — Predictive Statistical-Process-Control in Leadership Workspaces
+- Lattice / 15Five / Culture Amp / Betterworks / Visier: survey/OKR dashboards, no XmR control charts or calibrated prediction intervals.
+- Bloomberg / manufacturing SPC (Shewhart / Wheeler): control charts exist but never integrated into people/decision/stakeholder automation.
+- AI coaching (BetterUp, CoachHub): script generation, no statistical detection of operational special-cause signals.
+- Decision-intelligence (Causal, Figma): scenario modeling, not predictive anomaly response tied to organizational metrics.
+- LeadOS #/anomaly is ahead: pure engine + event-driven propagation + board brief + calibration transparency.
+
+### 2026-10-28 — fresh competitive hunt and correction
+- Visier announced its Viva Glint connector in September 2026: survey data transfers into a common workforce model for analysis alongside other metrics. https://www.visier.com/company/news/visier-expands-workforce-intelligence-with-the-launch-of-new-integration-with-microsoft-viva-glint/ — product announcement, not independent evidence of impact.
+- Microsoft describes Copilot Highlights summarizing survey scores, changes and benchmarks: https://techcommunity.microsoft.com/blog/viva_glint_blog/news-to-know-%E2%80%93-volume-3-edition-4-april-2026/4513682
+- BetterUp describes combined human and AI coaching: https://www.betterup.com/platform-releases/fall-2025 ; Culture Amp describes platform-wide AI coaching: https://www.cultureamp.com/company/announcements/ai-coach-new-leadership-era . These are vendor claims, not head-to-head evaluations.
+- Gap: LeadOS has local case automation and descriptive metrics, not enterprise data connectors, validated forecasts or AI coaching comparable to these platforms. The immediately preceding Session 56 claim that LeadOS anomaly automation is ahead is **incorrect**: no downstream records were made and the prediction labels were uncalibrated. This session prioritizes removing misleading signals before building prospective, lineage-backed cross-domain detection. Existing scenario simulation and case automation are separate, not proof of predictive anomaly automation.
+
+## §62 Session 57 — Operating System Dynamics Lab (2026-10-28)
+
+**Market shape.** Stock-and-flow simulation is a mature analyst discipline with mature analyst
+tools: Vensim, Stella Architect, Powersim, AnyLogic and the open-source Insight Maker all provide
+stock-and-flow diagrams, causal-loop views, parameter sweeps and Monte Carlo sensitivity, and
+Vensim/Insight Maker document Euler plus second/fourth-order Runge–Kutta integration
+[5](https://analytica.com/blog/best-system-dynamics-simulation-software/). Comparison tables treat
+"causal loop diagrams" as a drawing surface distinct from the simulation model — Vensim's own
+manual states plainly that CLDs and stock-and-flow diagrams *are not* simulation models until
+algebraic relationships are attached [4](https://www.vensim.com/documentation/usr04.html). That is
+exactly the gap LeadOS attacks: the algebra is derived from the leader's records, so nobody has to
+draw the model before the model can say anything.
+
+**Loop dominance is a research field, not a checkbox.** Hayward (2024) compares Loop Impact, PPM
+and Loops That Matter: LTM reports one percentage influence per system per loop and is endogenous
+only; Loop Impact measures acceleration imparted, per stock per loop; PPM apportions curvature by
+percentage [12](https://onlinelibrary.wiley.com/doi/10.1002/sdr.1757). LTM is implemented in Stella
+and in research tools such as LoopX [19](https://arxiv.org/pdf/1909.01138). LeadOS implements a
+**gain share** (central-difference elasticity of each loop's own flow with respect to its driving
+stock, normalised across loops) and therefore reports "share of measured gain" rather than
+"percentage influence". Calling it LTM would be a false claim; the UI and brief say what it is.
+This is the most important honesty decision in the module.
+
+**Leverage hierarchy.** Meadows' twelve places to intervene rank parameters lowest and loop
+structure highest [13](https://donellameadows.org/archives/leverage-points-places-to-intervene-in-a-system/);
+current systemic-design teaching operationalises points 10 (stock/flow structure), 9 (delay
+length), 8 (negative-loop strength) and 7 (positive-loop gain) as the tractable structural set
+[1](https://www.iseesystems.com/resources/download/scholarship/2025-guzman-abello.pdf). LeadOS
+encodes a leverage class on every lever (1 = parameter ... 4 = delay/structure) and uses it to
+explain *why* a parameter move is the weakest place to intervene, while still judging the outcome
+on the capacity stock rather than on the label.
+
+**Workforce-planning contrast.** Enterprise suites now advertise sandbox organisational modelling
+with side-by-side scenario comparison and live cost/headcount recalculation
+[10](https://checkthat.ai/answers/what-are-the-best-workforce-planning-software-solutions). Those
+are planning surfaces for an analyst holding a headcount plan; they do not model feedback loops,
+delays, quality debt or dependency concentration, and they do not derive dynamics from a leader's
+own dated operational records. No surveyed product couples (a) derived-not-drawn structure,
+(b) per-parameter provenance grading, (c) measured loop dominance, (d) a frozen prediction on
+adoption and (e) event-driven propagation into the leader's decision and 1:1 records.
+
+**Frameworks adopted.** Forrester (1961) and Sterman (2000) for stocks/flows and the discipline of
+never treating a rate as a level; Senge (1990) archetypes; Meadows (1999) leverage points;
+Richardson (1995) loop dominance; Little (1961)/Kingman (1961) for the queue relation reused rather
+than re-derived; local stability via a numeric Jacobian, Faddeev–LeVerrier characteristic
+polynomial and Durand–Kerner roots; MASE-style skill scoring against naive persistence for the
+hindcast.
+
+**Rejected on principle.** LLM-written system diagnoses (unfalsifiable prose that cannot be checked
+against a trajectory); auto-adoption of policy experiments (the commitment must be the leader's);
+attrition or morale prediction from sparse local records (privacy and unvalidated inference); and
+any presentation of a trajectory without the measured/estimated/convention split beside it.
+
+## Session 58 — Structural capital allocation: budgeted mixes, exact Shapley, minimax regret and skill
+
+**What the market actually sells (reviewed 2026-10-28; vendor pages and search excerpts, not hands-on trials — [UNVERIFIED]).**
+Strategic portfolio-management suites have converged on three ideas this session needed:
+(1) sequencing by value per unit of the *constrained* resource — Epicflow's portfolio optimiser
+orders work by "value per constrained hour" and adds RRI, its implementation of Devaux's DIPP
+ratio, explicitly to stop sunk cost from dominating the next resource decision
+[1](https://www.epicflow.com/blog/strategic-portfolio-management-tools/)
+[2](https://www.epicflow.com/blog/portfolio-resource-management-a-complete-guide/);
+(2) side-by-side scenario comparison with live reallocation — Planview and ServiceNow both claim
+continuous replanning and dynamic reallocation [3](https://www.planview.com/products-solutions/solutions/project-portfolio-management/)
+[4](https://www.itonics-innovation.com/blog/best-strategic-portfolio-management-software); and
+(3) investment-scenario construction with an efficient frontier — Planisware combines scorecards
+with NPV/ECV and builds scenarios against strategic axes, and states that it plans around the real
+constraint (scarce specialist expertise) [5](https://planisware.com/resources/strategic-planning-alignment/best-strategic-portfolio-management-software).
+Marketing-mix tooling got there earlier on the arithmetic: reallocation by *marginal* return with
+saturation curves and staged moves is a template-level practice there
+[6](https://metaflow.life/templates/budget-allocation-plan)
+[7](https://liftlab.com/solutions/real-time-budget-optimization/).
+
+None of these is the same object. They are analyst surfaces over a *plan document* (initiatives,
+headcount, cash) built and maintained outside the file. They do not derive the structure from a
+leader's own dated operational records, do not freeze a prediction together with its do-nothing
+baseline at the moment of commitment, do not score that frozen prediction out of sample, and do not
+grade their own output as *not actionable*. That gap is the module.
+
+**Method: why exact Shapley, and why the weights matter more than the axiom set.**
+Exact Shapley attribution costs `2^k − 2` evaluations of the value function and is described in the
+2026 production-attribution literature as the preferred benchmark for a small number of input
+blocks, with exponential cost as the only reason to approximate
+[8](https://arxiv.org/html/2608.04547v1). Six levers is 64 coalitions — the exact number is cheaper
+than explaining a sampling error, so LeadOS computes it exactly and prints the efficiency gap.
+Shapley values decompose into a main effect plus allocated pairwise interactions
+[9](https://arxiv.org/html/2610.15144), which is why the module reports a **pair table** (substitute
+vs complement) rather than only a ranking: on the demo, WIP cap at 55% alone gains 47.46 points,
+learning protection alone *loses* 20.06, and together they gain 52.47 — an interaction of +25.07.
+Reporting the three marginals without that table would hide the only actionable sentence in the
+report ("these two must be funded together").
+
+The honest caveat comes from the 2025 critique that Shapley values are one efficient allocation
+among many once the value function is fixed, and that the choice of value function is the
+load-bearing modelling decision [10](https://pith.science/paper/2506.13900). LeadOS therefore
+(a) declares the four objective weights in the UI and the brief, (b) treats them as a leader-owned
+value function rather than a discovered truth, (c) renormalises and clamps them and labels the
+result "optimal *for these weights*", and (d) refuses to call the plan actionable until the model
+behind it has out-of-sample evidence.
+
+**Decision under uncertainty: Savage minimax regret, not expected value.**
+Parameters are conventions; pretending they are known would make an expected-value ranking look
+more precise than it is. The module draws 32 lognormal perturbations (seed 42, CV 0.25) of the
+structural coefficients, evaluates the plan, the six named playbooks and doing nothing in every
+draw, and reports P10/mean/P90 per option plus **Savage minimax regret** — minimise the largest gap
+to the best option in each world. This is deliberately conservative and it changes the answer: on
+the demo the portfolio's mean (52.60) is beaten by nothing, but `cap-wip` alone reaches 33.32 with a
+47.16 worst-case regret against the portfolio's **26.93**. A leader who cannot tolerate the bad
+world should know that before spending 8.95 effort-weeks, not after.
+
+**Scoring the model against itself: skill, frozen baselines, and a trust ladder.**
+The checkpoint score is a MASE-style skill: `1 − model error / naive error`, where the naive
+forecast was *frozen beside the prediction at adoption*. Without that frozen baseline a score
+measures memory, not skill — so the engine withholds the number (`no-baseline`) instead of
+fabricating one. Pooled skill is counts-only below n = 2, and two non-positive checkpoints open
+exactly one re-baselining decision (re-measure, shorten the horizon, or stop relying on the model)
+rather than an automatic retune. The ladder — `unvalidated → refuted → provisional → backtested →
+validated` — makes the demo's own verdict visible: it is **refuted**, its hindcast skill is −5.38,
+and the app says the recommendation is comparative. This mirrors the Box (1976) position that a
+model is only as good as its record of failed predictions, and Hyndman & Koehler (2006) on
+scale-free error measures against a naive benchmark.
+
+**Frameworks adopted.** Bierman & Smidt (1966) capital budgeting and Keeney & Raiffa (1976)
+multi-attribute utility for the objective; Shapley (1953) for the allocation; Savage (1951) for
+regret; Popperian falsification plus pre-registered expectations for the checkpoint contract;
+MASE-style skill for scoring; Meadows (1999) leverage classes carried over from the dynamics lab so
+a parameter move is explained as the weakest place to intervene.
+
+**Rejected on principle.** Calling a greedy allocation a global optimum; Monte-Carlo Shapley when
+the exact computation is trivially cheap; auto-adopting the recommended portfolio; scoring a
+checkpoint against a baseline reconstructed after the observation; ranking individual people by
+their share of a lever; and printing a decision-ready number whose model has not beaten persistence.
+
+---
+
+## §63. Early-warning alerting — historical correction
+
+The v39 design used Shewhart rule scores, a BH-style ranking, alert budgets, verdicts and a
+forecast ledger. Earlier claims that this achieved repeated-scan FDR control or produced an
+expected count `m×q` were unsupported. Reconstructed demo replay did not restore historical
+input vintages, and the original case promotion did not run all case subscribers. Those
+claims and the prior demo skill figure are withdrawn; the v40 decision is documented below.
+
+## §64. Connected operations, forecast vintages and sequential monitoring (2026-10-28)
+
+### Competitive scan — evidence, not a feature-parity claim
+
+| Area | Public benchmark / observed claim | LeadOS decision and remaining gap |
+|---|---|---|
+| Performance, 360 and OKRs | [15Five Perform](https://www.15five.com/products/perform) advertises reviews, 360 feedback, a talent matrix and OKR tracking. [Lattice's 2026 announcements](https://lattice.com/blog/everything-we-announced-at-lattiverse-2026) describe AI assistance in 1:1s. | LeadOS uses explicit human-entered context, coaching prompts and linked goals; production multi-rater workflows, collaborative governance and AI assistants are not established here **[UNVERIFIED]**. |
+| Succession and team health | [2026 Betterworks review](https://peoplemanagingpeople.com/tools/betterworks-review/) describes reviews, engagement, succession and calibration; [Betterworks' comparison](https://www.betterworks.com/magazine/best-employee-engagement-software) describes survey and pulse tooling. | Existing local succession/pulse paths were not comprehensively audited this session **[UNVERIFIED]**. Do not feed confidential/anonymous records into general relationship automation. |
+| People analytics and scenarios | [Visier Workforce Planning](https://www.visier.com/solutions/workforce-planning/) advertises future scenarios and predictive workforce models; [Vee documentation](https://docs.visier.com/visier-people/GenAI/get-started.htm) describes follow-up questions and multistep reasoning. | LeadOS scenarios and aggregate Watch screening are local, not a workforce-prediction or generative-AI service. Historical vintage, calibration and prospective accuracy remain open. |
+| Incident / decision intelligence | [incident.io](https://incident.io/solution/ai-sre) markets evidence-linked hypotheses; [Palantir Foundry](https://www.palantir.com/docs/foundry/platform-overview/overview) describes an ontology and sandbox scenarios. | Generalized lifecycle delivery and typed, inspectable relationship trails are implemented; cross-system integrations, model-powered root-cause analysis and enterprise governance are **[UNVERIFIED]/not shipped**. |
+
+Vendor and analyst pages were read as descriptions; products were not trialled, no independent
+accuracy or market-wide exclusivity was established, and no external AI/network service was added.
+
+### Methods and conversion to code
+
+1. **Event-driven operations / DACI / Mendelow / PERT / FMEA:** user-confirmed Watch or breached
+   continuity drill emits `case.created`; the same case subscriber freezes eligible estimates and
+   applies existing case rules. Created case, decision, delegation and portfolio records publish
+   lifecycle events. Typed edges carry provenance. Explicit user inputs, not a chart, supply the
+   owner, stakeholder, rating and estimates. Individual subscriber failures roll back only their
+   own savepoint; queue bounds and audit entries make failure visible. Without a complete FMEA
+   rating, cost magnitude can be recorded but probability-based loss, ROI and occurrence skill
+   are withheld; later ratings do not backfill the opening snapshot. The existing ordinal
+   occurrence ÷ 10 mapping is an unvalidated modelling convention, not measured frequency.
+2. **BH is not a sequential warranty.** BH's expected false *proportion* is not `m×q`, and
+   valid p-values and dependence assumptions matter. In-sample XmR limits, strongest-rule
+   selection, moving-range approximations, correlated 28-day windows and repeated scans mean
+   the current nominal scores have no proven FDR/FWER guarantee. Sequential multi-stream work
+   treats those guarantees as a separate problem [arXiv 2501.04130](https://arxiv.org/html/2501.04130v3);
+   anytime-valid methods require explicit assumptions [arXiv 2602.06379](https://arxiv.org/html/2602.06379v1).
+   **Converted:** remove expected-false counts, label the step-up a heuristic and keep visible
+   budget/cooldown/suppression accounting. Replacing BH with BY alone is rejected: it does not
+   repair invalid inputs or repeated looks.
+3. **Real-time vs pseudo-real-time forecasting:** [statsmodels' real-time news example](https://www.statsmodels.org/devel/examples/notebooks/generated/statespace_news.html)
+   and [Croushore on data vintages](https://facultystaff.richmond.edu/~dcrousho/docs/Croushore%20Oxford%20Handbook%20paper.pdf)
+   distinguish genuine historical vintages from reconstructions over revised data. **Converted:**
+   whole future target week, one prediction per series/target, frozen first captured aggregate,
+   late-capture exclusion, revision flag, legacy/demo exclusion, and per-series sample floors.
+   This still cannot detect pre-capture revisions/backdating and rolling 28-day targets overlap
+   previously known history. The resulting scores are descriptive pseudo-real-time evidence.
+4. **Counterfactuals ≠ correlation:** [CACM's intervention discussion](https://cacm.acm.org/blogcacm/from-prediction-to-intervention-integrating-counterfactual-reasoning-into-ai-decision-making/)
+   emphasizes causal assumptions. Typed relationships and human confirmation preserve context;
+   they do not prove a root cause or that an intervention worked.
+
+**Open research:** immutable vintages, prospective controlled evaluation, tested sequential
+error control and privacy-preserving collaborative review remain planned, not implemented.
+
+## 2026-10-28 — Action-level rehearsal, not synthetic leadership prediction
+
+### Competitive hunt (new findings; public descriptions, not hands-on trials)
+- **Aera** describes an explicit data foundation → risk detection → scenario evaluation → recommendation → action orchestration chain. This session benchmarks that chain, not a claim of market uniqueness. Source: https://www.aeratechnology.com/blogs/demand-planning-transformed-ai-agents-in-action/ (2026-03-09, retrieved 2026-10-28).
+- **BetterUp Grow / AI Coach** advertises role-play and a scenario simulator. This establishes rehearsal as a baseline expectation, not an innovation claim by itself. Sources: https://support.betterup.com/hc/en-us/articles/36688702739611-BetterUp-AI-Coach and https://www.betterup.com/products/betterup-ai-coaching (retrieved 2026-10-28). Vendor effectiveness claims were not independently replicated.
+- **Lattice, 15Five, Culture Amp, Betterworks** remain comparison targets for feedback, manager enablement, engagement and OKR alignment. A recent secondary inventory contrasts these workflows: https://www.intelogos.com/blog/best-performance-management-software-2026 (2026-09-30). Conflicting secondary pricing/feature claims were deliberately not used as specifications.
+- **Visier Vee, Gloat, CoachHub AIMY, Palantir AIP and AnyLogic** remain the broader talent analytics / coaching / decision-simulation watchlist; current detailed feature parity is **[UNVERIFIED]** this session. No absence-of-competitor-capability inference is justified.
+
+### Framework translated into shipped code
+**Savage (1951), minimax regret:** for each declared loss scenario compute both alternative costs,
+subtract the lower cost, then choose the lower worst regret. No likelihoods are invented for the
+three scenarios. Occurrence/10 is a disclosed ordinal-to-cost sensitivity assumption, not a validated
+risk model. Break-even loss is incremental mitigation cost divided by the declared occurrence-proxy
+reduction. No reduction means no finite break-even threshold.
+
+### Gap → implementation
+The old sandbox evaluated post-commit rules only. Source-action fan-out was invisible. The new
+lab invokes `createApi(...).updateCase` on two disposable, injected-memory `createStore` instances,
+so validation, source automation and registered downstream rules are all production code. It exports
+counts, not narratives. This is a deterministic policy rehearsal, **not** a causal digital twin or a
+prediction of employee behaviour. The new synthesis is executable governance plus transparent
+robust-decision arithmetic; superiority to commercial products remains **[UNVERIFIED]**.
+
+## §65. Measuring and pricing the automation chain — Session 61 (2026-10-28)
+
+**The problem this section answers.** Session 60 filed its own top priority as: *"Instrument
+and test remaining entity creation/update producers and action-level fan-out; add
+provenance-preserving durable retry/receipts and completeness diagnostics. Profile and
+safely reduce per-event savepoint cost: a small synthetic demo-case benchmark rose from
+111.8 ms median at the starting commit to 428.4 ms with additional event delivery (n=7)."*
+
+That was a number without a diagnosis. This session measured the diagnosis before changing
+anything, and the finding was not what the previous session assumed.
+
+### 65.1 What the measurement actually found
+
+Running the real `runPostCommitRules` on the demo workspace with a single `case.created`
+event produces **42 (rule, event) pairs from 3 events and 14 rules**, of which **5 apply**
+and **37 decline**. Per-rule time on that one event:
+
+| Rule | Time | Applied | What it did |
+|---|---|---|---|
+| `earlyWarningRule` | 150.3 ms (3 calls) | 0 | Re-scanned every monitored series, found nothing |
+| `premiseRule` | 82.2 ms (3 calls) | 2 | Scanned assumption signposts |
+| `dynamicsRule` | 35.1 ms (3 calls) | 0 | Re-integrated the stock/flow model, found nothing |
+| `loadRule` | 11.9 ms (3 calls) | 0 | Re-measured per-person saturation, found nothing |
+| `decisionTempoRule` | 8.2 ms | 1 | Priced decisions |
+| `resilienceRule` | 7.1 ms | 1 | Priced continuity |
+| `caseCreatedRule` | 6.0 ms | 1 | Fanned the case out |
+| 7 others | ≤ 0.7 ms each | 0 | Guard only |
+
+So **~198 ms of a 305 ms write (65%)** was spent by three rules recomputing full analytical
+scans that concluded there was nothing to do. The savepoint was a contributing cost, not
+the dominant one — the previous session's framing was incomplete, and the honest correction
+is recorded rather than quietly dropped.
+
+### 65.2 Copy-on-write savepoints — and why the first attempt lost
+
+The savepoint (`ADR-0008`) was implemented as `JSON.parse(JSON.stringify(draft))` **per rule
+per event**: cost `O(rules × events × |workspace|)`. At 5,792 records one write spent
+1.45 s on pure copying.
+
+The replacement materialises a private deep copy of a top-level collection the first time a
+rule *reads* it, via an ES6 `Proxy`. This is the classic copy-on-write pattern — "a proxy to
+postpone the copying process… pay the price of copying the object only if it's modified"
+([Sourcemaking/GoF proxy discussion, Stack Overflow](https://stackoverflow.com/questions/628938/what-is-copy-on-write)) —
+and it is the same idea that database snapshots use: the snapshot only has to store the
+blocks that change ([TechTarget, snapshot technologies](https://www.techtarget.com/searchdatabackup/tip/Using-different-types-of-storage-snapshot-technologies-for-data-protection)).
+
+**A published caveat that this session then reproduced.** The `proxy-clone` library's own
+benchmark notes: *"clone speed is constant, however using the cloned object is slightly
+slower"* ([juliangruber/proxy-clone](https://github.com/juliangruber/proxy-clone)). That is
+exactly what happened here. A first, unfair measurement (comparing the new engine against a
+hand-written single-pass loop) showed COW at **0.7×** — slower. Once both strategies ran
+through the *same* engine via a `savepoint: 'clone'` seam, the true figure was **1.4–1.7×**.
+The lesson is recorded because the wrong comparison is easy to make and would have justified
+abandoning a correct optimisation.
+
+### 65.3 Decline collapse — what durable-execution platforms do, and the smaller version here
+
+Durable execution engines (Temporal, Inngest, Restate, Azure Durable Task) converge on the
+same observability model: an **execution journal** of every step's start/complete/fail/retry,
+used to replay history and to skip work that already completed
+([Temporal workflow execution docs](https://docs.temporal.io/workflow-execution);
+[durable-execution survey, 2026](https://zylos.ai/research/2026-04-24-durable-execution-agent-runtimes/)).
+The relevant idea for LeadOS is narrower: **a completed step is served from history instead
+of executed again.** Temporal can do this because workflow code is required to be
+deterministic and side effects are isolated into Activities.
+
+LeadOS is not a workflow engine — the rule chain is synchronous and in-transaction — but the
+same principle applies to one specific case: **a scan rule that declined at workspace
+version V for event type T will decline again for a later T at the same V.** The engine
+therefore records that verdict and skips the re-run.
+
+The honesty problem is that this is a *claim about the rules*, not a fact about the engine.
+It is only sound if a rule's decision to decline depends on workspace content and event type
+and **not** on which entity the event names. So:
+
+- Membership in `DECLINE_MEMO_RULES` is opt-in per rule; an unlisted rule is never skipped.
+- `tests/app/propagation-ledger.test.mjs` probes the property directly: for every declared
+  rule it runs two different entities of the same event type at the same version and requires
+  an identical verdict. If a rule ever starts branching on the entity, the test fails rather
+  than the engine silently dropping its work.
+- Collapse is applied **only** to an invocation that produced no write, no emission, no audit
+  entry, no warning and no effect list.
+
+Measured effect on a four-event cascade that repeats a type — the shape a case fan-out
+actually has, since one case can create several decisions or delegations:
+
+| Workspace | Baseline (eager copy, no collapse) | COW + collapse | Gain |
+|---|---|---|---|
+| 362 records | 369.6 ms | 54.0 ms | **6.8×** |
+| 1,448 records | 1,309.6 ms | 169.5 ms | **7.7×** |
+| 5,792 records | 5,532.0 ms | 1,284.4 ms | **4.3×** |
+
+On a single event with no repeated type the gain is only the savepoint's 1.4–1.7×, because
+there is nothing to collapse. Both numbers are reported; quoting only the cascade figure
+would be the misleading version.
+
+**Limits, stated plainly.** These are timings on one machine with a synthetic demo
+workspace, not a general performance guarantee. The remaining dominant cost is real
+analytical work in `earlyWarningRule`, `premiseRule` and `dynamicsRule` — collapse removes
+*duplicate* scans within a transaction, not the first one, and does nothing for a cascade of
+all-distinct event types. No browser-timing or large-Workspace profiling was performed
+**[UNVERIFIED]**.
+
+### 65.4 Durable receipts — the part the journal model gets right that LeadOS did not
+
+Every durable-execution reference above treats a failed step as a **first-class record**
+with a retry policy, not as a log line. LeadOS did not: a rule that threw was written to the
+audit log, shown as a toast, and the transaction moved on. The decisions, delegations and
+goals that rule existed to create were simply absent, and there was no way to discover that
+after the toast faded or to ask for them again.
+
+Schema v41 adds `propagationReceipts`: the event that triggered the failure (type, entity,
+entity id), the rule, the error, and a bounded retry history. The retry re-runs **only the
+rule that failed**, against current state — replaying the whole chain would duplicate the
+effects that already succeeded, which is the "activity must be idempotent" trap that durable
+engines warn about ([Pipecode: Temporal retries and idempotency](https://pipecode.ai/blogs/temporal-data-workflows-durable-execution-retries-long-running-pipelines)).
+
+Receipts are deliberately **content-free**. Temporal's event history stores inputs and
+outputs; LeadOS must not, because that would create a second copy of the workspace outside
+the export-redaction and conflict-privacy boundaries this product enforces. The receipt
+records *that* a propagation was lost and *which* event caused it — enough to re-run it,
+not enough to leak a record.
+
+### 65.5 Competitive benchmark (vendor claims, not trials)
+
+Temporal/Inngest/Restate/Azure Durable Task offer durable execution with journals, replay,
+per-step retry and OpenTelemetry — far deeper infrastructure than this, but for *engineering
+workflows*, not leadership automation, and they require an external service. Performance-
+management products (15Five, Lattice, Visier) advertise manager enablement and predictive
+analytics but publish no automation-cost accounting. The specific thing shipped here — a
+leadership tool that prices its own rule chain, proves which rules may be skipped, and keeps
+failed propagations as re-runnable records inside a local-first, no-backend app — was not
+found in a competitor, which is a statement about the search performed, **not** evidence that
+no product does it **[UNVERIFIED]**.
+
+---
+
+## §66. Strategy coherence — measuring the frame instead of the activity (Session 62, 2026-10-28)
+
+### 66.1 The competitive hunt
+
+The hunt was run this session with live web retrieval. Claims below are **vendor or
+third-party published claims**, not trials, and no incumbent was benchmarked head to head.
+Parity or superiority is `[UNVERIFIED]`.
+
+| Source | What it claims | What it actually measures |
+|---|---|---|
+| "Strategy Execution Benchmark 2026" / OKR-tool round-ups ([okrstool](https://www.okrstool.com/blog/strategy-execution-software), [statistics](https://www.okrstool.com/blog/strategy-execution-statistics)) | 7% of leaders say most daily work ladders up to strategy; 83% get no automatic signal when a priority drifts; 60% never cleanly resolve a failing priority; only ~5% of teams sit at 76–100% alignment | Self-reported survey answers, aggregated. Useful as a market signal; not a measurement instrument. |
+| Planisware OKR-platform selection guide ([planisware](https://planisware.com/resources/strategic-planning-alignment/okr-platform-selection-strategy-execution)) | "A platform that generates high engagement but does not shift resource allocation is administrative value" — recommends % of projects traceable to a priority and spend on aligned initiatives | Percentage of projects *mapped* by a PMO, and budget on aligned initiatives: both are declarations from the same people who wrote the strategy. |
+| "Alignment platforms" position paper ([bastrustdesk](https://bastrustdesk.com/blog/okr-tools-vs-alignment-platforms/)) | Claims effort-allocation measurement and drift detection by connecting execution tools ("31 of 47 tickets… 14% of capacity, down from 22%") | The only category claiming measured effort. Requires multi-tool ingestion — the opposite of LeadOS's zero-network invariant, and a commit count is not effort. |
+| Planview / strategy-execution playbooks ([planview](https://www.planview.com/resources/guide/the-strategy-execution-playbook-accelerating-time-to-value/)) | Lists "resource allocation alignment to strategic initiatives" as a leading indicator | Portfolio reporting conventions. |
+| Nath & Sudharshan (1994), *Measuring strategy coherence through patterns of strategic choices*, SMJ ([link](https://sms.onlinelibrary.wiley.com/doi/abs/10.1002/smj.4250150104)); 2024 study of 400 firms ([link](https://www.researchgate.net/publication/380583143_Strategic_Coherence_and_Company_Performance_Research_Results)) | Strategy coherence is monotonically related to performance | Survey instruments and researcher-coded choice patterns, not record-derived shares. |
+| NIQ "Say–Do Gap" framework ([link](https://nielseniq.com/global/en/landing-page/the-say-do-gap-measurement-framework/)) | Links stated preference to verified purchasing across 25+ markets | Consumer research. LeadOS borrows the **name** from market research; the mechanism here is different and is stated in §66.2. |
+
+**Conclusion of the hunt.** The category is saturated with tools that measure *declared*
+alignment (a mapped-project percentage, a PMO convention) and with vendor surveys of the gap.
+The one thing almost nobody ships is a **bounded, record-derived distance between a declared
+share vector and a funded share vector**, with the vintage rule and measurement basis printed
+on screen. That is what Session 62 implements.
+
+### 66.2 The statistical choices, and why they are the honest ones
+
+1. **Total variation distance, not a scored "alignment %".** Declared weights and measured
+   shares are both distributions over the same support (the active bets), so the natural
+   divergence is ½·Σ|p−q| expressed in percentage points. Exact bounds: 0 (identical) and 100
+   (disjoint support). Nothing is normalised by an invented scale, and the same statistic is
+   used per bet as a signed gap.
+2. **Herfindahl–Hirschman over measured shares.** Reported as a concentration index with three
+   *labelled conventions* (<0.15 diffuse, <0.25 balanced, ≥0.25 concentrated). Concentration is
+   not good or bad — it distinguishes deliberate focus from unacknowledged lock-in, and the
+   stop rule is what tells them apart.
+3. **Vintage discipline.** The earliest adoption date defines the strategy era. Work created
+   before it is excluded from the denominator, because it was funded before the choice existed.
+   This is the same rule LeadOS applies to forecasts (never reconstruct a past prediction) and
+   to premise evidence (never backfill an observation): a metric that can be improved by
+   relabelling history is not a metric.
+4. **Scaffolding exclusion.** Governance records that the terminal itself opens carry
+   `[RULE-SCO-…]` markers and are excluded from the denominator. Otherwise one rebalancing
+   decision would mechanically worsen the gap it exists to close — a self-referential bias that
+   would look like a finding.
+5. **Measurement basis is chosen, printed and bounded.** Effort-weeks only when ≥50% of funding
+   tags carry an estimate; otherwise record counts. Below five open post-strategy records the
+   whole report is `Counts only`. A tag without an estimate is one record, never zero effort.
+6. **Falsifiability as six named checks, not a talent label.** The 9-box failure mode is a
+   confident category that outlives its evidence. Here the grade *is* the count of checks
+   passed, and every missing check is printed by name.
+
+### 66.3 What this session deliberately did not do
+
+- No CSV export scope. A share without the declaration that produced it is a number with the
+  evidence stripped off; the terminal exports a plain-text brief that carries both.
+- No automatic retirement of a failing bet. The app opens one retire-or-renew decision and
+  records the human verdict; deleting a strategy by algorithm would be the exact failure this
+  module exists to prevent.
+- No ingestion from git, Jira or calendars to "measure" effort. It would break the local-first
+  invariant and put an unverifiable inference behind the most persuasive number on the screen.
+- No trigger on unrelated events. Running a portfolio scan on every keystroke-committed action
+  and opening governance decisions while a leader types a case note is noise, not automation.
+
+### 66.4 Open questions this session created
+
+1. The gap is a cross-sectional distance. Does a *widening* gap predict anything? That needs
+   stored periodic snapshots, which do not exist yet.
+2. Tag honesty is unenforceable in a single-user local workspace. Is there a diagnostic that
+   detects suspiciously tidy tagging (for example, a bet whose tags are all created in one
+   sitting days before a review)? `[UNVERIFIED]` idea; not implemented.
+3. The 20pp / 40% / 28-day conventions are guesses with stated bounds, not validated constants.
+   Field use on a consented workspace is the only way to move them.
+
+## §67. After-action review and the organizational learning loop (Session 63, 2026-10-28)
+
+### 67.1 Evidence status of the citations in this section
+
+**This session had no general web access** (the sandbox could reach package registries only),
+so nothing below was re-fetched or verified against the publisher's page in Session 63. The
+citations are from prior knowledge and are marked `[NOT RE-FETCHED]`. Where a number is quoted
+from memory rather than from a source read in this repository's history, the claim is written as
+what the literature *reports*, not as something LeadOS measured.
+
+| Source | What it reports | What it does **not** license | How LeadOS uses it |
+|---|---|---|---|
+| US Army, *A Leader's Guide to After-Action Reviews* (TC 25-20, 1993) `[NOT RE-FETCHED]` | A four-question structured debrief (what was supposed to happen / what happened / why the difference / what we would do differently), run as soon as possible after the event, on the record, with the leader speaking last | That a debrief improves outcomes by itself, or that the format transfers unchanged from combat units to a product team | The five-question shape of a review (intended, actual, why, sustain, improve) and the ordering rule that the most senior person does not open the conversation |
+| Tannenbaum & Cerasoli (2013), *Do team and individual debriefs improve performance? A meta-analysis*, Human Factors `[NOT RE-FETCHED]` | Meta-analysis reporting roughly a 20–25% improvement in team effectiveness for structured debriefs versus no debrief, with the effect larger when the debrief is structured and attended by the team | Any specific multiplier for LeadOS, any causal claim about a particular team, or that frequency alone reproduces the effect | The decision to make a review a **first-class dated record** rather than a document, and to measure *coverage* (how often the loop ran) separately from *applied rate* (what came of it) |
+| Di Stefano, Gino, Pisano & Staats (2014), *Learning by thinking: how reflection improves performance*, HBS working paper `[NOT RE-FETCHED]` | Reflection on a completed task improves subsequent performance relative to additional practice without reflection | That reflection must be written by a tool, or that reflections can be scored | Why the *why* question has a character floor and is never inferred: the value is in the human articulation |
+| Argyris & Schön, *Organizational Learning* (1978) and *Teaching smart people how to learn* (HBR, 1991) `[NOT RE-FETCHED]` | Single-loop learning corrects an error within existing policy; double-loop learning changes the policy that produced the error; defensive routines block the second | That a taxonomy can classify an individual's reasoning, or that Espoused-theory/Theory-in-use can be inferred from a paragraph of text | The distinction between a lesson that is an **observation** (`changeType: 'none'`) and one that commits to a **change** — stored as different record types so the two rates cannot be quietly conflated |
+| Edmondson (1999), psychological safety `[NOT RE-FETCHED]` | Speaking up about error requires interpersonal safety; blame suppresses the disclosure that learning needs | That safety can be measured by counting lessons, or that "blameless" means "no consequence" | Every lesson names a system, a decision or a practice, never a person; the UI states this on every tab, and no field accepts a person as the cause |
+| Milton (2010), *The Lessons Learned Handbook*; NASA LLIS and similar corporate lessons databases `[NOT RE-FETCHED]` | Lessons-learned repositories routinely fail because entries are decontextualised, unowned and never re-read | That such repositories are useless — NASA's do get reused | The refusal to build a lessons database: a lesson here is attached to a dated event, has an owner, and is `open` until a human says what changed |
+| Ohno, *Toyota Production System* (1988); the andon/kaizen line `[NOT RE-FETCHED]` | Stopping the line to fix the cause is cheap relative to discovering it at the customer; the fix is verified by re-running the condition | That a software team can copy a physical line-stop ritual | The recurrence measure: the same class appearing again after a committed change is the "condition re-ran" test, printed rather than assumed |
+
+### 67.2 The measurement choice, and why it looks weaker than it is
+
+A review ledger could easily become a **"lessons learned" count**, which is a vanity metric:
+it rises with the number of things that went wrong. Three deliberate refusals:
+
+1. **Coverage, not volume.** What is measured is the share of *dated closures in the window*
+   that carry a held review or a dated, reasoned skip. Closing an event and never looking at it
+   is the failure mode; writing longer reviews is not rewarded anywhere in the UI.
+2. **Applied rate with a denominator that excludes observations.** Observations are stored, shown
+   and counted — but they sit outside the applied-rate fraction, because "we decided nothing
+   needed to change" is an answer, not a success, and it must not be able to make the team look
+   better at learning.
+3. **Recurrence as the only outcome measure.** Every percentage in this module answers "did we
+   look?"; only recurrence answers "did it work?". It is reported as a count of distinct events
+   and a list of the classes that repeated while their committed change was still open, never as
+   a per-person statistic.
+
+Below three dated closures the module prints counts and no percentage, on the same principle
+used elsewhere in this codebase: a rate over one or two events is arithmetic, not measurement.
+
+### 67.3 Standing research debts (Session 63)
+
+- **No field trial.** Whether a leader using this ledger applies more changes than a leader using
+  a text document is `[UNVERIFIED]`; nothing in Session 63 tests that.
+- **Self-report contamination.** "Applied" is a human claim with a date attached. It is auditable
+  (the note survives beside the lesson) but not verified against an independent signal. A later
+  session could cross-check a subset against a change record, a plan item or a document link, and
+  must then say that the check exists rather than implying the claim was verified all along.
+- **Classification stability.** Recurrence is only as good as the class taxonomy being applied
+  consistently by different people. No inter-rater reliability has been measured for the eleven
+  classes, and the UI does not pretend otherwise.
+
+
+## 2026-10-28 — Robust decisions should commission evidence, not manufacture confidence
+
+**Fresh source hunt.** Public GitHub descriptions/README content fetched with `gh api` in
+this session (outbound vendor websites are not available in this environment). These are
+vendor/project statements, not independent effectiveness evaluations:
+
+| Freshly inspected source | Verified statement | Product conversion this session |
+|---|---|---|
+| [Frappe HR](https://github.com/frappe/hrms) README, Performance Management | Goals/KRAs, self-evaluation and appraisal cycles are explicit capabilities | Keep the gate attached to real operational records and existing workflows rather than build another appraisal form |
+| [LangGraph](https://github.com/langchain-ai/langgraph) README, Why use LangGraph | Durable execution, human-in-loop state inspection and stateful workflows | Human confirmation plus production event cascade; no new agent runtime needed |
+| [Trigger.dev](https://github.com/triggerdotdev/trigger.dev) README, platform/key features | Durable workflows, retries, idempotency, waits and human approval are advertised | Exact numeric replay key, one transaction, observable downstream records; do not pretend localStorage has equivalent durability |
+| [Worklytics psoxy](https://github.com/Worklytics/psoxy) repository description | A pseudonymizing compliance proxy for workplace SaaS sources | Evidence request needs denominators and source limitations, not private employee narratives; no connector added |
+| [Microsoft TinyTroupe](https://github.com/microsoft/TinyTroupe) README and 2026-02-01 note | Experimental persona simulation for business insights; release note describes an empirical simulation validator | Reject simulated personas as intervention-effect evidence; request actual comparable observations and falsifiers |
+| [HumanLayer](https://github.com/humanlayer/humanlayer) current README | Teams steer coding agents through tasks, sessions, plans and reviews | Human review/evidence handoff is useful; this source is **not** treated as a current leadership-coaching product |
+
+**Coverage of the broader hunt:** Lattice/15Five/Culture Amp (performance, 360, engagement),
+Betterworks/Mooncamp (OKR), BetterUp/CoachHub (AI coaching), Eightfold/Visier (talent,
+succession and predictive people analytics), Aera/causaLens (decision intelligence) remain
+on the inherited inventory. Their current releases and detailed capability comparisons
+were **[UNVERIFIED]** this session. Public GitHub evidence is insufficient to establish
+which is best in each category or that LeadOS is first. Avoid recycling old marketing
+claims as fresh research. Newly inspected TinyTroupe and orchestration techniques are
+adjacent benchmarks, not substitutes for those categories.
+
+**Framework implemented explicitly:** Savage minimax regret with a set of states rather
+than an invented distribution. For conditional loss `L`, current/proposed event probability
+`b,p` and incremental cost `C`, saving is `L(b-p)-C`. Because this is multi-affine, extrema
+over the rectangular box occur at its eight corners. This remains true when the proposed
+intervention can be worse, a case missed by multiplying only the smallest loss and smallest
+reduction. The illustrative frontier is not used to estimate a probability of success.
+
+The smaller maximum regret is an upper bound on the benefit of perfect state information
+for the selected two-action model. It is **not** an expected value of sample information:
+there is no prior distribution, research likelihood or delay-cost model. The product
+prints that distinction and commissions a human evidence task rather than automatically
+funding either research or mitigation. Do not oversell a decision-theory bound as a forecast.
+
+**Gap → shipped code:** `mitigationRobustness.js` + `mitigationReview.js`, assurance UI and
+case-detail entry point implement interval dominance, regret, break-even/information
+thresholds and the DACI/delegation/coaching/tempo chain this session. New research targets:
+feasible probability-dependence constraints, changing conditional loss, immutable numerical
+vintages and prospective evidence-to-outcome scoring. Deliberately rejected: Monte Carlo
+cell shares as confidence, FMEA-derived probabilities in the new analysis, and synthetic
+employee behavior as causal evidence.
+
+## 2026-10-28 — Robustness must model intervention effects, not just uncertain inputs
+
+### Fresh market hunt (checked today)
+
+- **Lattice, July 2026 product update — Evidence-based Review Drafts and Lattice MCP**
+  ([official release](https://lattice.com/blog/july-2026-product-updates), accessed
+  2026-10-28): Lattice says its AI Agent drafts performance reviews from existing 1:1s,
+  feedback, goals, updates, growth areas and prior reviews, and reports early customers
+  completed reviews 47% faster on average. Treat both the product description and result as
+  vendor claims; this is not an independent controlled study, and does not prove leadership
+  effectiveness. MCP access expands that workflow into external AI clients. **Gap signal:**
+  evidence-grounded people-work drafting is now a visible incumbent feature, so generic
+  evidence summarization is not a credible differentiator for LeadOS.
+- **Gartner, Decision Intelligence Platforms definition**
+  ([category description](https://www.gartner.com/reviews/market/decision-intelligence-platforms),
+  accessed 2026-10-28): the category description includes decision design/orchestration,
+  simulation, optimization, and monitoring/assessment of outcomes. This is a definition of
+  the category, not an endorsement or a vendor-by-vendor product audit. **Gap signal:** the
+  full decision loop matters; a mathematically careful simulator without captured action and
+  outcome follow-through is incomplete.
+- **Underused named framework converted:** robust optimization / set-based decision analysis
+  plus **Savage minimax regret**. Where the prior model assumed common conditional severity
+  and independently varying probability boxes, Advanced mode now accepts explicit linked
+  bounds on (a) current-minus-proposed event probability and (b) proposed-minus-current
+  conditional severity. The bounded feasible regions are polygons clipped by linear
+  constraints; their vertices can be enumerated from boundary intersections. The savings
+  objective is bilinear over the product of the two polytopes, so extrema occur at a pair of
+  vertices. This is a deterministic exact search (bounded to 6×6 vertices for these clipped
+  rectangles), not a Monte Carlo confidence estimate. If severity shifts, a single
+  break-even-loss number is withheld rather than misrepresented.
+- **Product decision:** implement this as an optional extension of the existing open-case
+  decision and evidence workflow, preserving legacy assumptions and replay keys. Every
+  assumption remains human-entered; the exact numeric set is captured in the existing DACI
+  record, and `RULE-ROB-01` still creates owned verification + coaching + typed links + derived
+  Decision Tempo in one production transaction. No new LLM, synthetic-person simulation,
+  connector, paid service or schema.
+
+### Claims and limits
+
+The new calculation is exact *conditional on the user's declared bounds*, not calibrated to
+an empirical outcome, not causal evidence, and not a substitute for safety/compliance review.
+The two within-pair differences are constrained, but the probability-effect and
+severity-effect polytopes are combined independently; cross-dependence between them, other
+common causes, nonlinearities and shifting horizons are not modeled. The default mode still has a rectangular
+probability set and common loss. The search establishes correctness inside its stated set, not
+that the set is plausible. Real browser rendering, business adoption, effect calibration and
+outcome lift remain [UNVERIFIED]. No claim that LeadOS is first or superior to Lattice, Aera,
+o9, or other decision/talent platforms is made.
+
+## §68. 2026-10-28 — Coupled Continuity-Capacity ("All-Weather") Portfolio Simulation & Cross-Silo Benchmark
+
+### 2026 External Market & Academic Hunt (Verified 2026-10-28)
+
+1. **Decision Intelligence Platforms (Inaugural Jan 2026 Gartner Magic Quadrant — Quantexa, IBM, Decisions + ProcessMaker, FlexRule DMN CL3):**
+   - Formalizes explicit decision modeling, orchestration, governance, and outcome monitoring, but focuses on enterprise operational/entity rule automation rather than coupling human leadership capacity, 1:1 stewardship load, and operational dependency shocks.
+2. **Operational Resilience & EU DORA Platforms (Fusion Risk Management, Fortiv, Cutover, Continuity2 Meridian, Opsbook, ServiceNow ORM — 2026):**
+   - Replace static Business Impact Analysis (BIA) binders with dynamic service/Nth-party dependency graphs, EU DORA Art. 26/29 impact-tolerance testing, and failover runbooks — yet remain isolated in GRC/BCM silos without feeding stochastic outage preemption into engineering or operating-plan delivery schedules.
+3. **Strategic Portfolio Management (Planview Portfolios/Anvi, Planisware Horizon, Tempus Resource, ServiceNow SPM, Jira Align — 2026):**
+   - Provide PERT/Monte Carlo schedule simulation, OKR alignment, and resource capacity planning under a hidden **"fair-weather" assumption**: uninterrupted infrastructure, vendor, and primary-steward availability.
+4. **Incident Postmortem / AAR Governance & Forecast Calibration (Rootly, Jeli, incident.io 2026; ForecastBench & Murphy 1973 decomposition):**
+   - Confirm that unclosed remediation actions (40–60% industry-wide without structural follow-through) and uncalibrated recovery estimates systematically understate real disruption duration unless empirical drill ratios ($n \ge 5$) adjust declared recovery times.
+
+### Cross-Domain Synthesis Shipped (`continuityCoupling.js` + `continuityCouplingRule.js`, [ADR-0030](docs/adr/0030-coupled-continuity-capacity-simulation.md))
+
+- **Engineering & Operations Research:** Simchi-Levi, Schmidt & Wei (2014) $\text{TTS}/\text{TTR}$ Risk Exposure Index fused with Goldratt (1997) Critical-Chain owner serialization and Hopp & Spearman (2011) preemptive outage queueing over multi-tier Nth-party DAGs.
+- **Mathematics & Statistics:** Law (2014) Common Random Numbers (CRN) paired sub-streams (`effortRng` + `shockRng`) guaranteeing pathwise dominance ($\text{coupledDays}^{(k)} \ge \text{fairWeatherDays}^{(k)}$), Knuth/Hörmann PTRS Poisson arrival sampling from annual disruption probabilities, and Vovk et al. (2005) split-conformal drill TTR calibration with an explicit $n = 5$ sample floor (`declared-point-ttr` below 5 drills; `empirical-drill-bootstrap` at $n \ge 5$).
+- **Finance & Economics:** Rockafellar & Uryasev (2000) coherent Expected Shortfall ($\text{CVaR}_{90}$) strictly segmented per ISO currency (never summing across currencies), paired with Reinertsen (2009) Cost-of-Delay (`CD3`) chaining (`RULE-CPL-01` $\rightarrow$ `RULE-DLY-03` in the same atomic transaction) and marginal counterfactual hardening ROI (`rankHardeningInterventions`).
+- **Political Science, Leadership & Org Design:** Williamson (1985) supplier hold-up & Tsebelis (2002) external gatekeeper warnings surfaced alongside Avelino et al. (2016) Bus-Factor-1 dual-hat contention (`RULE-CPL-02`), queuing blameless Edmondson (1999) 1:1 focus-protection prompts without evicting employee-queued topics.
+
+### Deliberately Rejected
+- **Default/synthetic failure probabilities on unestimated dependencies:** rejected because fabricating numbers violates epistemic honesty; unmodeled critical nodes are omitted and surfaced via `CPL-03`.
+- **Cross-currency Expected Shortfall aggregation via static FX rates:** rejected to preserve multi-currency accounting integrity.
+- **Auto-cutting scope or auto-reassigning stewards without human consent:** rejected; `RULE-CPL-01..02` open undecided DACI trade-offs and `recommend`-level delegations only.
+
+
+## §69. 2026-10-28 — Practice adoption needs provenance and a later persistence test
+
+### Fresh competitive hunt (official product material inspected 2026-10-28)
+
+- **Lattice, Spring/Summer 2026 product release** ([official](https://lattice.com/blog/lattice-spring-summer-2026-product-release)): Lattice says its AI Agent drafts reviews from 1:1s, prior reviews, growth areas, feedback and related performance data, and has plans for meeting assistance. This is a vendor product description; its reported efficiency claims are not independent evidence of improved performance.
+- **15Five, Agents overview updated 2026-10-08** ([official support article](https://success.15five.com/hc/en-us/articles/51450804595483-Agents-Overview)): 15Five describes Focus Briefs, AI-assisted performance-review writing and Meeting Assistant preparation/notes with connected calendar or meeting sources. This is also a vendor description, not a controlled impact evaluation.
+- **Gap narrowed:** source-grounded review writing, coaching briefs and meeting action capture are becoming incumbent features. The less integrated problem targeted here is after the manager says “we changed the practice”: whether a *separate dated record* corroborates that claim, whether the artifact later changes, and whether anyone returns to see if the practice persisted. This is a scoped product gap from public descriptions, not a claim no competitor has the feature. Full product trials and exact comparison are [UNVERIFIED].
+
+### What shipped (Schema v44 / ADR-0031)
+
+- Applied lessons may attach up to five dated workspace artifacts from three types only: an anchored organizational change, a completed delegation, or a reviewed decision. The evidence date must be on/after the held review and on/before the human-entered application date. The reviewed subject cannot corroborate itself. Open, undated, out-of-window and unsupported record types are excluded.
+- Each attachment stores an explicit human note and a bounded snapshot of the target’s identity/title/status/date/relevant summary. The pure report re-reads the target: any missing, changed or non-qualifying artifact becomes stale. The snapshot is a change detector, not a signature. No NLP or semantic matching is performed.
+- `lesson — corroborates → artifact` is a first-class typed graph edge. `RULE-AAR-04` opens one owner-assigned 30-day delegation when an active lesson owner exists. It checks practice persistence and explicitly withholds causal/effect language. No owner means no synthetic assignment.
+- Counts remain separate from the composite learning index. The corroboration percentage is withheld below five applied claims; all n<5 reporting is counts-only. Earlier v43 applied claims remain unverified rather than backfilled.
+
+### Framework synthesis, limits, and rejected alternatives
+
+Argyris & Schön’s single-/double-loop distinction motivates separating a claimed change from a repeatable governing practice; Deming’s Plan–Do–Check–Act cycle motivates a later check rather than treating task closure as organizational learning. Engineering provenance contributes a live referential-integrity check; operations management contributes a scheduled sustainment checkpoint; economics says no expected value or ROI can be asserted without a baseline and observed outcomes. The system currently measures only **workspace record corroboration** and schedules a **future human persistence observation**. It does not show independent authorship, implementation quality, semantic relevance, persistence before the due date, causal effect, financial return, or market superiority.
+
+Deliberately rejected: free-text similarity as a relevance classifier; task completion as proof a work practice changed; automatic application status; person-level scoring; treating a linked artifact as causal evidence; and broad exports of sensitive lesson narratives. Prospective effect evaluation with frozen pre-change baselines is the next meaningful extension.
+
+## §70. 2026-10-28 — Continuity of the leader, not of the service
+
+### The question
+
+Every continuity framework in the operating literature addresses the organization: Simchi-Levi's
+time-to-survive and time-to-recover for nodes, Avelino's bus factor, DORA's concentration rules.
+LeadOS already models those (ADR-0012) and the people-side saturation that follows from them
+(ADR-0018). None of it answers the first-time manager's actual question before a holiday, a
+hospital stay or a family emergency: *which of my own dated obligations will stall, who could
+hold each one, and what does the smallest honest hand-over cost?*
+
+Two bodies of work bear on it. The succession-planning literature (Rothwell; IPMA-HR competency
+frameworks) distinguishes *coverage* (someone can act) from *readiness* (someone is prepared),
+and insists on naming which decision rights are non-delegable before an absence rather than
+during it. The operations-research literature supplies the machinery: Poisson-binomial
+convolution for exact counts of independent Bernoulli stalls (Aho & Hopcroft; used widely for
+score aggregation), branch-and-bound set cover (Land & Doig 1960; the classic NP-hard covering
+formulation), and coherent risk measures — Rockafellar & Uryasev's expected shortfall — for the
+money tail. The RACI/DACI distinction supplies the design constraint: an *Authority* gap is not
+the same as an *Accountability* gap, and pretending they are is how handovers fail.
+
+### Why the obvious implementations were rejected
+
+- **Calendar and mailbox ingestion.** It would be the easiest way to "know" what the manager
+  does. It is also unavailable offline, hostile to a local-first promise, and makes the model
+  depend on a data source the user cannot audit. Dated records the leader already keeps are
+  sufficient, and their absence is informative.
+- **A single resilience score.** A weighted composite would be easier to display and impossible
+  to act on. The unit of decision here is a *specific obligation* with a *specific deputy* and a
+  *specific setup cost*; collapsing that destroys the only actionable information.
+- **An AI-written handover brief.** Fluent, unversioned and untestable. A deterministic brief
+  built from the same numbers, with the assumptions printed, can be checked line by line.
+- **Storing a score on the drill.** Any stored score can drift from its inputs. This system
+  re-derives the score on read from the frozen predictions and the recorded observations.
+
+### What was built and what it measures
+
+The engine derives an absence demand inventory from six record families, scores each item's
+criticality from named inputs, assigns one of three delegability states, convolves per-item
+stall probabilities exactly, prices the tail per currency with a seeded Monte Carlo, solves a
+minimum cover by exact branch and bound under a node cap, and freezes the per-item probabilities
+when a drill opens. Closing a drill records observations, not conclusions: Brier, base rate,
+skill, precision, recall, coverage and a Wilson interval, with counts-only floors.
+
+### Limits stated plainly
+
+- Items are treated as conditionally independent. Correlated absence and common-cause
+  dependency failure are materially realistic and explicitly out of scope for this version.
+- Fit and criticality weights are conventions with printed components, not validated
+  instruments. A reader can disagree with the arithmetic, which is the point.
+- The demo workspace opens with an empty drill ledger. There is no calibration claim, and no
+  historical drill was simulated to manufacture one.
+- Nothing here measures whether a hand-over *worked*, whether the leader's absence *caused* an
+  observed stall, or whether a manager who runs drills is more effective. All **[UNVERIFIED]**.
+
+### Competitive read
+
+The public vendor material inspected this session and in Session 67 (Lattice's Spring/Summer
+2026 release; 15Five's Agents overview) describes grounded review drafting, focus briefs and
+meeting preparation. None of it describes absence simulation over the manager's own dated
+obligations, exact stall distributions, minimum-cover hand-over planning, or scoring a frozen
+absence prediction against an observed one. That is a description of public material, not proof
+of absence, and no independent evaluation of competitor capability or of this feature's effect
+exists. **[UNVERIFIED]**
+
+## §71. 2026-10-28 — The cost of an independence assumption, measured
+
+### The experiment
+
+Session 68 shipped an absence model whose stall **count** is an exact Poisson-binomial
+convolution, which requires items to stall independently. That requirement was written down as a
+limit. This session removed it and measured the difference on the same records rather than
+asserting it: with one shared cause per window (25% of windows, one recorded team offline at
+once), individual deputy absence (8% per 14 days), and fallback to the next eligible deputy at
+75% of recorded fit, the demo's expected stall count rises from **16.88 to 19.07** and P90 from
+**19 to 25**, a **31.6%** tail lift. Expected shortfall in USD rises from 17,540 to 25,301.
+
+Two lessons follow, and they are why this is a research note rather than a feature note.
+
+**First: a caveat is not free.** The old formula was `pCover = fit × availability`, with
+availability always 1 and no mechanism for a deputy to be missing. Built into a stress feature it
+would have *increased* pCover when a deputy was removed, i.e. reported less risk after deleting
+the person the plan depends on. This is the failure mode of modelling "coverage" as a fraction
+rather than as a probability that someone is at their desk: the arithmetic stays plausible while
+the direction of the effect inverts. The corrected model is pinned by a test asserting that 100%
+absence produces certain stalls.
+
+**Second: the shape of the answer depends on recorded structure, not on the maths.** In the demo
+every deputy is recorded on one team, so a team-level shared cause is total and P90 equals the
+item count. That is not a bug in the simulation; it is a true statement about the workspace
+("all your cover is one team") that the maths surfaced. The honest product decision is to print
+it as a finding and point at the partial-loss stress, not to invent an arbitrary "N deputies
+away" mechanism to keep the distribution interesting.
+
+### Related work and where this sits
+
+Common-mode failure is standard vocabulary in reliability engineering (IEC 61508's beta factor
+for common-cause failures, NASA's common-cause analysis) and in operational-resilience regulation
+(DORA Art. 29 on concentrated ICT third-party risk, already used in Schema v29). Those frameworks
+ask an organisation to estimate a common-cause factor and defend it. LeadOS cannot defend a
+number it has not measured, so the factor is exposed as a **leader-owned convention**, printed
+next to the numbers it moves and adjustable in the URL and in settings — the same treatment given
+to the evidence floor and the horizon.
+
+The concentration measure follows the covering literature rather than the planning literature:
+what matters is the size of the *eligible* covering set, not which element a particular solution
+selected (Karp 1972 on set cover; Chvátal 1979 on the greedy bound). A plan that names one of three
+equally eligible deputies is robust; an item with one eligible deputy is not, and the two are
+visually identical in a plan table.
+
+### What was corrected from the previous increment
+
+- **Self-cover.** A deputy was eligible to hold contact with a stakeholder whose record *is* that
+  person, and received a 30-point relationship bonus for it. The stakeholder's own record made them
+  the best cover for their own contact item. Fixed: explicit ineligibility with a rendered reason,
+  and relationship credit now requires a typed `stakeholder → person` link. Effect on the demo:
+  criticality coverage falls from 53.5% to 46.5%. The earlier number was wrong and is corrected
+  here rather than silently replaced.
+- **Readiness.** A hand-over decision plus cover delegations was previously treated as done. It is
+  not: acknowledgement is a recorded check-in or a completed delegation, nothing weaker. The
+  readiness check falls back to the newest commissioned hand-over, because previewing today's
+  window must not hide the future plan that needs briefing.
+
+### Limits, stated
+
+- The shared-cause factor, the 8%-per-14-days absence odds and the 75% fallback discount are
+  conventions. None is estimated from this workspace's history, and none should be read as a
+  measured outage, illness or performance rate.
+- One shared cause per window. Two simultaneous shocks, and one vendor failing under two teams,
+  remain unmodelled and are stated in the rendered assumptions.
+- Nothing here validates that a briefed hand-over achieves better outcomes. Readiness counts
+  records, not behaviour, and no drill has yet scored either model. All **[UNVERIFIED]**.
+
+## §72. 2026-10-28 — Hand-over execution verification, causal mechanism attribution & cross-team vendor common-mode contagion (Session 69, [ADR-0034](./docs/adr/0034-handover-execution-mechanism-attribution-and-vendor-contagion.md))
+
+### 1. Competitive benchmark (personally fetched 2026-10-28)
+
+We audited four widely adopted open-source systems spanning incident command, on-call rotation,
+service-catalog topology, and causal attribution:
+
+- **Netflix Dispatch (`https://github.com/Netflix/dispatch`, 6,483 stars, Apache-2.0)**:
+  orchestrates incident commanders, role handovers, and post-incident review checklists. Dispatch
+  records *that* a role or task was reassigned, but treats checklist completion as self-certifying:
+  it does not inspect the underlying operational records to verify whether a delegated obligation
+  actually moved during the handover window.
+- **Target GoAlert (`https://github.com/target/goalert`, 2,857 stars, Apache-2.0)**:
+  models on-call rotations, temporary user overrides, and multi-step escalation policies. GoAlert
+  assumes responders on separate schedules fail independently; it does not link responder pools to
+  a shared service/vendor dependency graph where one upstream outage pulls primary and backup
+  responders across multiple teams into incident recovery simultaneously.
+- **Backstage (`https://github.com/backstage/backstage`, 34,734 stars, Apache-2.0)**:
+  models `System`, `Component`, `Resource`, `Group`, and `User` entities with `ownedBy` and
+  `dependsOn` edges. Backstage's catalog is static: it neither computes Simchi-Levi survival
+  shortfalls (`TTR > TTS`) nor simulates what happens to leadership obligations when a dependency
+  outage preempts the stewards who also serve as absence cover.
+- **PyWhy DoWhy (`https://github.com/py-why/dowhy`, 8,378 stars, MIT)**:
+  unifies graphical causal models (Pearl, 2009) and potential outcomes (Imbens & Angrist, 1994)
+  around four explicit steps — *Model, Identify, Estimate, Refute* — including causal mechanism
+  attribution and distinguishing treatment assignment from realized compliance.
+
+### 2. Cross-disciplinary frameworks implemented in code
+
+| Discipline | Framework & citation | Implementation in `app/core/domain/leaderContinuity.js` & `leaderContinuityRule.js` |
+|---|---|---|
+| **Econometrics / Causal Inference** | Intention-to-Treat (ITT) vs. Treatment-on-the-Treated (TOT) (Imbens & Angrist, 1994) & graphical mechanism attribution (Pearl, 2009; `py-why/dowhy`) | `attributeDrillOutcomes`, `scoreDrillRecord`, `drillCalibration`: partitions closed-drill outcomes into `model-miss`, `implementation-drop`, `predicted-stall`, `unmodelled-resilience`, and `clean-cover`, computing `executionConditionedBrier` and `executionConditionedSkill` alongside unconditional Brier/skill |
+| **Economics / Contract Theory** | Principal–agent moral hazard & incomplete contracts (Holmström, 1979; Grossman & Hart, 1986) | `gradeCoveredSourceProgress`, `handoverImplementation`: distinguishes `paper-only` completion (`delegation.status === 'done'` with 0 covered source records moved) from `completed-verified` execution (`sourcesMoved > 0`); `LCS-06` signal |
+| **Reliability & Supply-Chain Engineering** | Common-cause beta-factor shocks (IEC 61508) & Time-to-Survive / Time-to-Recover (`TTS` / `TTR`, Simchi-Levi et al., *HBR* 2014; EU DORA Art. 29) | `vendorCommonModeContagion`, `LCS-07`: traces active `state.dependencies` blast radius (`effectiveTTR > ttsDays`), identifies primary/backup stewards pulled into recovery across team boundaries, and models a second simultaneous shock (`continuitySecondShockPct`) |
+| **Political Science & Governance** | DACI decision rights & explicit escalation boundaries (Tsebelis, 2002) | `RULE-LCS-04` (`recoverReturnedCoverDelegation`): when a cover delegation is returned, re-allocates to the highest-fit eligible backup deputy at the 75% fallback convention (`[LCS-BACKUP:...]`) or opens one DACI cover-gap decision (`[LCS-RETURN:...]`) when no deputy clears the floor |
+| **Operations & Organizational Learning** | US Army After-Action Review (TC 25-20) & Argyris double-loop learning (1977) | `RULE-LCS-04` (`recordImplementationDropLearning`): when a window or drill closes with implementation drops or paper-only completion, drafts one pre-filled `retro` (`retros`, Schema v43) and one owned ritual-fix delegation (`[LCS-EXEC:...]`) |
+
+### 3. Epistemic & honesty boundaries
+
+- **Paper completion vs. verified movement is observational, not behavioural surveillance.**
+  `gradeCoveredSourceProgress` reads only dated fields already recorded on linked workspace
+  entities (`decidedOn`, `reviewedOn`, `resolvedOn`, `settledOn`, `completedOn`, `lastContactOn`,
+  check-in dates, 1:1 dates). It never reads messages, calendars, or telemetry.
+- **Unmodelled dependencies are never treated as 0% risk.** Any active dependency in
+  `state.dependencies` missing `annualFailureProb` or `ttrDays` is surfaced in
+  `vendorContagion.unmodeledDependencies` and rendered in an explicit banner.
+- **Causal mechanism attribution is an accounting partition over recorded dates, not an RCT.**
+  Separating `implementation-drop` from `model-miss` prevents `RULE-LCS-02` and the leader from
+  blaming the probability model when a cover delegation was never briefed or was returned, while
+  still printing the unconditional Brier score first so dropped batons can never be hidden.
+
+## §73. 2026-10-29 — What a measure makes people do (Session 70, [ADR-0035](./docs/adr/0035-scorecard-integrity-lab.md))
+
+### 1. Competitive benchmark (personally inspected 2026-10-29)
+
+- **Lattice, 15Five and comparable performance suites.** Their published 2026 material is about
+  drafting reviews, preparing 1:1s, surfacing engagement and attrition signals. It assumes the
+  scorecard is an input to be displayed, not an incentive that changes behaviour.
+  ([Lattice release material](https://lattice.com/blog); [15Five](https://www.15five.com/platform/))
+- **Scion (`scionhr.com`, AI succession).** Publishes departure-cascade modelling, span-of-control
+  benchmarking and readiness scoring. It models *who leaves*; it does not model what the metric
+  makes a stayer do.
+- **Agentnoon, ChartHop, Visier.** Org-design and workforce-planning scenario tools with headcount,
+  cost and structure levers. Measurement appears as a library of KPI definitions.
+- **Decision-analysis practice (EVPI/EVSI).** Standard in health economics and decision-tree
+  software (SpiceLogic, TreePlan, MetricGate). Excellent at pricing *one* decision's information;
+  not applied to scorecard design across a team.
+- **Goodhart/Campbell practitioner guidance (2025–2026).** Widely published checklists — brainstorm
+  loopholes, pair metrics, add guardrails, rotate definitions — plus a fast-growing AI-evaluation
+  literature on specification gaming and reward hacking. All prose or process; none of the reviewed
+  material simulates an equilibrium and ranks redesigns by modelled net value.
+
+Absence of a published capability is not evidence that no competitor has it. **[UNVERIFIED]**
+
+### 2. Frameworks implemented in code
+
+| Discipline | Framework & citation | Implementation |
+|---|---|---|
+| **Economics / Contract theory** | Multitask principal–agent (Holmström & Milgrom, 1991) | `scorecardEquilibrium`: effort \(a_i = \rho_i/c_i\), cosmetic effort \(b_i = \rho_i\gamma_i/k_i\), uncounted work receives none of the incentive, first-best is \(a_i \propto v_i/c_i\) |
+| **Accounting / Measurement theory** | Measure distortion (Baker, 1992) | `goodhartProfile`: per-metric cosmetic share × value-per-rewarded-unit, ordered and reported |
+| **Agency theory** | LEN risk premium / informativeness principle (Banker & Datar, 1989; Holmström, 1979) | Noise discount `1/(1+rσ²)` per metric; risk premium reported separately, never netted off |
+| **Economics / Welfare** | Ratchet effect (Weitzman, 1980; Freixas, Guesnerie & Tirole, 1985) | `1 − 0.6·ratchet` withholding on genuine effort |
+| **Organizational behaviour** | Kerr (1975) "rewarding A while hoping for B"; Campbell (1979); Goodhart (1975) | Stakes multiplier `0.6 + 0.8·stakes` on cosmetic effort; stakes amplifier in the index |
+| **Decision science** | Pre-registration and falsification (Popper; pre-registered forecasting in Tetlock, 2005) | Frozen prediction at commit, declared falsifier margin (+12pp), calibration ledger with a counts-only floor |
+| **Operating research** | Deterministic design search with an explicit cost | Seven designs evaluated on the same equilibrium; ranked by value net of `measurementMetricCostPct` per extra metric |
+
+### 3. What was measured on the demo's own declarations (2026-10-29)
+
+The demo scorecard — *Support throughput*, 32 declared team hours, stakes 60%, detection 25% —
+models 34.3% of first-best genuine value with 75.7% of measured effort flowing to cosmetic
+movement. Goodhart index 51.9/100; worst metric "Tickets closed per week" at 66.7. The search
+recommends the composite redesign: +23.4 net value points, taking modelled genuine value to 69.2%
+and cosmetic share to 32.1%. In hours: ≈21h/week misdirected, ≈11.2h/week recoverable.
+
+These are **model outputs under declared parameters**, not measurements of the demo's fictional
+team and certainly not of any real person.
+
+### 4. Defects the new tests found (recorded rather than quietly fixed)
+
+1. A double-scaled value index made every efficiency read 0.3% instead of 27.7%. Fixed, and pinned
+   by a conservation test.
+2. With no uncounted task declared, the uncounted-work floor evaporated and 20% of the effort
+   budget disappeared. Effort is now conserved with a test that sums the shares.
+3. The attention list was gated on the Goodhart index while the badge was gated on efficiency, so
+   a card the page called *distorted* could be missing from "what needs a decision". Both now read
+   the same badge.
+
+### 5. Limits, stated
+
+- The parameters are leader-declared 0–100 conventions. A leader who declares gaming ease 0 and
+  detection 100% will be told their card is sound. The falsifier exists so that such a declaration
+  can be shown wrong in public.
+- Agents are homogeneous and rational within the model. Real teams contain people who would never
+  game a metric; the model describes the *incentive*, not a person.
+- Effort is one scalar budget. Attention switching, depth and morale are not modelled, and the
+  page says so instead of implying a richer model than exists.
+- No claim that a redesign causes better outcomes. Nothing here is an RCT; the calibration ledger
+  is the only tested number and it prints its sample size.
+
+## §74. 2026-10-29 — Cross-module provenance without copying the record (Session 71, [ADR-0036](./docs/adr/0036-bounded-propagation-lineage-and-typed-links.md))
+
+### Research question and ambition bar
+
+LeadOS already had a typed relationship graph and a generalized post-commit event engine. The operational gap was between *automation ran* and *a leader can verify what it changed*: live rule metrics expire, successful writes had no durable transaction-level lineage, and route links sometimes opened a module without selecting the exact record. The ambition is a navigable, inspectable provenance chain across modules, not a new dashboard or a prose summary. The trace must not become a second copy of sensitive workspace content, infer the past, or imply that automation caused a downstream outcome to be effective.
+
+### Fresh public technical/domain research (GitHub repositories/specifications inspected 2026-10-29)
+
+- **[OpenTelemetry Trace API specification](https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/api.md#spancontext)** describes an immutable `SpanContext` that can be serialized and propagated, carrying a `TraceId` and `SpanId`; the tracing model links spans through parent context. **Applied:** a local transaction ID and parented rule steps make a causal *execution path* inspectable. **Not claimed:** LeadOS implements OpenTelemetry, sampling, a collector, distributed context propagation or its wire formats.
+- **[OpenLineage](https://github.com/OpenLineage/OpenLineage#overview)** defines running-job metadata around consistently identified `run`, `job` and `dataset` entities, with extensible facets. **Applied:** keep entity kinds and relationships typed, and record IDs/types rather than prose. **Not claimed:** the local registry is the OpenLineage schema, supports its integrations, or is a general data-lineage catalog.
+- **[Temporal](https://github.com/temporalio/temporal)** describes durable workflow execution that handles intermittent failures and retries. **Benchmark/gap:** LeadOS's post-commit queue is synchronous and local. The new ledger is persisted with the workspace, but it is not a crash-safe distributed workflow engine and cannot replay past steps. Durable restart/retry semantics remain future work.
+- **[LangGraph](https://github.com/langchain-ai/langgraph)** documents long-running stateful workflows, durable execution, human-in-the-loop inspection/modification and trace views of execution paths/state transitions. **Applied:** make provenance visible and retain human gates. **Not claimed:** LeadOS is an agent framework; these deterministic domain rules do not invoke an LLM and do not resume a workflow from checkpoints.
+- **[Open Policy Agent](https://github.com/open-policy-agent/opa)** is a general-purpose, context-aware policy engine. **Applied narrowly:** privacy exclusions and link/ID validation remain explicit, testable allowlists at the local schema boundary. **Rejected for this increment:** adding a policy runtime/dependency would add complexity without a user-configurable policy requirement.
+- **[Evidently](https://github.com/evidentlyai/evidently)** describes evaluation, tests and monitoring for ML/LLM systems and data pipelines. **Applied:** distinguish an execution receipt from outcome evaluation; a trace does not certify effectiveness. LeadOS has no online telemetry or ML-monitoring integration here.
+- **[Netflix Dispatch](https://github.com/Netflix/dispatch)** README announces archival/read-only status effective 2025-09-01. It is excluded from the current-product comparison rather than presented as an active competitor.
+
+These are adjacent infrastructure and domain references, not direct leadership-suite competitors. This session did **not** re-run a direct product feature-parity survey. No competitor-absence, market-first or comparative-effectiveness claim follows from these sources. Direct public-product observations from the prior scorecard study remain in §73, with their own evidence limits.
+
+### Framework synthesis converted into code
+
+| Lens | Transferable principle | LeadOS decision |
+|---|---|---|
+| Distributed tracing / causal execution paths | Stable typed IDs, explicit parents, a clear root and bounded steps | `propagationLineage` stores source event, rule step, parent/depth, changed IDs/types, new typed edges and emitted event types. It is a local execution receipt, not a distributed trace. |
+| Data-lineage standards | Entity identity and relationships are explicit; extensions do not replace the core vocabulary | Reuse the exhaustive `LINK_ENTITY_TYPES`, collection and relation registries plus the one canonical resolver. Routes focus exact records and encode IDs. |
+| Reliability engineering | A success record and a failure/retry receipt answer different questions | Append success lineage only when a rule actually commits a change or emits an event. Preserve `propagationReceipts` for rollback/retry; do not merge failures into successful history. |
+| Data minimization / privacy by design | Persist only metadata needed to answer the audit question | No titles, notes, score parameters or bodies; exclude conflict/pulse data; scrub IDs removed by `clearDemo`; omit candidate-referencing transactions from redacted exports. IDs still remain local workspace data and are not anonymous. |
+| Scientific falsifiability / evidence governance | A record of execution is not proof of causal impact | Do not backfill v47 history or claim effectiveness. Outcome attribution belongs to separately declared and scored impact evidence. |
+
+### Implemented, planned and rejected
+
+**Implemented in this session:**
+
+- Schema v48 adds an empty `propagationLineage` collection on migration `47 → 48`; no historical successes are inferred.
+- The existing post-commit queue appends a bounded transaction only when a traceable source event produced at least one committed effect. Limits are 250 transactions, 32 rule steps, and 48 targets, links and emitted events per transaction. Overlong IDs are rejected instead of truncated into dangling prefixes; self-parent links are invalid.
+- All registered typed entity kinds round-trip through schema normalization and resolve to routes. Destination views select the linked record, preserve append-only records on navigation, and still display retired scorecards.
+- A distorted scorecard commit demonstrates actual propagation to a redesign decision, owned delegations, a coaching prompt/person update and typed `informs` provenance. The `#/propagation?tab=lineage` view shows the successful steps and navigable references.
+- The lifecycle preserves traces while scrubbing removed demo references; redacted export omits candidate-linked transactions; CSV scope #43 is counts/types-only. Full JSON backup keeps the bounded local ledger.
+
+**Rejected/deferred:** storing event payloads or full record snapshots; inferring pre-v48 history from audit prose; treating IDs as anonymous; automatic replay/compensation; a hosted tracing or workflow service; and any claim that a typed edge proves intervention effectiveness. A crash-safe versioned outbox and leader-controlled retention/purge policy are roadmap items, not delivered features.
+
+### Limits
+
+Only committed successful effects are in this ledger; no-ops and failures are represented elsewhere or not persisted as lineage. Bounds can omit details, and only the latest 250 transactions survive. The trace is not an event store, a replay engine, a complete audit of every read, a causal model, or evidence that a created decision/task helped anyone. The local JSON workspace continues to contain identifiers and may contain sensitive content outside this content-minimal ledger.
+
+## §75. 2026-10-29 — Join an intervention to its successful rule path without confusing implementation and effect (Session 72, [ADR-0037](./docs/adr/0037-impact-execution-evidence.md))
+
+### Research question
+
+Can the existing Impact Ledger's pre-registered outcome evaluation be connected to the existing generalized rule engine in a way a leader can inspect, without either inventing historical exposure or turning a local automation trace into an efficacy claim? The selected join is exact and typed: `entityType + entityId` must appear in a retained successful transaction's root event or applied-step event. Free-text labels and target/link mentions alone are not match keys.
+
+### Fresh public competitor benchmark (official sources inspected 2026-10-29)
+
+| Product / source | What its current public material says | Relevance to LeadOS | What is not established |
+|---|---|---|---|
+| [15Five product releases](https://success.15five.com/hc/en-us/articles/50989471559067-What-s-new-in-15Five-Product-releases) and [Agents overview](https://success.15five.com/hc/en-us/articles/51450804595483-Agents-Overview), updated Oct. 8, 2026 | 15Five describes Focus Brief, AI-Assisted Reviews and Meeting Assistant; connected work context is used in briefs/reviews, and the October release says sources link to originating records. Its docs describe meeting prep plus notes/suggested actions, depending on enabled integrations/plans. | Establishes a strong public benchmark for grounded people-context synthesis, source navigation and manager workflow assistance. | Vendor documentation is not independent effectiveness evidence. It does not tell us whether 15Five has any internal transaction-provenance or intervention-evaluation capability beyond the pages reviewed; absence is **[UNVERIFIED]**. |
+| [Lattice Workforce Intelligence / AI Leverage Insights announcement](https://lattice.com/blog/lattice-launches-workforce-intelligence-for-ai-era-connecting-people-strategy-to-business-outcomes), June 10, 2026 | Lattice says AI Leverage Insights is intended to connect AI usage with performance data, manager feedback and output signals. The announcement described rollout as anticipated later in 2026. Lattice also announced MCP and evidence-based review drafts. | Closest strategic public signal for connecting adoption/activity data to people and business outcomes. LeadOS's v49 join is different: it observes successful deterministic LeadOS rule transactions tied to a leader-selected record, not AI usage, employee productivity or organization-level value. | Current AI Leverage Insights availability, data coverage, methodology, validation and causal interpretation are **[UNVERIFIED]** from this announcement. Lattice's own "first" positioning is a vendor claim, not independently verified. |
+
+**Competitive conclusion:** the market bar is moving from drafting/summarizing to grounded, cross-system context and outcome-oriented signals. LeadOS should not claim superiority or uniqueness. The defensible product choice here is narrower: make a local deterministic execution path inspectable beside an already pre-registered outcome analysis, with uncertainty visible and no copied record prose.
+
+### Framework synthesis converted into design
+
+| Framework / source | Transferable principle | LeadOS implementation and boundary |
+|---|---|---|
+| Carroll et al., [implementation fidelity framework](https://doi.org/10.1186/1748-5908-2-40), and the 2024 [fidelity debate](https://link.springer.com/article/10.1186/s13012-024-01406-3) | Define what component was actually delivered and separate fidelity/context from outcome interpretation. | Count only exact retained successful LeadOS root/step events. This is much narrower than full implementation fidelity: it does not observe delivery, exposure, quality, adaptation, uptake or work outside the app. |
+| Causal inference and preregistration; existing Impact design, grounded in [ITS/HAC](./docs/adr/0015-impact-ledger-preegistered-evaluation.md) | Freeze a falsifiable outcome question before scoring; do not use a post hoc process trace as assignment or a counterfactual. | v49 does not change the estimator or verdict gates. Execution counts are displayed separately; no count upgrades a verdict or repairs confounding, attrition or missing exposure. |
+| Reliability engineering: [AWS transactional outbox](https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/transactional-outbox.html), [Temporal Activity guidance](https://docs.temporal.io/activity-definition) | Atomic intent, duplicate tolerance and idempotent work matter when retries cross failure boundaries. | Capture snapshot in the existing local store transaction at score time. LeadOS has no distributed broker, durable worker, crash-safe replay or workflow retry in this slice; these references are patterns, not implementation equivalence. |
+| Missing-data/statistical reasoning under a bounded observation window | Absence from a partial sample is not proof of non-occurrence. | Distinguish no record, no retained match, missing source and cleared source. Legacy studies are `not-recorded`, not zero; a zero match never says no work occurred. |
+| Goodhart / principal-agent economics and data minimization | An operational metric may change behavior; an easy-to-game proxy can be mistaken for value, while richer data increases privacy cost. | Export counts, not titles, hypotheses, names or trace IDs. Do not score individuals or call activity "impact"; keep a separate frozen outcome analysis. |
+
+### Implemented in Schema v49
+
+- The declaration UI can select an existing source record from the shared typed-entity/collection registry. Actions validate that the ID exists for the declared intervention type; unsupported and team-wide interventions can remain label-only.
+- On score, the same store transaction freezes a versioned snapshot matching exact typed root/step events from `windowStart` through `lockedAt`. A target or graph edge alone is not an execution match. The snapshot stores bounded counts plus up to 12 local trace-navigation IDs; no event body or source prose is copied.
+- The UI says what a match means and does not mean, warns that bounded lineage may have aged out, and links retained traces and the source record. The score itself is excluded because capture occurs before post-commit rules run.
+- A real `case.created` flow demonstrates existing rule propagation to decision/delegation and other modules; an Impact study selects that case and RULE-IMP-01 supplies the reverse `evaluates` link. Test coverage exercises the action and rule spine, not hand-built demo evidence.
+- Additive migration `48 → 49` initializes snapshots to `null`, preserving existing evaluations with no inferred history. Demo cleanup clears deleted source pointers while retaining frozen counts. Redacted JSON strips references to lineage rows it omits. Impact CSV scope #32 adds bounded aggregate status/counts only; IDs, titles, hypotheses and labels remain out.
+
+### Rejected claims and limits
+
+A match does **not** establish intervention delivery, exposure, fidelity, adoption, quality, effectiveness or causality. A non-match may reflect no automation trigger, an external process, an untraceable event, a removed source or bounded-history loss. The 250-transaction lineage limit and 12-reference snapshot limit remain. This feature does not integrate HRIS/Slack/Jira/calendar data, does not supply a randomized design, and does not make LeadOS comparable to an AI workforce analytics model. No market-first, competitor-absence, causal or comparative-effectiveness claim is supported. Real-browser assistive-technology behavior and the legacy `src/**` implementation remain **[UNVERIFIED]**.
+
+## §76. 2026-10-29 — Was it delivered? Separating the delivery claim from the leader's account of it (Session 73, [ADR-0038](./docs/adr/0038-implementation-fidelity-ledger.md))
+
+### The question the market does not ask
+
+Every reviewed people-management suite measures **whether the tool was used**. Lattice's own analytics page describes its Adoption Dashboards as quantifying "the success of your people programs by providing metrics on engagement and utilization of Lattice"; comparison material for the 2026 cycle treats "check-in completion above 80%" as the success signal for 15Five and "a cycle ran end to end without spreadsheet fallbacks" as the signal for Lattice. Both are utilisation metrics for the product. Neither is a statement about whether a specific leadership practice was delivered to a specific population at a declared dose.
+
+That difference has a name in implementation science, and the literature is blunt about how rarely it is measured.
+
+### Fresh public benchmark (sources inspected 2026-10-29)
+
+| Source | What it establishes | Why it matters for LeadOS | What is not established |
+|---|---|---|---|
+| [Lattice People Analytics — Adoption Dashboards](https://lattice.com/platform/analytics) | The vendor defines the success of "your people programs" as engagement and utilisation **of Lattice** itself. | This is the sharpest available contrast: product adoption is the market's unit of programme success. LeadOS measures practice delivery against a declared denominator instead. | Whether any Lattice module separately records intervention-level dose or adherence is **[UNVERIFIED]**; one product page cannot prove absence. |
+| [Scoping review of fidelity frameworks, *Health Psychology Review*, 2025](https://www.tandfonline.com/doi/full/10.1080/17437199.2025.2534001) | Across 20 fidelity frameworks there is consensus that adherence, dose/exposure and quality of delivery are the core of fidelity, and no consensus about the rest (receipt, enactment, adaptation). | Validates scoring exactly four observable stages plus adaptation as an attested artefact, instead of inventing a complete-looking model. | The review describes research frameworks, not software behaviour or effect sizes. |
+| [Systematic review of fidelity measurement, school-based prevention, 2025](https://pmc.ncbi.nlm.nih.gov/articles/PMC12400755) | Of 190 included studies, 72 (38%) measured any fidelity component: adherence 57 (79%), responsiveness 24 (33%), dosage 19 (26%), quality of delivery 9 (13%). Adherence was mostly *moderate* measurement quality; no component was consistently measured at high quality. | Establishes that under-measurement is a field-wide problem, not a vendor-specific one — and that a tool refusing to grade on thin coverage is following the evidence rather than being difficult. | Study population is school-based prevention; the frequencies are not a benchmark for workplace interventions. |
+| [Thrive transitional-care fidelity study, *PMC*, 2026](https://pmc.ncbi.nlm.nih.gov/articles/PMC13480035/) | Using Carroll's framework: content fidelity 7.6/9, dose 3.6/4, week-1 dose 98.7% falling to week-4 78.8%, "high fidelity" defined as ≥80% of components; fidelity associated with downstream outcomes. | Empirical support for two v50 design choices: a fixed ≥80% "clearly met" floor for agreement classification, and a separate **maintenance** stage read over the final fortnight, because dose decays within the intervention itself. | Single programme, single health system, observational association — not a general rule about workplace practice. |
+| [Bloom's result relating ITT and TOT](https://statisticaloddsandends.wordpress.com/2021/09/15/blooms-result-relating-itt-and-tot/), [LATE](https://en.wikipedia.org/wiki/Local_average_treatment_effect), [power analysis under non-compliance](https://everydaycausal.com/power-analysis.html) | TOT/CACE = ITT ÷ (c − s); under one-sided non-compliance with exclusion and monotonicity the per-complier effect is roughly ITT ÷ compliance, and the MDE inflates by the same factor while required N grows with 1/C². | Converted verbatim into `implementationEffect`: report ITT, per-complier estimate and inflated MDE side by side; withhold below 10% exposure; never present the ratio as a causal estimate. | Compliance is measured on the leader's own records and the leader is not randomised, so this is an order-of-magnitude dilution correction, not a causal claim. |
+| 2026 vendor comparison blogs ([HR Tools Nav](https://hrtoolsnav.net/blog/lattice-vs-15five-vs-culture-amp-2026), [Rework](https://resources.rework.com/tools/performance-management/lattice-vs-15five)) | Report check-in completion, "adoption dependency" and time-to-first-value; one claims 15Five check-ins are "used by 92% of active customers" with no methodology. | Confirms that adoption is the competitive battlefield the market has chosen. Marketing-grade sources only. | Numbers are unaudited vendor or affiliate claims. Feature absence and comparative effectiveness remain **[UNVERIFIED]**. |
+
+**Competitive conclusion.** The gap is not a missing dashboard; it is a missing *construct*. Adoption dashboards answer "is the product used?" and engagement surveys answer "how do people feel?" Neither answers "was the practice delivered to the people we said, at the dose we said, and does the leader's memory match the records?" LeadOS should claim only what it implements: a local, record-derived delivery reading with an explicit attested counter-reading and a visible disagreement statistic.
+
+### Framework synthesis converted into design
+
+| Framework / source | Transferable principle | LeadOS implementation and boundary |
+|---|---|---|
+| RE-AIM (Glasgow, Vogt & Boles 1999) | Reach and maintenance are observable at individual level; adoption is a setting-level construct. | Reach, implementation/dose and maintenance are scored. Setting-level **Adoption is deliberately not claimed** — a local workspace cannot see eligible adopters it never recorded. |
+| Carroll et al. 2007 + 2025 scoping review | Adherence, dose and quality of delivery are the defensible core; adaptation is contested but material. | Four stages have record instruments with an explicit standard; adaptation is attested-only and labelled as such rather than proxied. |
+| Bloom 1984 / LATE | Partial delivery dilutes the observed effect and inflates the detectable effect. | ITT, per-complier and inflated MDE printed together; withheld below 10% exposure; `null` (not `0`) when the evaluation could not fit. |
+| Small-n statistics | Normal-approximation intervals lie at low n. | Wilson score intervals; over-claim statistics withheld below three record-verifiable verdicts. |
+| Goodhart / Campbell | Any delivery ratio will be gamed. | Each stage publishes its own gaming route; the unit definition is fixed at declaration; no person is ever scored from the ledger. |
+| Measurement-under-missingness (v49 §75 inheritance) | Absence of a record is not evidence of absence of the act. | An unattested checkpoint is a *missing reading*, never a failure, and the generated task says exactly that. |
+
+### Implemented in Schema v50
+
+- `app/core/domain/fidelity.js`: five stages with declared weights, denominators and gaming routes; four record instruments bound to typed collections with an explicit standard; multiplicative exposure; coverage-gated grading; stage agreement classification; Wilson intervals; the Bloom dilution correction with its assumptions; portfolio and calibration read models; deterministic signals (`FID-01..05`) and a one-page brief.
+- `app/core/domain/fidelityRules.js` on the existing post-commit spine: `RULE-FID-01` typed links to the measured source record, `RULE-FID-02` disagreement prompt, `RULE-FID-03` one owned remediation task per under-delivered plan, `RULE-FID-04` one task per plan for overdue checkpoints, `RULE-FID-05` frozen `implementationSnapshot` on a scored study. All marker-idempotent; `fidelityAutoPropagate: false` pauses automation while an explicit scan still runs.
+- `RULE-IMP-02` now branches on measured exposure: a contradicted study that was materially under-delivered opens a *repair delivery or stop on a weak test* decision with four different options, instead of a stop decision that would kill an idea the organisation never ran.
+- The `#/fidelity` page prints the observed row and the attested row for every stage, marks the weakest stage, freezes a settlement, exposes the calibration card and a method card naming every constant.
+- Additive `49 → 50`; demo cleanup keeps declared plans and nulls pointers; CSV scope #44 is derived telemetry only.
+
+### Rejected claims and limits
+
+This measures **delivery**, not effectiveness. It cannot see work outside LeadOS, practices with no typed records, or receipt/enactment by the people on the other side of the intervention. The instruments cover four intervention types; everything else is human-attested and marked unverifiable against records. Reach depends on the roster being current. The coverage, exposure and agreement thresholds are conventions printed on the page, not settled science. The dilution correction assumes exclusion and monotonicity that a leader's own delivery does not guarantee, and the leader is not randomised. No market-first, competitor-absence, causal or comparative-effectiveness claim is supported. Real-browser assistive-technology behaviour and the quarantined legacy `src/**` tree remain **[UNVERIFIED]**.
+
+## §77. 2026-10-29 — What a merit budget buys, and what a pay-equity screen may not say (Session 74, [ADR-0039](./docs/adr/0039-merit-and-pay-equity-terminal.md))
+
+### Competitive scan: compensation software, 2026
+
+| Source (public marketing / comparison material, fetched 2026-10-29) | What it claims | Consequence for this session |
+|---|---|---|
+| [CandorIQ, "10 Modern Compensation Tools for Fair, Data-Driven Pay Equity in 2026"](https://www.candoriq.com/blog/data-driven-pay-equity-tools) | Lattice's comp module: cycle management tied to review data, band management with compa-ratio tracking, "merit recommendations within budget guardrails", benchmarking via integrations, equity and D&I analytics. Payscale: 54M+ salary profiles, **controlled and uncontrolled gap analysis**, pay-transparency workflows, compliance reporting. | Confirms the market baseline: bands, compa-ratio, a cycle, a two-number gap. It also confirms what none of them price: the *consequence* of the allocation. |
+| [Everstage, "Top Pay-for-Performance Tools in 2026"](https://www.everstage.com/sales-compensation/optimizing-pay-for-performance-with-the-best-software-solutions) | Lattice: "tightest integrations between performance data and merit cycle execution", calibration sessions so increases are consistent across managers, bands "anchored to external benchmarks, not gut feel". beqom: global comp planning plus pay equity. | Performance-to-pay wiring and cross-manager calibration are the competitive floor. Neither is a model of what the money buys. |
+| [HR Insights Lab, vendor-neutral 2026 guide](https://hrinsightslab.com/compensation/best-compensation-management-software/) | The listed "key features that move a number": band management, cycle automation, pay-equity analysis ("find gaps before a regulator or an employee does"), benchmarking integration, approval workflows with an audit trail, scenario and budget modelling. Payscale reported at 250B+ data points and 15,400 job titles. | Exactly six features, and the framing is **compliance**. An audit trail answers "who approved it"; nothing answers "was the number right". |
+| [Figures.hr 2026 selection guide](https://figures.hr/post/top-compensation-software-for-efficient-hr-management) | EU Pay Transparency compliance as the buying trigger for a whole product tier (Figures, 3.5M EMEA datapoints); beqom uses ML for pay-gap analytics. | Regulatory reporting is the market's centre of gravity. A first-time manager with ten reports has no regulator and no dataset; they have a budget and a team that can read relative pay. |
+
+**Competitive conclusion.** The category sells *governance*: an audit trail, a benchmark, a compliance report. It does
+not sell *decision quality*: what the budget is buying, which distribution it produces, whether the model that
+guided it was right. Those three questions are the module. No claim of feature absence, parity or comparative
+effectiveness beyond these public materials is supported; all of it remains **[UNVERIFIED]**.
+
+### Methodological findings that changed the implementation
+
+| Source | Finding | Implementation decision |
+|---|---|---|
+| [Adverse Impact Analysis and Hiring Standards](https://hiringstandards.com/adverse-impact-and-hiring-standards.html) — UGESP 29 CFR §1607.4(D), standard-deviation and Fisher exact practice | The four-fifths rule is "a rule of thumb for enforcement purposes, not a strict legal standard"; small pools — "an adverse impact ratio below 0.80 in a pool of 12 applicants carries little evidentiary weight" — need Fisher's exact test or a Z-test, and courts apply a totality-of-evidence analysis. | The screen runs over the **decision**, not headcount; it carries Wilson intervals; `reliable` is false below the sample floor; the page prints that a screen is not a legal conclusion; and a flag opens a decision about the *mechanism*, never an individual adjustment. |
+| [AI Wiki, "Disparate Impact"](https://aiwiki.ai/wiki/disparate_impact) — citing EEOC guidance and Watkins, McKenna & Chen (FAccT 2024), *The Four-Fifths Rule is Not Disparate Impact* (arXiv:2202.09519) | The rule "speaks only to the question of adverse impact, and is not intended to resolve the ultimate question of unlawful discrimination"; the algorithmic-fairness literature has turned one clause of disparate-impact law into a standalone metric — an "imperfect synecdoche". | The module never calls the ratio a discrimination finding, never renders it as a verdict, and never stores a protected characteristic to compute it. It audits a **declared** comparison (hire origin, reporting line) and states the residual's limits in three fixed caveats. |
+| [PrevueHR, "Adverse Impact & the 4/5ths Rule"](https://www.prevuehr.com/resources/insights/adverse-impact-analysis-four-fifths-rule/) | The rule "does not account for sample size or probability, so it can flag differences that are not statistically meaningful" — and the 2025–2026 US enforcement posture shifted away from disparate-impact-only investigations while the rule remains a practical screen. | Reliability gating and an explicit interval are not decoration: at n≈8 per group the ratio is mostly noise, and the UI must say so before the leader quotes it. |
+
+### Framework synthesis converted into design
+
+| Framework / source | Transferable principle | LeadOS implementation and boundary |
+|---|---|---|
+| Oaxaca (1973) / Blinder (1973) | A group pay gap partitions into a part attributable to observed characteristics and a residual. | Twofold log-pay decomposition over level, tenure and last rating, with an explicit missingness term; the residual is printed with its own interval and never called discrimination. |
+| Standard pay-equity practice ("adjusted vs unadjusted gap") | The adjusted gap is a regression coefficient on the group indicator, not a difference of means. | The inferential number is exactly that coefficient; the decomposition stays descriptive beside it. The two are labelled separately instead of being blended. |
+| Small-n inference | Percentile resampling at n≈16 measures which cell a resample emptied. | The adjusted-gap interval uses the coefficient's own standard error with a Cornish–Fisher small-sample t. The bootstrap was implemented, measured and rejected in-session. |
+| Holmström–Milgrom (1991) informativeness principle | A performance measure should inform about effort; noise should not be paid for. | The mechanism decision includes "collect the missing variables (scope, negotiation history, market timing) before acting" as a first-class option with its cost named. |
+| Principal–agent framing of retention pay | The marginal value of a merit dollar is `P(departure avoided) × replacement cost`. | The third policy is a greedy marginal-value allocator under band and increase ceilings, priced against the same budget, with regret printed against the best feasible policy. |
+| Brier (1950) / calibration | A probability that is never scored is a slogan. | Finalization freezes per-person departure probabilities; `person.archived` resolves them; the skill score against the base rate is withheld below five outcomes and reported as `null` when the base rate has no variance. |
+| Succession criticality (readiness module) | Replacement cost is not uniform across a team. | Replacement exposure is multiplied by the succession-bench factor for the person's role, with the basis printed per row. |
+
+### Implemented in Schema v51
+
+- `app/core/domain/comp.js`: bands and positioning, band integrity with a refusal to repair, inversion and
+  external-premium findings, Oaxaca–Blinder plus the adjusted-gap interval, the four-fifths screen, the printed
+  retention hazard, three priced policies with regret, the frozen snapshot, Brier calibration, `MER-01..07` and a
+  brief. Pure module: no storage, no clock, no unseeded randomness.
+- `app/core/domain/compRules.js`: `RULE-COMP-01..05` on the existing spine — `compensates` provenance, one
+  mechanism decision (never an individual adjustment), one relative-pay task per cycle with `compares-pay-with`
+  links, one dated outcome review, and a resolved prediction on departure.
+- `#/merit` with five panels, a live budget meter, three policy cards and a settlement panel; CSV scope #45 exports
+  ratios and counts under opaque cycle codes; the `Merit & pay equity` Insights bucket carries the signals.
+
+### Rejected claims and limits
+
+This is a decision surface, not a compensation system. It stores no protected characteristic, so it cannot answer
+the compliance question a legal team would ask; it decomposes a comparison the leader declares. The retention
+coefficients are conventions that the calibration card exists to contradict over time, and a hazard model built on
+five terms is not a forecast of any individual. The band, ceiling, increase-cap and reliability thresholds are
+printed conventions rather than settled science. Nothing here is a market-rate claim: there is no benchmark feed.
+No market-first, competitor-absence, causal or comparative-effectiveness claim is supported. Real-browser
+assistive-technology behaviour and the quarantined legacy `src/**` tree remain **[UNVERIFIED]**.
+
+## §78. 2026-10-29 — Who leaves, at what cost, and what the screen may not say (Session 75, [ADR-0040](./docs/adr/0040-workforce-transition-terminal.md))
+
+### Why this question, and why now
+
+Sixty-four sessions of this workspace have priced delay, risk, capacity, merit, hiring and delivery, and none of them
+touched the decision with the shortest feedback loop and the longest consequence: a reduction. Enterprise search for
+this category returns compliance products, because the buyer is an employer with a legal department. The user of this
+product is a first-time leader with ten reports and no counsel, and the question they need answered is not "will this
+file survive a challenge" but "is this a decision, what does it cost, and what does it do to the people who stay".
+
+### Competitive scan, 2026
+
+| Source (public material, fetched 2026-10-29) | Claim | Read |
+|---|---|---|
+| [Onwards HR — Reduction in Force software](https://www.onwardshr.com/reductions-in-force) | Pools from a business justification; `considered for` / `impacted by`; HR+legal collaborative review; automate OWBPA and WARN compliance; adverse-impact analysis; severance automation; historical trend reporting. | The category's product is a **defensible process**: approvals, mandated forms, a history nobody can disprove. It prices nothing and predicts nothing. |
+| [AxisSynapse — Reductions in force docs](https://docs.axissynapse.com/elr/reductions-in-force) | Snapshot at definition; a selection methodology menu; weighted criteria worksheet; 3–5 person calibration committee; four-fifths analyser with a standard-deviation test and a k-anonymity floor; WARN timeline; release packets; two signatures per step; "the file is the defense record". | The most complete public specification of the incumbent shape, and a genuinely good one. Three ideas were adopted (criteria declared before names, a group-size floor, the ratio printed). The artefact is still a file rather than a decision, and every version of it needs protected classes and counsel. |
+| [Joveo, *What Is Adverse Impact?*](https://www.joveo.com/blog/what-is-adverse-impact-four-fifths-rule/) · [hiringstandards.com guide](https://hiringstandards.com/adverse-impact-and-hiring-standards/) | UGESP 29 CFR § 1607.4(D); the EEOC Q&A concedes a 20% gap may not indicate impact on small numbers; passing 80% is not a safe harbour; use effect size **and** significance. | Confirms the screen must refuse small groups and print its own unreliability. Implemented. |
+| [Raghavan & Kim, *Limitations of the "Four-Fifths Rule"*, Georgetown Law Technology Review (2024)](https://georgetownlawtechreview.org/wp-content/uploads/2024/01/Raghavan_Kim_Final-Proof.pdf) | The rule measures effect size only; with small n a single data point changes the conclusion, and can reverse which group is disadvantaged; courts do not treat it as determinative. | The single most useful finding of the session. It produced shipped code: a **fragility count** — selections that must move, at constant headcount, before the direction reverses — printed in words beside the ratio. |
+
+### What was built, and what it refuses
+
+`#/transition` (Schema v52) prices a named list and its alternatives from records this workspace already holds: pay
+from the merit cycle, the last completed rating, dependency stewardship, bench readiness and open ownership. Cost is
+arithmetic over declared notice and severance conventions; a missing pay figure is `unpriced` and `null`, never zero.
+Selection is a constrained greedy plus swap repair with a printed relaxation bound, a seeded weight-ensemble
+stability share (not a probability), and hard refusals — a sole steward of a critical dependency cannot be selected at
+all. The screen reports Wilson intervals, how much of the pool carried a group code, and how fragile the ratio is. A
+failed screen prices the cheapest compliant swap set and then opens **one decision about the criteria**, not two
+private bargains about names. Survivors get a mechanical redistribution, an overload threshold, and a four-term
+departure convention frozen before the change and scored after it, withheld below five outcomes.
+
+Refused: storing a protected characteristic; auto-generating the list; a departure probability for every person;
+WARN notices, releases and severance agreements; minimax regret across cash and capability (tried, replaced — it
+recommended attrition at zero cost while removing nobody); treating undeclared candidates as a group (tried, replaced
+— it made the screen unreadable for the wrong reason).
+
+### Limits
+
+Not legal advice and not a legal record; no jurisdiction logic and no counsel workflow. No significance test — the
+fragility count is the substitute, and the screen remains an effect-size heuristic. Capability is operational value in
+this workspace's own records, not a person's worth. The redistribution rule is mechanical and load is a proxy.
+No FX, no payroll, no benchmark feed. Vendor parity, competitor absence and comparative effectiveness remain
+**[UNVERIFIED]**, as does real-browser assistive-technology behaviour.
+
+## §79. 2026-10-30 — The shape of the team is a measurable object (Session 76, [ADR-0041](./docs/adr/0041-structural-design-terminal.md))
+
+### Why this question
+
+Seventy-five sessions asked what is happening *inside* the team. None asked whether the team's
+shape — spans, layers, where approval sits, how many channels a manager actually carries — is the
+reason the inside behaves the way it does. That is the first decision most new managers are handed
+and the last one any tool measures: the market sells drawing (hierarchy views) and experience
+(surveys), and the analysis itself is sold as a consultancy deliverable, which is a slide. A slide
+has no falsifiable claim in it, so it can never be wrong, so nobody learns anything from it.
+
+### Competitive scan, 2026
+
+| Source (public material, fetched 2026-10-30) | Claim | Read |
+|---|---|---|
+| Lucid / OrgChart-style org-chart products (category marketing) | Import the HRIS, auto-draw the hierarchy, model "what-if" scenarios by dragging boxes, publish a chart that stays current. | The artefact is the product. A "what-if" is a picture of a different picture; no span, queue or cost claim is computed from the leader's own records. |
+| Enterprise workforce-planning suites | Position control, headcount and cost modelling against a plan, with approval workflows. | Headcount is costed; **coordination is not**. A suite can tell you what a twelfth report costs in salary and nothing about what it costs in decisions. |
+| Team-Topologies-flavoured tooling inside collaboration analytics | Classify teams as stream-aligned / platform / enabling and flag interaction modes from collaboration data. | A vocabulary, not an instrument. It gives the leader words for a problem and no number for its size. |
+| Manager-effectiveness survey products | Score a manager from their reports' responses on clarity, support and growth. | Measures *experience*. Experience is a consequence of structure; measuring only experience answers "how do people feel" and never "why". |
+| Queueing and org-design literature in practice (Graicunas 1933; Urwick 1956; Brooks 1975; Kingman 1961) | Span of control, coordination channels and waiting time are all computable from a graph and a service rate. | Every ingredient has been available for decades and none of it is in a management tool. That gap, not a new algorithm, is the opportunity. |
+
+**Competitive conclusion.** The category sells *pictures* and *feelings*. Neither is a decision
+instrument. No claim of feature absence, parity or comparative effectiveness beyond these public
+materials is supported; all of it remains **[UNVERIFIED]**.
+
+### Methodological findings that changed the implementation
+
+| Source | Finding | Implementation decision |
+|---|---|---|
+| Graicunas (1933) / Urwick (1956) | Span of control is a supervisory convention with a classical band; the number of possible relationships grows faster than headcount. | The band is configurable and printed as a convention. A breach is a prompt, never a verdict. |
+| Brooks (1975), *The Mythical Man-Month* | Coordination cost grows as pairs, `n(n−1)/2`. | Channels are counted **per unit with the manager included**, so the marginal cost of one more report is visible per unit instead of averaged across the whole company. |
+| Little (1961) | In steady state, arrivals equal departures. | `λ` is estimated from the manager's own completion count in a declared window rather than from a guess about demand — the only assumption is that the window is representative. |
+| Kingman (1961) | `Wq = ρ/(1−ρ)·(Ca²+Cs²)/2·Ts` for a single-server queue with general arrivals and service. | Used per manager with `Ts` and `Cs` measured from that manager's own completed commitments. At ρ ≥ 1 the wait is `null`, because an unstable queue has no finite expectation. |
+| Small-sample practice already established in this workspace | A statistic below its floor must refuse, not report a low number. | Fewer than three completions → `insufficient`. Fewer than three scored managers → no median error. |
+| Pareto dominance over a composite index | A weighted score encodes the trade-off inside the weights. | Four minimised objectives, a frontier, and no composite. The trade-off is the leader's decision, which is the whole point. |
+
+### Framework synthesis converted into design
+
+| Framework | Transferable principle | Implementation and boundary |
+|---|---|---|
+| Graicunas / Urwick | A declared band makes a breach observable. | `orgSpanMin` / `orgSpanMax`, clamped, printed, and refused rather than silently clamped when a leader sets a maximum below the minimum. |
+| Brooks | Pairs, not headcount, are the unit of coordination. | Channels per unit; hours = channels × a declared cost; money = hours × the manager's loaded rate from recorded pay. |
+| Kingman / Little | Utilisation is a *delay* problem, not a percentage. | Per-manager measured queue with percentiles from an exponential tail, labelled as an approximation. |
+| Pre-registration | A claim made before the outcome is the only one that can be scored. | The commit freezes the prediction; the settle scores it; the prediction is never rewritten. |
+| Procedural justice (Leventhal, 1980; Edmondson, 1999) | A reorg is felt as a loss of standing before it is felt as a cost saving. | At most three blameless prompts asking what a moved person lost; never a performance note, never a per-person prediction. |
+| Transaction-cost / authority economics | Moving one person to one manager is a private arrangement, not a structural decision. | The residual decision offers split, move a workstream, or shrink scope — and explicitly refuses pairwise swaps. |
+
+### Implemented in Schema v53
+
+- `app/core/domain/orgDesign.js`: structure build with cycle/self/dangling reporting, span and layer
+  reading, Brooks channels, priced coordination with an explicit unpriced share, per-manager Kingman
+  queue from measured service times, Pareto frontier, channel-scaled counterfactual, frozen snapshot,
+  out-of-sample scoring, `ORD-01..06` signals and a deterministic brief.
+- `app/core/domain/orgDesignRules.js`: `RULE-ORD-01..05` on the existing spine.
+- `#/orgdesign` with six panels and three dialogs; CSV scope #47; the `Structural design` Insights
+  bucket; `structures`/`resizes` typed relations.
+
+### Rejected claims and limits
+
+The span band and coordination hours are conventions, not instruments. The queue is a single-server
+approximation: a manager is not one server, and correlated arrivals between two managers are not
+modelled. The channel-scaled counterfactual is a declared convention that can be wrong in either
+direction — the calibration card exists to contradict it, and it refuses to report below three scored
+managers. Pay is whatever the workspace records; there is no HRIS or market feed, and an unpriced unit
+is excluded rather than estimated. Nothing here chooses which person should report to which person,
+scores a person, or infers a reorg from the current manager column. No market-first,
+competitor-absence, causal or comparative-effectiveness claim is supported. Real-browser and
+assistive-technology behaviour remains **[UNVERIFIED]**.
+
+## 2026-10-30 — Information value hunt (Session 77, Schema v54)
+
+The question this hunt set out to answer: **does anything in the market price "how much is it worth to find this
+out before I commit?" for a working manager, rather than for a health economist or a spreadsheet modeller?**
+Short answer: the *arithmetic* is 60 years old and well served by calculators; the *decision record* is not served
+at all. Nothing found stores the frame, prices the test, writes the observed result into a belief ledger, and
+counts how many open decisions rest on the same assumption.
+
+| Source | What it claims | Consequence for this build |
+|---|---|---|
+| [Vose Software, *Top 7 Decision Analysis Tools* (Oct 2026)](https://www.vosesoftware.com/Risk-In-Excel/Seven-Best-Decision-Analysis-Tools.php) | A 29-criterion comparison: ModelChoice reports EVPI/EVII from the tree; TreeAge Pro computes EVPI and EVPPI only *from a probabilistic sensitivity analysis*; PrecisionTree's documentation has no VOI feature at all; Analytica needs an add-on library; SilverDecisions has had an open VOI request since 2016; SimVoi does it by simulation. Prices €59 one-time to €8,995 perpetual. | The incumbent shape is a **model builder**, not a decision surface: you must first construct a tree or an influence diagram in Excel before the number exists, and the artefact lives on one analyst's laptop. This module starts from the decision the leader already has, enumerates exactly, and keeps the frame as a record with history. It also confirms the *exact-enumeration* choice: the two tools that lead the comparison reach EVPI through simulation, which is why their answers move when the seeds do. |
+| [Umbrex, *Value of Information Analysis* framework note (Oct 2026)](https://umbrex.com/resources/frameworks/decision-making-frameworks/value-of-information-analysis/) | The consulting version: net value = expected benefit **minus cost, minus delay, minus organisational effort**; worked example distinguishes a $5.4M EVSI from a $2M fee plus six months of delay, and says a broader market study is worth little because it would not change the decision rule. | This is the strongest single critique of a naive EVSI − fee calculation, and it came from the consulting literature rather than from software. Converted directly into code this session: an investigation now declares a **cost of waiting** beside its fee, net value subtracts both, and break-even accuracy is solved against the total rather than the invoice. |
+| [MetricGate, *Value of Information Analysis* / *EVPI* / *EVSI* calculators (2026)](https://metricgate.com/docs/value-of-information-analysis/) | Free browser calculators: EVPI = EVWPI − EV\*, EVSI by preposterior enumeration, EVSI/EVPI as an "efficiency" ratio, EVPI by Monte Carlo over normal net benefits for health economics, and the explicit warning that "standard EVPI applies to a single decision; when the same evidence informs multiple decisions, a more complex portfolio analysis is required." | Confirms the arithmetic and hands over two conventions this build adopts (efficiency ratio; EVPI as a hard ceiling). More usefully, its own stated limitation is the gap this module fills rather than copies: **the portfolio case — several open decisions sharing one uncertainty — is called out as out of scope for the calculators.** `RULE-VOI-04` and the concentration panel address exactly that, with a declared flip-stress instead of an invented covariance. |
+| [Hubbard Decision Research, *How to Make Decisions Under Uncertainty* (course slides)](https://hubbardresearch.com/wp-content/uploads/2020/08/Decisions-Under-Uncertainty-LW-Slides.pdf) | Expected opportunity loss computed **per slice of a distribution**, summed to EVPI; thresholds as the break-even where a decision changes; the *measurement inversion* — the variables managers measure most are the ones with the least information value, and vice versa; "many of the EVPIs in a business case will be zero." | Three shippings: the minimax-regret/EOL view beside expected value (already built as a second rule), the break-even framing reused for sensitivity, and the honesty rule that **a computed EVPI of zero must print as zero** — a decision that is already robust does not need a study, and the page says so instead of implying more research is always better. The measurement-inversion lesson is why the buy-information rule fires on a *money floor or a share of stake*, not on "the frame exists". |
+| [Jackson, *voi* R package](https://chjackson.github.io/voi/) and [SAVI / Sheffield](https://savi.shef.ac.uk/SAVI/) | The research-grade implementations: EVPI, EVPPI, EVSI and ENBS over a PSA sample, with regression/moment-matching/importance-sampling estimators for EVSI. SAVI: "using **only** PSA results from your model". | The technical ceiling of the field, and unambiguously a health-economics toolchain: R, PSA samples, willingness-to-pay thresholds. Deliberately **not** imitated — this build enumerates small declared frames exactly so that a non-specialist can see every number and argue with it. EVPPI is left unbuilt and named as a limit (this module has no parameter-level model to take partial information over). |
+| [ICCB-003 issue, *validate value-of-information budgeting for capital diligence* (Oct 2026)](https://github.com/Luminous-Dynamics/symthaea/issues/8020) | An open, unmerged prototype with the same ambition in a different stack: typed priors and payoffs, integer minor units and fixed-point probability arithmetic, deterministic tie-break by action id, exhaustive-enumeration tests for EVSI ≥ 0, EVSI ≤ EVPI, perfect signal, uninformative signal, "information whose cost exceeds its value", invalid prior mass, incomplete payoff tables. | The closest thing to a competitor found anywhere: a *unit-tested library*, with no persistence, no org memory, no premise ledger, no cascade into decisions, tasks or reviews, and no UI. Its acceptance list is a good independent checklist for this build's suite — every item on it (perfect signal, uninformative signal, cost > value, bounds, invalid prior mass, incomplete payoffs) has an explicit test in `tests/app/information-value.test.mjs`, plus the ones it does not mention: a settled test written into the ledger, concentration across frames, and regret scored against the frozen snapshot. |
+
+### Frameworks named, and where each one lands in code
+
+| Framework | Transferable principle | Implementation and boundary |
+|---|---|---|
+| Raiffa & Schlaifer (1961), Howard (1966) | The value of information is the difference between the expected value of the best action *with* the information and the best action *without* it. | `evaluateFrame` enumerates the declared payoff table exactly: `EVPI = Σ p·max − max Σ p·payoff`. No sampling, no seeds. |
+| Bayes' rule / posterior predictive | A test is worth what it changes, not what it measures. | `posteriorAfterSignal` applies the declared sensitivity/specificity state by state; `EVSI = Σ_signal P(signal)·max_o E[u\|signal] − EV*`. |
+| Blackwell (1951/1953) | More informative experiments are weakly more valuable — which is what makes a break-even accuracy well defined. | EVSI is bisected on sensitivity at fixed specificity; a monotonicity test proves the ordering holds on the fixture, and a coin flip (se + sp = 100%) is refused at entry rather than priced at zero. |
+| Savage (1951) minimax regret | A leader may legitimately refuse the expected-value order. | Regret table and minimax choice computed beside EV; `robustChoiceDiffersFromExpected` printed; deciding against EV requires a written reason that is stored, never overridden. |
+| Diagnostic likelihood ratios (evidence-based medicine) | An observation should move a belief by a stated factor. | `LR+ = se/(1−sp)`, `LR− = (1−se)/sp`, clamped at 20 so the Assumption Ledger's refusal of certainty is preserved; the observation lands on the premise the states cite, not on a parallel belief store. |
+| Herfindahl–Hirschman index (economics) | Concentration is a risk even when every individual position looks fine. | `RULE-VOI-04` and the portfolio panel: how many open frames rest on one premise, and how many would change their preferred option under a declared flip. Concentration, not correlation. |
+| Brier (1950) / log loss | A forecast can only be scored after the fact, against the distribution it actually stated. | `decide` freezes the declared distribution; observing the realised state scores it and records the regret actually incurred. Withheld below a resolved-prediction floor. |
+| Measurement inversion (Hubbard) | The most-measured variable is rarely the most valuable one. | EVPI is compared to a declared floor *and* to a share of the stake; the buy-information rule does not fire merely because a frame exists. |
+| Real options / value of delay (finance) | Waiting has a price and an option value. | An investigation declares a **cost of waiting** beside its fee; net value subtracts both, and the break-even search targets the total. The delay is not modelled as a stochastic option to defer — named as a limit. |
+
+### Implemented in Schema v54
+
+- `app/core/domain/valueOfInformation.js`: frame evaluation (EV per option, EVPI, EVPI-as-share-of-stake,
+  regret table and minimax, near-tie detection), Bayesian posteriors, EVSI with a cost-of-waiting term,
+  break-even sensitivity by bisection, likelihood ratios, concentration and flip-stress portfolio reading,
+  Brier/log-loss scoring, `VOI-01..06` signals and a deterministic brief.
+- `app/core/domain/valueOfInformationSchema.js` / `valueOfInformationRules.js`: versioned normalisers, frozen
+  snapshot, and `RULE-VOI-01..05` on the existing spine.
+- `#/voi` with four panels and six dialogs; CSV scope #48; the `Information value` Insights bucket;
+  `informs`/`rests-on` typed relations.
+
+### Rejected claims and limits
+
+EVPI is an upper bound **given the leader's declarations**, and the page prints that sentence beside every
+figure — a mis-declared payoff table produces a confident and wrong ceiling. The declared probabilities are
+point estimates with no elicitation protocol (no equivalent of a calibrated probability assessment), so the
+module cannot detect an overconfident prior. EVPPI is not built: there is no parameter-level model to take
+partial information over, and inventing one would mean inventing structure the leader never declared. The flip
+stress is a two-point perturbation, **not** a probability and **not** a covariance; two premises that are
+correlated in reality are treated as independent because nothing in the record says otherwise. The
+cost-of-waiting figure is declared, not derived from a discount rate or a stochastic deferral option. Likelihood
+ratios assume the test's declared sensitivity and specificity hold in this population. No market-first,
+competitor-absence, causal or comparative-effectiveness claim is supported, and real-browser and
+assistive-technology behaviour remains **[UNVERIFIED]**.
+
+## §80. 2026-10-30 — Close the calibration-to-decision loop without auto-correcting beliefs
+
+### Fresh public-product scan
+
+| Public source inspected | What it says (publisher / platform description, not independent validation) | Product implication |
+|---|---|---|
+| [Culture Amp: AI Coach expansion (27 Oct 2025)](https://www.cultureamp.com/company/announcements/ai-coach-new-leadership-era) | Culture Amp describes a People-Science-backed coach across Engage and Perform, surfacing survey actions, coaching plans, review preparation and conversation role-play. | The leading people-platform pattern is increasingly *interpretation → manager action*, not another static survey dashboard. LeadOS should carry evidence through into the actual decision record, and expose exactly what is modelled versus measured. Culture Amp's reported outcome and dataset claims are not independently verified here. |
+| [Teamspective: leadership enablement agent / AI integrations](https://teamspective.com/ai/) and [its MCP launch announcement (2 Feb 2026)](https://teamspective.com/blog/ai-hr-engagement-performance-leadership-enablement-launch/) | Teamspective markets Lea in Slack, Teams and external assistants; its announcement describes MCP access to engagement, feedback and performance context. | “In the flow of work” is now a credible product direction, not a speculative feature. This session deliberately chose a different high-leverage gap: make a leader's own scored judgement alter the *sensitivity analysis* on a decision while retaining on-record provenance. External integrations are a later ambition; no connector or remote data transfer was added. The first-party claims are not independently validated. |
+| [Metaculus: scoring FAQ](https://finance.metaculus.com/help/faq/) | The forecasting platform documents Brier/log scoring and the incentive property that truthful probabilities maximize expected proper score; users can inspect their resolved-prediction history. | Forecasting platforms already return feedback on prediction quality, while leadership products increasingly provide contextual coaching. The unclosed product seam is connecting *private forecast calibration → a specific business decision's value of information and choice stability*. The scan does not establish that no other tool does this. |
+
+### Shipped synthesis — calibration stress on open decisions
+
+A proper score is feedback, not a decision policy. Conversely, exact EVPI is arithmetic, not evidence that the stated probabilities deserve trust. `calibrationScenarioForFrame` joins those readings without pretending that historical frequency is a prior for the particular decision:
+
+- For each declared state, use the historical one-vs-rest rate in the corresponding 20pp reliability bin, with a Jeffreys Beta(½,½) posterior mean `(hits + 0.5)/(n + 1)` and transparent shrinkage `n/(n+10)` toward the current declared probability.
+- Require at least three observations in *each* target bin. Missing coverage or an unpriced payoff refuses the stress; no zeros, interpolation, or fabricated histories.
+- Renormalize the scenario vector to 100% and run the existing exact payoff enumerator. Propagate each bin's Wilson 95% marginal interval through all corners (≤64 for six states), then report the EVPI min/max and which action wins across those scenarios.
+- Display raw EVPI beside the scenario; preserve the entered distribution and frozen snapshot. A fresh declaration receives an append-only note and up to three `calibrates` edges to the settled source frames actually contributing matching-bin pairs (`RULE-LCAL-04`). A later settlement or explicit scan also connects already-open frames when their bins become mature; settlement sweeps are capped at 20 with an explicit remainder event. The main calibration brief includes the same open-frame sensitivity.
+
+This is intentionally a **scenario stress**, not a posterior, corrected probability, forecast, or confidence interval. The sampled state-pairs inside a multi-state frame are dependent; a per-bin Wilson interval does not adjust for within-frame clustering, domain shift, recency or selection bias, and the independent marginal corners are not jointly calibrated. The denominator of binary state-pairs can therefore overstate effective independent sample size. These caveats are stated in UI, model documentation, and the generated automation note. The result is never used to gate `decide` or automatically recommend the leader's choice.
+
+### Gap analysis and chosen ambition
+
+- Performance / AI-coaching tools (Culture Amp, Teamspective) increasingly connect people context to an action or in-flow guidance, but public product copy does not evidence a calibrated model for the *leader's own* forecasts or a money-denominated decision-stress loop.
+- Forecasting platforms (Metaculus) score predictions, but that scoring product is not the same as a leadership workspace's payoff table, EVPI, investigation-cost and typed-decision record.
+- LeadOS already contained both parts; the gap was their decision boundary. Building another broad module or another general-purpose assistant was rejected as lower leverage than joining calibration to money and action while refusing automatic belief rewriting.
+- This is a feature-shape comparison from public product descriptions, not a claim of category-first status, parity, or comparative effectiveness. Competitor capabilities beyond the sources listed remain **[UNVERIFIED]**.
+
+### Rejected and queued
+
+- **Rejected now:** apply an empirical remap silently to a fresh or frozen probability vector. Historical reliability is not the same as a decision-specific probability; this would hide rather than improve human judgement.
+- **Rejected now:** present the per-bin Wilson envelope as a posterior or simultaneous 95% interval. The sampling units are clustered within categorical frames and current bins pool domains.
+- **Planned:** cluster-aware calibration that resamples one resolved frame as the sampling unit, handles sparse bins honestly, and uses only declared topic cohorts; compare its decision stress to the current marginal envelope before replacing anything.
+- **Planned:** cross-manager queues for exchanged work and multi-stage/sequential information acquisition with a stopping rule.
+
+Implementation decision and refusal boundaries: [ADR-0045](docs/adr/0045-calibration-to-decision-sensitivity.md). Verification and repository limits: [AI-SESSION-LOG.md](AI-SESSION-LOG.md).
+
+## §81. 2026-10-30 — Plan the sequence of tests, not the next one (Session 81, [ADR-0046](./docs/adr/0046-sequential-investigation-planner.md))
+
+### Fresh scan: what the literature and the category now offer
+
+The §80 roadmap listed "multi-stage/sequential information acquisition with a stopping rule" as planned. This session re-read that item against recent sources and against the product category. Every claim below is either from a primary or peer-reviewed source (with its status noted) or from vendor material, which is labelled as such.
+
+| Source | What it says | Status | Product implication |
+|---|---|---|---|
+| [Sequential analysis design methods and applications (Taylor & Francis, 2026)](https://www.tandfonline.com/doi/pdf/10.1080/07474946.2026.2620793) | Optimal sequential strategies jointly optimise stopping, timing and decision rules. Planned sequences reported lower cost than group-sequential designs in their worked comparison (for example 160.0 against 162.76). | Peer-reviewed. The numbers are as reported in the excerpt; not reproduced here [UNVERIFIED as a general result]. | Justifies solving the stopping problem and the test order together, rather than fixing an order and stopping at a threshold. |
+| [arXiv 2607.10207 (July 2026), sequential data collection for stochastic programming](https://arxiv.org/abs/2607.10207) | One-step look-ahead stopping rules come close to hindsight-optimal, but the tests were limited to conjugate newsvendor problems. Myopic rules may stop too early. | Preprint, tested on one problem family [UNVERIFIED for categorical frames]. | A myopic "one more test?" rule is the wrong default here. The planner solves the declared menu exactly over a bounded horizon. |
+| [arXiv 2608.05301 (August 2026), "Precision and Decisiveness as Goals"](https://arxiv.org/abs/2608.05301) | Stopping rules tied to the decision can inflate false positives on early samples. | Preprint [UNVERIFIED]. | Keeps the stop decision separate from the test verdict. A settled test updates the belief; it does not itself approve a decision. |
+| Wald and Wolfowitz, sequential probability ratio test | Classical optimality of the SPRT for simple binary hypotheses with fixed error rates. | Classical result. | Our tests are binary, so the SPRT is the special case. We did not adopt its boundaries because a leader's costs are not fixed error rates. |
+| [SpiceLogic Decision Tree Analyzer docs](https://spicelogic.com/docs/decisiontreeanalyzer) | Users build a decision tree with chance and decision nodes; the software computes expected values and highlights the policy after each result. EVPI is shown in an Options Analyzer. | Vendor documentation [UNVERIFIED as independent]. | Tree tools are powerful but make the leader draw the tree. The planner derives the order from declared tests, so the leader does not draw it. |
+| [SmartOrg Supertree](https://smartorg.com/supertree-sensitivity/) | Supertree "automatically re-orders tree nodes to calculate values of information and of control", and calculates expected values and risk attitude sensitivities. | Vendor product page [UNVERIFIED as independent]. | This is the strongest prior art for automatic sequencing. LeadOS does not claim automatic sequencing is new; its claim is narrower (below). |
+| [TreeAge Pro listing (Slashdot directory)](https://slashdot.org/software/decision-tree-makers/) | Decision tree, Markov and simulation modelling; the directory lists a one-time price of $450. | Third-party directory listing [UNVERIFIED — price not checked against the vendor]. | Health-economics grade tooling, with a steep, expert workflow. Different audience from a first-time leader. |
+| [Cloverpop (Gartner Peer Insights and G2 listings, 2026)](https://www.gartner.com/reviews/product/cloverpop-decision-intelligence-platform) | Captures decisions, rationale and alternatives, with audit and outcome history. A [third-party scoring page](https://www.rfp.wiki/artificial-intelligence/decision-intelligence-platforms/cloverpop) rates simulation and scenario testing at 3.2/5 [UNVERIFIED]. | Reviews and third-party scoring [UNVERIFIED as a market measure]. | Cloverpop is the closest decision-log competitor. Its public descriptions do not show a test-sequencing calculation [UNVERIFIED — a search limit, not proof of absence]. |
+
+### What the research changes in the design
+
+- **Solve, don't greedily step.** With at most six tests and three stages the full tree is small, so the planner enumerates it exactly. A greedy "one more test?" check is the failure mode the 2026 preprints describe for myopic rules [UNVERIFIED for this problem class].
+- **Keep the plan conditional and re-read it.** A plan is a policy. It is recomputed on every settlement, and the Sequence tab says what to do after each result.
+- **Assume independence, and say so.** Two tests that read the same source are not independent. The planner states conditional independence as an assumption on the page. It does not detect shared sources automatically; that is the top next-up item.
+- **Keep the stop separate from the verdict.** A settled test updates the belief. The decision is recorded separately by RULE-SEQ-02, and a decided commit is never rewritten.
+
+### Shipped synthesis
+
+`app/core/domain/sequentialInvestigation.js` solves the declared menu exactly, returns a refusal with a reason where the inputs cannot support a plan, and reports the one-test net of each test on the same basis as the existing register. Three marker-idempotent rules write the advisory plan note, the commit decision and the owned task. The Sequence tab renders the tree, the belief and the assumptions. Details and limits are in [ADR-0046](docs/adr/0046-sequential-investigation-planner.md).
+
+### Where LeadOS is narrower than the claim it might appear to make
+
+- Automatic sequencing and value-of-information ordering exist in established decision-analysis products (Supertree is one example). This session does not claim to have invented sequential value of information.
+- What this session adds for a leader is the **binding**: the same exact plan drives an owned, dated task, a typed link to the frame, and a commit decision in the same decision register, re-read on every settlement. We did not find a source that describes all of those together for leadership decisions [UNVERIFIED — search limit].
+
+### Limits
+
+- Sensitivity and specificity are the leader's declarations. The planner does not validate them. Calibration (ADR-0045) remains a separate instrument.
+- Conditional independence is assumed, not tested. Correlated tests overstate the second stage's value.
+- The menu is capped at six tests and the horizon at three stages, and refusals are explicit. Larger menus would need a different algorithm, which is out of scope.
+- No real-user testing. Browser and screen-reader behaviour of the new tab remains **[UNVERIFIED]**.
+
+### Next up
+
+1. **Shared-source detection for dependence.** Let a leader tag tests that rely on one source, and have the planner treat them as dependent. Without this, the second-stage value of correlated tests is overstated.
+2. **Cross-manager queue** (the other §80 planned item): tasks that cross managers, so that a sequence owned by one leader can hand a dependent test to another.
+3. **Assumption-to-decision link**: connect the independence and menu-cap assumptions to the existing premise-link register, so an unmet assumption is visible on the frame.
+
+## §82. 2026-10-30 — The leader's hour as a priced constraint (Session 82, [ADR-0047](./docs/adr/0047-attention-market-constrained-allocation.md))
+
+### Fresh scan: what the category offers, and what it does not
+
+Every claim below is either a peer-reviewed or textbook result, or vendor material, which is labelled as such. No vendor claim here has been independently validated, and nothing below supports a claim of category-first status or parity.
+
+| Source | What it says | Status | Product implication |
+|---|---|---|---|
+| [Dyer (1984), "An O(n) algorithm for the multiple-choice knapsack linear program"](https://link.springer.com/article/10.1007/BF01580667), and [Zemel (1984)](https://pubsonline.informs.org/doi/10.1287/moor.9.2.224) | The linear relaxation of a multiple-choice knapsack is solved exactly in linear time by taking incremental ratios in descending order, provided each group's marginal ratios are non-increasing. | Peer-reviewed, classical. | Makes an exact-enough relaxation cheap enough to run in a browser frame, which is what lets the terminal print a real bound instead of a heuristic score. |
+| [Fisher (1981), "The Lagrangian relaxation method for solving integer programming problems"](https://pubsonline.informs.org/doi/10.1287/mnsc.27.1.1) | Relaxing a hard constraint into the objective with a price yields a bound that holds for every non-negative price; the tightest bound is the minimum over prices. | Peer-reviewed, classical. | A second ceiling (the delegate pool) is priced rather than ignored. Weak duality is why the printed gap is a real distance. |
+| [Kellerer, Pferschy & Pisinger, *Knapsack Problems* (2004)](https://link.springer.com/book/10.1007/978-3-540-24777-7) | Branch-and-bound with a fractional upper bound closes small knapsacks exactly; the bound is what makes the search short. | Textbook. | Bounded exact search for small markets, so "optimal" is a claim the product can actually make when it is true. |
+| [Metaculus scoring FAQ](https://finance.metaculus.com/help/faq/) | Proper scores reward truthful probabilities; a forecast can only be graded after the fact against the distribution it stated. | Vendor documentation. | The plan freezes its own success probabilities and the review scores them with a Brier term over settled items only. |
+| [Cloverpop decision-intelligence listings (Gartner Peer Insights)](https://www.gartner.com/reviews/product/cloverpop-decision-intelligence-platform) | Capture decisions, rationale, alternatives, outcomes and audit history. | Third-party review aggregation [UNVERIFIED as a capability measure]. | The closest competitor for the decision-log half. Its public description does not show a capacity-constrained allocation of the leader's own hours [UNVERIFIED — a search limit, not proof of absence]. |
+| [Anaplan](https://www.anaplan.com/), [Pigment](https://www.pigment.com/), [o9](https://o9solutions.com/) — connected-planning platforms | Enterprise scenario and supply planning across linked driver models, with capacity and constraint solving at company scale. | Vendor material [UNVERIFIED]. | These solve capacity allocation for a *company*, with a modelling team and a data pipeline. Nothing in their public material addresses a single manager's eleven-hour week, and none of them writes the forgone set into a personal decision register. |
+| [Sunrise / Reclaim / Clockwise style calendar optimisers](https://reclaim.ai/) | Schedule focus time and defend it against meetings, using calendar signals and task priority. | Vendor material [UNVERIFIED]. | The closest thing to "attention allocation" in the consumer market, and it allocates *time blocks*, not *obligations with money attached*. It has no expected value, no dual and no forgone list. |
+
+### What the research changes in the design
+
+- **Two ceilings, not one.** A model with only the leader's hours concludes "hand everything off", because delegation looks free. Fisher's relaxation is what makes the second ceiling affordable and gives it a price rather than a prohibition.
+- **Exact where possible, bounded where not.** Because the relaxation is cheap and the exact search is short at realistic sizes, the product can say "optimal" in the common case and "within X% of a bound" otherwise. Claiming one or the other at all times would be a lie in one direction.
+- **Price by finite difference, not by derivative.** A knapsack's value function is a step function; a marginal rate from the relaxation describes a fractional item the leader cannot buy. Re-solving with one more hour gives the number they can act on.
+- **Withhold delegation until the delegate has a record.** With no evidence, the prior makes a hand-off strictly better than doing the work and the solver empties the leader's week into one person. The measured-record floor is a correctness requirement, not a nicety.
+
+### Shipped synthesis
+
+`app/core/domain/attentionMarket.js` (harvest, conventions, empirical-Bayes probabilities, hull pruning, exact search, Lagrangian fallback, finite-difference pricing, frozen plan, review scoring, signals, brief), `attentionMarketSchema.js` (v57 storage contract), `attentionMarketRules.js` (`RULE-ATT-01..04`), `#/attention` with five panels and three dialogs, Schema v57, CSV scope #49, the `Attention market` Insights bucket, and the `attention` typed node with the `forgoes` relation.
+
+### Where LeadOS is narrower than the claim it might appear to make
+
+- Constrained allocation, Lagrangian relaxation and multiple-choice knapsacks are decades old and used everywhere in operations research and enterprise planning. This session invents no algorithm.
+- What is added is the **binding**: the objective is derived from the leader's own dated records, the constraints are their own week and their own team's measured reliability, the answer is a frozen prediction, and the forgone set becomes a dated, owned decision carrying its price. We found no source describing that combination for a single manager [UNVERIFIED — search limit].
+- No claim is made that the hour estimates are right. They are the one input the module cannot derive, and it prints the convention it used on every derived row.
+
+### Rejected and queued
+
+- **Rejected:** a weighted single score over value and time. It hides which term the leader is trading against.
+- **Rejected:** a fabricated dollar figure on a signal whose source record carries no money. This was the tempting addition and it is exactly the failure mode the codebase is built against.
+- **Planned:** correlate obligations that cite the same recorded systemic barrier, and print the collapse assumption.
+- **Planned:** calibrate the leader's own hour estimates across reviewed plans, and apply a measured bias multiplier to future ones.
+
+## §84. 2026-10-30 — User-authored governance without an autonomous manager (Session 84, [ADR-0049](./docs/adr/0049-governed-operating-agreements.md))
+
+(Note: session 83's log points to a §83 that was never written; its findings live in that session's log entry and roadmap note. This section does not backfill them.)
+
+### Fresh scan: the category converges on governed decision automation
+
+Every claim below is either a peer-reviewed or textbook result, or vendor material, which is labelled as such. No vendor claim here has been independently validated, and nothing below supports a claim of category-first status or parity.
+
+| Source | What it says | Status | Product implication |
+|---|---|---|---|
+| [Aera Technology, six agentic innovations, AeraHUB 26 NYC, Oct 27 2026](https://www.financialcontent.com/article/bizwire-2026-10-27-aera-technology-unveils-six-agentic-innovations-to-power-the-decision-centric-enterprise) ([TMCnet mirror](https://www.tmcnet.com/usubmit/-aera-technology-unveils-six-agentic-innovations-power-the-decision-centric-enterprise/2026/10/27/10470465.htm), [Unite.AI summary](https://www.unite.ai/aera-six-updates-building-governing-enterprise-ai-decisions/)) | Skill Building (plain-language request → proposed plan → human review → governed automation), a Decision Ledger capturing context/reasoning/policies/actions/outcomes per decision, Policy Studio (upload a policy or describe a rule → drafted rules a person approves → tested against live decisions → block, require approval, or warn), agent interoperability (Copilot Studio, A2A, MCP), Dynamic UX, and a Command Center over decision activity. "An agent can perform a task, but a decision has options, trade-offs, policies, and an outcome someone is accountable for." | Vendor press release and third-party summaries [UNVERIFIED]. | The sharpest direct precedent for this session: Policy Studio's approve-then-enforce loop and the ledger's per-decision policy record are the enterprise shape of what Autopilot Studio builds locally. LeadOS keeps the approval but replaces the LLM planner with a closed registry and a rehearsal-bound token, because a first-time leader cannot audit a plan they cannot read. |
+| [Cloverpop decision intelligence platform](https://www.cloverpop.com/decision-intelligence-platform) and [glossary](https://www.cloverpop.com/resources/what-is-decision-intelligence?hs_amp=true); [Statwharf 2026 comparison](https://statwharf.com/best/decision-intelligence-platforms/); [Maqtoob overview](https://maqtoob.com/tool/cloverpop/) | Zero-code decision playbooks, a decision graph, the D-Sight agentic engine, Human^AI routing, and a Decision Bank as system of record. Vendor-claimed outcomes (10x faster cycles, 15x ROI, named-enterprise value figures). | Vendor material and third-party aggregations [UNVERIFIED]. | Confirms the playbook-over-graph vocabulary the industry is settling on. LeadOS adopts the vocabulary (agreements over the typed link graph) but not the agent execution: every LeadOS effect is one of five bounded, pre-declared writes. |
+| [WorkBoard Portfolio Analyst Agent and Gen3 agents](https://www.workboard.com/resources/product-updates/gen3-upgrade-and-portfolio-analyst-agent); [vertical agents explainer](https://www.workboard.com/resources/blog/vertical-ai-agents); [June 2026 SPM launch](https://www.workboard.com/news) | Conversational Monte Carlo scenario planning, Excel-to-interactive-financials, chat-built roadmaps and dashboards, a live portfolio confidence score, and OKR/espoused Jira/ADO blocker inference, on a connected knowledge graph (Quantive acquired May 2025). | Vendor material [UNVERIFIED]. | Sets the bar for conversational portfolio interaction, which LeadOS deliberately does not chase: a chat answer cannot be rehearsed against current records the way a declared agreement can. The confidence-score idea is noted but rejected as a single number (same reasoning as §82's rejected composite). |
+| [Lattice Spring/Summer 2026 release](https://lattice.com/blog/lattice-spring-summer-2026-product-release); [Lattiverse 2026 announcements](https://lattice.com/blog/everything-we-announced-at-lattiverse-2026); [Lattice MCP / AI Leverage Insights PR](https://www.prnewswire.com/news-releases/lattice-launches-workforce-intelligence-for-ai-era-connecting-people-strategy-to-business-outcomes-302796433.html) | AI agent joining 1:1s (recaps, coaching, action items), evidence-based review drafts grounded in 1:1s/goals/feedback/prior reviews, MCP exposure, and AI Leverage Insights tying AI usage to performance outcomes. "Managers remain accountable for tone, accuracy, and outcomes." | Vendor and PR material [UNVERIFIED]. | The accountability sentence is the right doctrine and Autopilot Studio implements its local equivalent structurally: the agreement never selects an option, never rates, never sends. Evidence-grounded drafting is already LeadOS policy (comms fingerprints); the gap taken up instead is user-authored cross-module response. |
+| [Zhou (2026), "Decision-Making in Digital Twins", arXiv:2610.16929](https://arxiv.org/abs/2610.16929) | Survey of simulation optimization under input uncertainty, Bayesian sequential updating of models and policies, and distributionally robust / Bayesian risk formulations for model uncertainty. | Preprint, not peer-reviewed [UNVERIFIED as settled science]. | Reinforces two standing LeadOS positions: decide while the model is being updated (hence rehearsal binds the workspace revision), and prefer explicit uncertainty sets and refusal over point estimates (hence unrecorded facts never match). |
+
+### What the research changes in the design
+
+- **The approval is the product.** Aera tests drafted rules against live decisions before enforcement; LeadOS binds activation to a digest of the definition, the workspace revision and the rehearsal, so any change on either side voids the approval. A rule that runs before it is seen is an autonomous manager by another name.
+- **Closed vocabulary instead of a planner.** An LLM-proposed plan cannot be audited by someone who has never managed. Four sources, fourteen events, five actions and seven template tokens are few enough to rehearse exhaustively and to refuse everything else at the boundary.
+- **Desired-state markers instead of per-firing records.** Enterprise ledgers record every decision; a local agreement that copied its response on every edit would drown the workspace. One record per (agreement, version, source, action), reused across re-fires, keeps the ledger readable.
+- **Evaluate against the action's own result.** No vendor surveyed discusses rule-ordering semantics, but the build proved it matters: built-in propagation mutates the triggering record mid-transaction, so agreements evaluate first or the rehearsal lies.
+
+### Shipped synthesis
+
+`autopilotRegistry.js` (closed vocabulary), `autopilotSchema.js` (v58 contract), `autopilot.js` (`RULE-AP-01`, first on the spine), eight action APIs, `#/autopilot` with three panels and five dialogs, the `autopilot` typed node with the `automates` relation, Schema v58, CSV scope #50, the `Autopilot` Insights bucket with `AP-01`, and two demo drafts validated by the real contract.
+
+### Where LeadOS is narrower than the claim it might appear to make
+
+- Governed automation, policy engines and decision ledgers are established enterprise categories; this session invents none of them.
+- What is added is the **binding for one leader, on their own device, with no model to trust**: the instruction is declared in a vocabulary small enough to read, the preview is computed from their own current records, the approval is bound to that preview, and every effect is a typed, attributed, budgeted write. We found no source describing that combination [UNVERIFIED — search limit].
+- No claim is made that agreements improve outcomes. Execution counts are retained history, not a causal estimate of value or time saved, and the UI says so.
+
+### Rejected and queued
+
+- **Rejected:** free-text or LLM-authored rules. Non-deterministic, untestable, unauditable by the owner.
+- **Rejected:** agreements evaluated after built-in propagation. Built first; `status=open` on `case.created` could never match.
+- **Rejected:** one record per firing. Duplicates responses until the budget dies; desired-state markers reuse instead.
+- **Rejected:** a portfolio confidence score or any weighted composite over agreements. Same reasoning as §82.
+- **Planned:** leader-confirmed driver entities as agreement facts (joins the session-83 roadmap item on correlated exposure).
+- **Planned:** per-class hour/error calibration from reviewed runs, applied only above an evidence floor.
+- **Planned:** additional source adapters (premise breach, watch alert, negotiation close) once their fact sets are as crisp as the current four.
+
+## §85. 2026-10-31 — The audit of the auditor: error budgets, precision floors and why vendors never report them (Session 99, [ADR-0061](./docs/adr/0061-signal-integrity-board.md))
+
+### Fresh scan: what the category offers, and what it does not
+
+Every source below is either textbook/peer-reviewed statistics or vendor or third-party material, labelled as such. Nothing here supports a category-first claim.
+
+| Source | What it says | Status | Product implication |
+|---|---|---|---|
+| [Lan & DeMets (1983), *Discrete sequential boundaries for clinical trials*](https://academic.oup.com/biomet/article-abstract/70/3/659/253015); [DeMets & Lan (1994) *Interim analysis: the alpha spending function approach*](https://www.tandfonline.com/doi/abs/10.1080/01621459.1994.10476828) | Replacing a fixed set of looks with a continuous spending function α*(t) controls the family-wise error rate at any actual set of information fractions, including looks taken at unplanned times. | Peer-reviewed, classical. | This is precisely the shape a leader's behaviour takes: they open the app weekly, sometimes twice a week, sometimes not for a fortnight. A spending function survives an irregular calendar where a fixed-boundary design does not. |
+| [Lan–DeMets spending function calculator documentation (MetricGate)](https://metricgate.com/docs/lan-demets-spending-function/); [Clinical Biostats group-sequential tutorial](https://www.clinicalbiostats.com/tutorials/group-sequential-designs-explained/) | Two-sided O'Brien–Fleming-like `α*(t) = 2 − 2Φ(z_{α/2}/√t)` and Pocock-like shapes; equally spaced looks leave K = 4 at α = 0.05 with a naive per-look test inflating the family-wise rate past 14%. | Vendor tutorial material [UNVERIFIED as product capability]. | Confirms the two formulas implemented, and gives the concrete inflation number the Board prints to a leader who otherwise has no way to feel the cost of a weekly cadence. |
+| [Jennison & Turnbull, *Group Sequential Methods with Applications to Clinical Trials* (1999)](https://www.routledge.com/Group-Sequential-Methods-with-Applications-to-Clinical-Trials/Jennison-Turnbull/p/book/9780849303166); [group sequential module PR implementing OBF/Pocock/power spending](https://github.com/ConorMcNamara/ab_test/pull/33) | Exact boundaries require multivariate-normal integration; the spending-function *increments* are a defensible approximation that keeps the total at α, which is what the product computes. | Textbook + open-source implementation. | The Board's approach is explicitly **spending minus spending**, not exact MVN boundaries — the honest claim is "the budget cannot be overspent", not "this is rpact-exact". Printed in the Method panel. |
+| [Galwey (2009) / Nyholt (2004) effective number of tests](https://link.springer.com/article/10.1007/s00439-009-0656-8) | Under equipositive correlation ρ, m correlated tests collapse to `1 + (m−1)(1−ρ)` independent ones. | Peer-reviewed. | Implemented verbatim as **declared** convention, with 0/30/60% printed. The fit caveat is on the panel: a leadership record cannot identify ρ, so estimating it would be fabrication. |
+| [Alarm Fatigue: Why More Sensitive Monitoring Catches Less (worked arithmetic)](https://www.hlhunt.org/uncategorized/alarm-fatigue-why-more-sensitive-monitoring-catches-less-hl-hunt/) | At a 0.3% base rate, moving 80%→95% sensitivity at falling specificity catches **45 more cases for 2,492 more false alarms**; precision falls 32.5% → 8.7%, and at 8.7% dismissing an alert is the correct action 91% of the time, which trains reviewers to dismiss the exception too. | Vendor/analysis post [UNVERIFIED as measurement, arithmetic checked]. | This is the argument the Board makes with the leader's own numbers instead of an industry one: `nnfAlert` (alerts per useful alert) and the Wilson-bracketed actionable precision, so "one useful alert in eleven" is a figure about their workspace. |
+| [Alert Fatigue: A Practical Checklist (Botnet)](https://botnet.com/resources/research-alert-fatigue-checklist) | Five-item audit: inventory, **per-rule precision audit**, cut/merge below the bar, one owner per survivor, and a **birth gate** for new alerts ("precision estimate, or it does not ship"). "Set the bar before you see the numbers — half is the common starting point." | Third-party security-ops guidance [UNVERIFIED as a standard]. | This is RULE-INT-02 almost word for word, and it validates a decision the code had to make anyway: the **floor is declared before the verdicts arrive** (default 60%, adjustable), so the measurement cannot be reverse-engineered from the result. It also supplies the missing half — the birth gate — which is why `declareIntegrityPlan` is an explicit, dated, user-authored act rather than a hidden default. |
+| [Elastic Security alert-volume case study](https://www.elastic.co/blog/reduce-alert-fatigue-with-ai-defence-soc); [iFactory predictive-maintenance alerting](https://ifactoryapp.com/industries/manufacturing-plant/alert-fatigue-predictive-maintenance-solution) | The mainstream answer to alert fatigue is *machine learning on the alert log*: retrain thresholds against technician/analyst outcomes, then rank what survives. | Vendor material [UNVERIFIED]. | The category's centre of gravity is model tuning inside a detection product. LeadOS has no labelled corpus, no analysts and no model — and it does not need one: a single leader's one-tap verdict is the label, and the arithmetic is Wilson, not gradient descent. |
+| [Gartner Peer Insights: Cloverpop and similar decision-intelligence tools](https://www.gartner.com/reviews/product/cloverpop-decision-intelligence-platform) | Capture decisions, alternatives, rationale and outcomes; audit history. | Third-party review aggregation [UNVERIFIED as a capability measure]. | The nearest adjacent product surfaces the *decision*. None of them publishes a false-alarm rate for their own recommendations, and none carries an error budget for repeated looks. Search limit, not proof of absence. |
+
+### What the research changes in the design
+
+- **A spending function, not a fixed design.** The right object for a leader is not "three interim analyses" but a function of information fraction, because the calendar is theirs and will drift.
+- **Declare the floor before the verdicts.** Botnet's "set the bar before you see the numbers" settled the sequencing: the floor lives in settings and every report prints it beside the measurement. A floor chosen after seeing 8 verdicts would be a different product.
+- **Report precision, not coverage.** The fatigue literature is unambiguous that coverage is what gets asked about and precision is what determines whether the channel stays readable. The Board therefore opens on actionable precision, `nnfAlert` and the count of families below the bar — never on "checks run".
+- **Refuse the ML detour.** Every vendor in this space retrains a model. Doing so here would require inventing labels the leader has not given; the two-tap verdict is the entire training set, and its confidence interval is the honest output.
+- **Grade the forecaster, not just the detectors.** The freeze/grade/Brier machinery borrowed from the deferral modules is what turns "our alerts are noisy" into "our noise forecast was wrong in this direction by this much".
+
+### Shipped synthesis
+
+`app/core/domain/integrityRegistry.js` (families, verdicts, conventions, signal ids), `integritySchema.js` (v70 storage contract), `integrity.js` (normal law, spending functions, effective tests, Wilson precision, look ledger, frozen reviews, grading, signals, brief), `integrityRules.js` (`RULE-INT-01..04`), `views/integrity.js` (five panels), `ui/integrity-modals.js` (verdict, plan, freeze, grade), Schema v70, CSV scope #60, the `Signal integrity` Insights bucket, the `integrityreview` typed node, and a **Judge this signal** action on every insight card.
+
+### Where LeadOS is narrower than the claim it might appear to make
+
+- Alpha spending, Pocock, O'Brien–Fleming and Wilson intervals are textbook and decades old. This session invents no statistics.
+- The boundaries are spending-**increment** approximations rather than exact multivariate-normal boundaries. The claim is "the budget cannot be overspent", which is true of the arithmetic; it is not "rpact-exact".
+- The effective-test correction is a convention with a declared ρ, not an estimate. The sensitivity table exists because the honest answer is an interval of conventions.
+- What appears to be new is the **binding**: the α, the look plan, the floor and the ρ are the leader's own declared numbers; the detectors are audited by the leader's own one-tap verdicts; the forecasts are frozen and Brier-scored against what followed; and the failure mode is written into a governed decision rather than a chart. We found no product doing that for a single manager [UNVERIFIED — search limit].
+
+### Rejected and queued
+
+- **Rejected:** FDR control across looks. ADR-0024 is withdrawn for a reason; BH inside one look is not BH across looks, and claiming otherwise would be exactly the "appearance of rigour" failure this module exists to prevent.
+- **Rejected:** a Bonferroni divisor over deterministic predicates. No null distribution, no p-value.
+- **Rejected:** deriving ρ from co-firing, and projecting a non-PSD declaration (carried from §84's reasoning and Session 98).
+- **Rejected:** a composite "signal health score". Same reasoning as §82: it hides which term is failing.
+- **Rejected:** any per-person precision. The ledger is identity-free by construction and the calibration tasks open on the leader.
+- **Planned:** partial pooling across families so the first quarter is not reported as 55 × "insufficient" (Top-1 next priority on the roadmap).
+- **Planned:** ρ and hour/bias calibration from graded ledgers once enough frozen claims exist — the stores now hold what that needs.
+
+## §86. 2026-10-31 — Small samples: the category suppresses them, statistics borrows for them (Session 100, [ADR-0062](./docs/adr/0062-borrowed-evidence-engine.md))
+
+### Fresh scan: what the category does with a small sample
+
+Every source below is either peer-reviewed/textbook statistics or vendor/third-party material, labelled as such. Nothing here supports a category-first claim.
+
+| Source | What it says | Status | Product implication |
+|---|---|---|---|
+| [Employee survey anonymity thresholds compared (Daylogue, Sep 2026)](https://daylogue.com/learn/employee-survey-anonymity-thresholds) | Viva Glint rated confidentiality defaults to 5 (adjustable to 3–4); Lattice enforces a floor of 3 respondents that can only be raised; Culture Amp's reporting group is "usually 5"; Leapsome defaults to 3 and raises it as filters stack. | Vendor-comparison article [UNVERIFIED as current vendor behaviour]. | The category's answer to a small group is **suppression**: below the line, nothing is shown. That is the right answer for *anonymity* of survey respondents — and the wrong answer for *estimation* of a rate a leader must act on. LeadOS never pools people's anonymous answers here; it pools families and classes of the leader's own records. |
+| [Employee engagement platforms: 12 tools compared for SMBs (FirstHR, Sep 2026)](https://firsthr.app/compare/performance/employee-engagement-platform) | "In a fifteen-person company split across a few teams almost every group falls below that line … What remains is one company-wide number." Free tiers stop at 8–10 people. | Third-party comparison [UNVERIFIED]. | The exact population LeadOS is built for (a first-time manager with a small team) is the population the category structurally cannot serve with segmentation. Partial pooling is the statistical answer: every class gets a number, and the number says how much of it is borrowed. |
+| [Lattice Spring/Summer '26 release](https://lattice.com/blog/lattice-spring-summer-2026-product-release); [Introducing Lattice MCP (Jul 2026)](https://lattice.com/blog/introducing-lattice-mcp) | Evidence-based AI review drafts from 1:1s/feedback, an AI agent that joins 1:1s, bidirectional Workday sync; MCP connector so Claude/ChatGPT can draft and submit reviews. | Vendor material [UNVERIFIED as capability]. | The AI-native centre of gravity in 2026 is **drafting** (reviews, notes, talking points) from records. None of it publishes an uncertainty for a small-sample rate, a credibility weight, or a graded record of whether its own estimates beat a naive alternative. |
+| [Confirm launches AI agents platform (BusinessWire, Mar 2026)](https://finance.yahoo.com/sectors/technology/articles/confirm-launches-ai-agents-platform-130000436.html) | HRBP, onboarding, coaching and service-desk agents on a shared ONA + work-signal data layer (Slack, Jira, Asana). | Vendor press release [UNVERIFIED]. | "Each agent makes the others smarter" is the right instinct — a shared layer — but expressed as agents, not as a statistical model of how much one unit's evidence should inform another's. The Borrowed Evidence Engine is that model, made explicit, deterministic and graded. |
+| [Reference-Class Forecasting Workbook (Abstractopedia)](https://abstractopedia.org/mechanisms/reference_class_forecasting_workbook/); [Reference Class Forecasting Claude Code skill (MCP Market)](https://mcpmarket.com/tools/skills/reference-class-forecasting-1) | The outside view as a guided worksheet or an LLM prompt-skill: pick a class, read its distribution, apply a documented adjustment — "an outside view that does not change the number is merely decorative". | Practitioner reference + community tooling [UNVERIFIED]. | Reference-class forecasting exists as a **manual procedure**. LeadOS computes the class from the leader's own settled assumptions, fires at the moment a premise is registered, and forces the documented adjustment by opening a decision whose options are *re-price*, *defend the inside view in writing*, *buy information* or *refuse borrowing*. |
+| [Hierarchical Bayesian A/B testing of AI agents (Parloa Labs, Nov 2025)](https://www.parloa.com/labs/research/ai-agent-testing/); [TSB-HB: hierarchical Bayesian intermittent demand (arXiv 2511.12749)](https://arxiv.org/pdf/2511.12749) | Partial pooling across scenario groups to avoid over-reading small samples; Beta-binomial occurrence with panel-wise pooling for sparse/cold-start series. | Vendor research note + preprint. | Partial pooling is mainstream in experimentation, AI evaluation and demand forecasting. Its absence from leadership tooling is not a statistical gap but a product one. |
+| Gelman et al., *Bayesian Data Analysis* (3rd ed.), §5.3 (rat-tumour example); Bühlmann (1967); Jewell (1974); Efron & Morris (1975); Morris (1983); Kass & Steffey (1989); Higgins & Thompson (2002) | The (α+β)^(−5/2) hyperprior on a (logit μ, log M) grid; credibility Z = n/(n+M), exact for conjugate families; the shrinkage display; plug-in EB understates uncertainty; I². | Textbook / peer-reviewed. | Implemented verbatim and printed on the Method panel. This session invents no statistics. |
+
+### What the research changes in the design
+
+- **Pool records, never respondents.** Survey suppression protects people; the engine's units are signal families, assumption classes and authority classes, so pooling never touches an individual's answer and never creates a per-person rate.
+- **Full Bayes, not plug-in.** The whole value of borrowing is speaking early, which is precisely when the plug-in prior is least certain; integrating over (μ, M) is what keeps early intervals honest.
+- **Fire the outside view at registration.** The workbook literature is clear that a class that does not move the estimate is decorative — so the rule fires on `premise.created` and opens a decision that forces an adjustment or a written inside view.
+- **Grade the borrowing against a fair rival.** The own-data competitor is the Jeffreys estimate, not the raw rate, so the contest tests pooling rather than smoothing.
+
+### Where LeadOS is narrower than the claim it might appear to make
+
+- Beta-binomial pooling, credibility weights and I² are decades old; the binding to a leader's own ledgers, the outside-view trigger at registration and the two-forecaster grading loop are what appear to be new. We found no leadership product doing that [UNVERIFIED — search limit].
+- Exchangeability is a declared judgement; the classes (criticality, authority) are conventions the leader may reject — and the engine obeys a refusal.
+- Intervals are moment-matched approximations of the posterior mixture (pinned within 1.5 points of exact); verdicts use the exact mixture probability.
+
+### Rejected and queued
+
+- **Rejected:** pooling across groups; per-person units; MCMC; auto-adjusting priors or floors; a composite evidence-quality score (reasons in ROADMAP Session 100).
+- **Planned:** covariate-informed pooling (Beta-binomial regression on a declared covariate); borrowing as a service for every other "too few to judge" refusal; exchangeability partitions proposed from the graded ledger.
+
+## §95. 2026-11-01 — The number the product sold and never audited (Session 110, Schema v78, ADR-0070)
+
+### The market question, asked properly
+
+Session 98 shipped a correlated deferral portfolio that prices a joint tail on a **leader-declared** ρ. Session 99 graded the detectors. Both listed "ρ calibration" as a carry, and neither could have built it as written: a Brier ledger holds *one binary per reading about the whole book*, and ρ is a dependence between *two processes*. The literature that actually does this is forty years old and lives entirely outside people tooling:
+
+| Source | What it supplies | Where LeadOS applies it |
+| --- | --- | --- |
+| Li (2000), *On default correlation: a copula function approach*; the Gaussian-copula literature that followed through the 2008 crisis | A declared correlation is a **copula parameter**, not a probability about an event; it is only interpretable jointly with the marginals it is applied to | The coincidence reference is expressed as a copula on the block index at the *declared* ρ, and the page prints the marginals it used |
+| Kruskal (1958), "Ordinal measures of association" (JASA) | The exact normal-theory transform between Pearson ρ and Spearman τ: `τ = 2·sin(πρ/6)` | Printed beside τ = ρ on the method panel; disagreement between the two mappings suppresses a magnitude finding |
+| Genz (1992) / Drezner–Wesolowsky bivariate-normal quadrature; the standard one-factor representation `X = √ρT + √(1−ρ)U` | A bivariate-normal CDF that stays accurate at ρ = 0.99 | `bivariateNormal` in `couplingLedger.js`; the bug it replaced computed the CDF for **ρ²** |
+| Kitagawa (1955) / Birnbaum–Saunders inverse-Gaussian first passage; the GBM boundary-crossing literature behind real-option valuation | The probability a drifted, diffusing value path crosses a moving boundary in a given interval | `firstPassageBlockProbabilities` — the module's model column is computed, never asserted |
+| Fisher's exact test / the Poisson-binomial family; permutation and rotation tests (circular block permutation) | An exact reference distribution for a count of coincidences with unequal per-pair probabilities | The band test is a **deterministic cyclic rotation** inside each call's own at-risk window, two-sided |
+| Kruskal–Wallis / ASA statement on p-values; Ioannidis on pre-registration | A p-value computed after seeing the band is not a test | The review is frozen *before* its window closes and graded exactly once; later evidence can only append a challenge note |
+
+### What the scan changes in the design
+
+- **A prediction, not a dashboard.** The frozen review is the unit that makes the module a forecasting instrument rather than a description: it states `predictedAnyCommitPct` from a Laplace-smoothed hazard, then grades it. Session 110's own first build got this wrong — a 90-day base rate read straight into a 30-day window produced 95.7% where 65.1% was correct (Brier 0.0018 → 0.1218).
+- **Two-sidedness is a correctness requirement, not a nicety.** The headline question is "did the leader's declaration hold?", and the answer for an over-declaration is *"no, and my record contradicts me"*. A one-sided upper test returns p = 1 whenever no coincidence is observed, i.e. precisely in the most damning case. The lower tail is the load-bearing statistic.
+- **The null must respect the graph.** Pairs share decisions, so per-pair p-values are not independent and Fisher's method is invalid here. Rotating each *call* once inside its own window — and keeping that one placement across every pair it belongs to — is what makes the pooled test honest. The conservative direction (rotation windows are at least as wide as the common window) is stated on the page.
+- **A refusal is not a verdict.** A band below the pair floor prints no assessment. The tempting alternative — reading "no coincidences" as independence — is the single most damaging misreading available on this screen, and it is pinned by a test.
+- **Model output is advisory and marked.** The implied ρ and the model reference are printed with an `identified` flag and never flow back into `correlationDeclarations`. Declaring is the leader's judgement; the same rule the Borrowed Evidence Engine applies to pooling.
+
+### Where LeadOS is narrower than the claim it might appear to make
+
+- Copula, co-incidence counting and rotation tests are all decades old; nothing here is a statistical invention. What appears new is the **object**: no searched product asks a leader to declare a structural dependence between two of their own open calls, so none can read that declaration back. That is a product gap, not a statistical one **[UNVERIFIED — search limit]**.
+- The block grid is a convention, and it determines which pairs are testable at all. A 90-day block makes almost nothing testable; a 7-day block makes almost everything coincidental. The page prints the grid and the pair count it removes.
+- The rotation family is a quasi-enumeration with a printed floor of 1/(R+1); it is not an exact combinatorial test for every graph shape.
+- A coincidence rate does **not** identify the Pearson correlation of value innovations. The mapping is a declared convention printed twice, and the implied ρ carries an `identified` flag that is `false` for nearly every real band.
+
+### Rejected and queued
+
+- **Rejected:** inverting a single coincidence rate as a headline ρ̂; a likelihood over log-value co-movement (needs value paths the workspace does not store); Fisher's method over per-pair p-values; a seeded RNG rotation; reading a thin band as independence; writing a suggested ρ into `correlationDeclarations`; any per-person statistic.
+- **Planned:** a governed accept-the-record's-estimate path (one append-only declaration change with its evidence); immutable intake covariates so a frozen review cannot quote a state that has since moved; structural prior borrowing so a three-verdict band borrows precision instead of printing "insufficient".
+
+## §96. 2026-11-01 — Who pays for the "ask again later"? Refusals as a supply chain (Session 111, Schema v79, ADR-0071)
+
+### The hunt
+
+Searched, 2026-11-01: performance-management and people-analytics platforms (Lattice, Culture
+Amp, 15Five, Leapsome, Visier, Perceptyx, Betterworks, Viva Glint/Insights, Confirm, Motive,
+Humu successors), decision-intelligence tooling (Causal, Pigment, Anaplan, Tability), analytics
+observability (Monte Carlo, Sifflet, Elementary, Great Expectations), and the small-sample
+statistics stack used in experimentation platforms (Optimizely, Statsig, Eppo, GrowthBook).
+
+Three findings shaped the design.
+
+1. **Every vendor ships a confidence floor, and nobody ships its price.** Viva Glint's
+   reporting threshold (5, adjustable to 3–4), Lattice's 3-response minimum, Culture Amp's ~5
+   and Leapsome's 3 all suppress a small group. The suppression is presented as a privacy
+   feature and it is one — but it is also an *unpriced debt*: the leader is told a number is
+   unavailable and never told what its absence costs, when it would become available, or what
+   gathering it would be work. No surveyed product answers any of the three.
+2. **Analytics engineering already treats this as a supply chain; HR analytics does not.**
+   Data-quality SLOs, coverage targets, freshness SLAs and "data debt" backlogs are standard in
+   the observability category: a missing table is a ticket with an owner, a cost and an ETA.
+   The same vocabulary has not crossed into leadership tooling, where a missing *judgement* is
+   still an apologetic empty state. The transfer is the product idea: a refusal is a work order.
+3. **Decision-intelligence tools price waiting on decisions, not waiting on evidence.** Causal,
+   Pigment and Anaplan model scenario value and cost of delay. Value-of-information is taught
+   in decision analysis (Raiffa & Schlaifer 1961; EVPI/EVSI) and appears in this workspace since
+   Schema v54 — but only inside a single decision's own frame. Nobody aggregates "what is my
+   evidence debt worth across the whole workspace, and which line is holding it back".
+
+The operations vocabulary the module is built on is old and settled: Theory of Constraints and
+drum–buffer–rope (Goldratt 1984, 1990), Little's Law (1961), marginal value of information and
+optimal stopping (Dixit & Pindyck 1994; Stokey 2009), sunk-cost discipline (Arkes & Blumer 1985),
+Jeffreys-prior prediction for arrival counts (Jeffreys 1946; Good 1965) and Fréchet–Hoeffding
+bounds on a union with no independence assumption (Fréchet 1951; Hoeffding 1942). None of these
+is novel. The novel object is the **production line made of the workspace's own refusals**.
+
+### What the scan changes in the design
+
+- **The refusal must be measured, not asserted.** Each line's count is a count of dated records;
+  its rate is units ÷ window. That is why the module needed no new data entry and why its
+  numbers move when the leader actually closes things.
+- **A never-productive line is not a slow line.** The predictive is proper, so a number always
+  exists — about sixteen years for a typical shortfall. Printing it would be an abuse of a
+  correct formula, so quantiles are withheld at `n = 0` and the expected wait is refused when
+  `r ≤ 1`. This is the same rule the rest of the app applies to floors: a computable number is
+  not a quotable one.
+- **The word "constraint" has to be earned.** Pressure ranks queues; a *binding* constraint
+  requires the starved share to clear the leader's bar. Without that second condition the
+  module would call the biggest queue a constraint in a workspace where most lines are healthy,
+  which is exactly the rhetorical upgrade this codebase refuses elsewhere.
+- **The exchange rate between hours and weeks is a declaration.** Weeks are measurable; the
+  value of the leader's hour is not. Making it a clamped, printed, editable convention keeps the
+  arithmetic honest without pretending the app knows what an hour is worth.
+- **The assumption-free bound leads.** A plan's headline probability is `max(pᵢ)` — valid with
+  no independence assumption. The independence value is printed beside it with the difference
+  stored, so the cost of the assumption is a number on the page rather than a footnote.
+
+### Where LeadOS is narrower than the claim it might appear to make
+
+- The arrival model is homogeneous Poisson-Gamma. A slowing line is visible only through the
+  recent-rate column; nothing here tests non-stationarity **[UNVERIFIED — refused by design at
+  these sample sizes]**.
+- Six lines are a curated subset of the app's refusals, not all of them (survival's at-risk
+  floors, the deferral book's pair floors and the integrity board's look budget are not lines).
+  The registry is the extension point; today five modules are still outside it.
+- Capture hours are `shortfall × declared minutes` — linear, with no learning curve, no
+  batching and no variance. It is a planning estimate, printed as one.
+- "Demand" is a count of open records mapped per line by hand-written adapters. It is a real
+  count but a coarse proxy for the value at stake; cross-currency value is deliberately not
+  pooled, so the module never quotes a money figure for the chain as a whole.
+- No real-browser or assistive-technology walkthrough was performed this session; the panels are
+  covered by JSDOM + axe in the accessibility suite **[UNVERIFIED]**.
+
+### Rejected and queued
+
+- **Rejected:** auto-manufacturing or editing evidence to fill a line; any person score, rank or
+  rating; ML arrival rates at single-digit sample sizes; cross-currency pooling of demand value;
+  reading `conflicts`, `pulses`, `candidates` or `messages` as lines; scheduling evidence with no
+  open demand; presenting the greedy schedule as an optimum.
+- **Planned:** borrowing an arrival rate across lines with a recorded exchangeability ruling;
+  per-item demand ageing as a distribution rather than a maximum; a piecewise-constant rate with
+  a likelihood-ratio test, refused below ~12 units; a seventh line for survival's at-risk floors
+  once its adapter can express the floor in units rather than in time.
+
+---
+
+## §102 — Session 120 domain hunt: role-tiered operating surfaces, disclosure and decision execution (fetched 2026-11-03)
+
+**Method.** Primary product/documentation pages were fetched or searched this session. Claims below are vendor-described capabilities, not independent benchmark results. The implementation response is ADR-0080 / Mission Control.
+
+### What the best-in-class surfaces actually emphasise
+
+1. **Microsoft Viva Glint — hierarchy and confidentiality are configuration, not decoration.** Glint documents a top-level manager used to build the managerial hierarchy, a confidentiality threshold for numerical scores (default five), insight minimum group sizes and suppression thresholds; its report catalogue includes manager direct/roll-up hierarchy views and senior-leader heat maps ([2](https://learn.microsoft.com/en-us/viva/glint/setup/manage-general-settings), [3](https://learn.microsoft.com/en-us/viva/glint/reports/survey-reports-overview)).
+   - **LeadOS response:** Mission Control partitions work by responsible owner node and applies primary + complementary suppression with interval parent totals. We deliberately do not claim Glint-level survey anonymity or differential privacy.
+2. **Workday Skills Cloud / People Analytics — role-tailored insight with narrative explanation.** Workday describes secure, personalised workforce insights tailored to role, paired with narrative explanations, and a common skills ecosystem across recruiting, learning, talent and analytics ([4](https://www.workday.com/en-ae/products/human-capital-management/skills-cloud.html)).
+   - **LeadOS response:** five operating loops change the question, horizon, command vocabulary and disclosure by altitude. The brief carries limitations beside the figure rather than a naked score.
+3. **Cloverpop — decision logging, governance and orchestration as one platform.** Cloverpop describes decision trees/flows, decision banking/auditing, governance templates, human+AI collaboration and orchestration across people, data and agents ([2](https://www.cloverpop.com/resources/what-you-get-in-the-cloverpop-decision-intelligence-platform)).
+   - **LeadOS response:** interventions reuse the existing atomic Action Bundle executor and post-commit rule spine; a frozen brief opens a governed review and typed provenance. We do not claim enterprise integration or agentic execution.
+4. **BetterUp Manage — manager development embedded in the flow of work.** BetterUp describes expert coaching, AI practice, peer learning and team pulse tooling for managers, with board-ready leadership outcomes and confidential individual coaching aggregated for administrators ([5](https://www.betterup.com/products/betterup-manage)).
+   - **LeadOS response:** coaching prompts remain at individual-detail altitudes; senior surfaces receive span aggregates and handoffs. No individual coaching note is copied upward.
+
+### Gap analysis against the ambition bar
+
+- **Verified strength in LeadOS:** local-first transactional integrity, a real reporting tree, cross-module rules, atomic bundles and now a scoped operating surface with disclosure-safe roll-up.
+- **Still behind enterprise platforms:** authenticated identity, tenant isolation, HRIS integration, external notifications, formal privacy review and large-scale benchmarking. These are roadmap items, not claimed capabilities.
+- **Ahead-of-market slice shipped this session:** a local leadership workspace where one reviewed intervention crosses modules and altitudes in one transaction, while the upward brief refuses exact small-cell disclosure and opens its own governed review. This combination was not verified in the scanned vendor pages; it is a design contribution, not a claim that no vendor could build it.
+
+### Deliberately rejected
+
+- A generic dashboard with a role badge; individual risk scoring; autonomous spending or message sending; presenting a software rehearsal as a causal forecast; calling complementary suppression “anonymous”; claiming production RBAC from a browser-local seat.
+
+## §103 — Session 121 domain hunt: confidence-gated intelligent triage × hierarchy confidentiality (fetched 2026-11-03, Schema v88, [ADR-0081](docs/adr/0081-altitude-router.md))
+
+Vendor and platform documentation from 2026; these are **claims and product descriptions, not independently validated benchmarks**. Every design consequence below is implemented in code and exercised by `tests/app/altitude-router.test.mjs`.
+
+### Two literatures that never meet
+
+1. **Intelligent triage / routing.** [Moveworks (2026-03-11)](https://www.moveworks.com/us/en/resources/blog/what-is-intelligent-triage-it-support) describes classification by intent, urgency and historical patterns with probabilistic confidence scores, auto-populated category/subcategory/urgency/assignment group, and — the decisive detail — **when confidence is below threshold the system does not auto-update fields** and falls back to a human clarification workflow. [ServiceNow / vendor roundups (2026-07)](https://www.aiuniverse.xyz/top-10-ai-ticket-triage-routing-systems-features-pros-cons-comparison/) and [2026 comparisons](http://aiopsschool.com/blog/top-10-ai-ticket-triage-routing-systems-features-pros-cons-comparison-2/) describe Predictive Intelligence / Now Assist classifying incidents, routing to assignment groups, enriching with service/CI/context, duplicate detection and SLA-risk monitoring; multilingual and account/region context are becoming table stakes. [Console's 2026 agent roundup](https://www.console.com/blog/best-ai-agents-for-enterprise-2026/) and the [ServiceNow community use-case list](https://www.servicenow.com/community/servicenow-otto-forum/agentic-ai-use-cases/td-p/3573516) make the limitation explicit: these workflows execute **inside their own platform**, not as a universal cross-module spine.
+2. **Hierarchy-scoped confidentiality.** [Microsoft Learn, Continuous Engagement (2026-05-11)](https://learn.microsoft.com/en-us/viva/glint/reports/continuous-engagement-workplace-metrics) documents an admin-controlled pipeline, role-based access, tenant consent, aggregated data only, "always enforces the higher of the Viva Glint and Viva Insights thresholds", **inference prevention that hides both the small group and its next higher level**, trend lines only for weeks with enough employees, and manager hierarchy breakdowns hidden when a child team is under threshold for the recent four weeks. [Invizipoll (2026-10-14)](https://invizipoll.com/blog/is-microsoft-viva-glint-anonymous) is blunt that Glint is **confidential, not anonymous** — ballots link to employee records for manager/department/tenure breakdowns; ~5 numeric / 10 verbatim thresholds; below-threshold cells hidden or rolled up; verbatims may still identify people. The [Oct 2026 Action Taking Report coverage](https://windowsforum.com/news/viva-glint-action-taking-report-arrives-worldwide-october-2026.439920/) warns that activity counts are not outcomes and lists small teams, insufficient responses, reorganisations, inactive users and phased access as scenarios requiring validation; [TomorrowDesk](https://tomorrowdesk.com/info/microsoft-viva-glint) records Copilot Highlights GA Apr 2026, Continuous Engagement private preview mid-2026 and a Raw Data Exports API private preview. [HR Tech SaaS (2026-06-28)](https://hrtechsaas.com/blog/team-level-workforce-analytics-privacy-safe-platforms/) compares privacy-safe team analytics (Viva Insights min 5, Culture Amp configurable thresholds, Lattice) and reinforces aggregate-only, thresholded, role-scoped surfaces.
+
+**The gap:** triage systems route to a *queue*; hierarchy systems report on a *survey*. Neither takes one free-text operational note and decides, in a single reviewed transaction, which modules it belongs to **and** which rung of the real reporting tree owns it — then writes the typed roll-up to every ancestor without re-entry. Neither publishes the accuracy of its own routing out of sample.
+
+### What the research changes in the design, by altitude
+
+- **[frontline]** Reuse the existing on-device 14-category intake engine rather than a second model; add a deterministic five-horizon lexicon with a three-token negation window and softmax-shrunk confidence bands. Below the evidence floor the report **refuses** instead of guessing. Save ≠ confirm: a draft writes no case.
+- **[manager]** Named people resolve to the lowest common ancestor of their managers (`responsibleNodeId`), so two frontline spans meet at their manager exactly once. `names` disclosure at ranks 1–2, with a peer-span refusal on confirmation.
+- **[director]** Safety/legal stakes and long-lived categories print a Jaques horizon floor; a `quarter` cue lifts `effectiveRank` above the LCA while the two named reports keep the same LCA — no silent reassignment. `unit` disclosure at rank 3.
+- **[VP / executive]** `effectiveRank = max(inferredRank, lcaRank, stakesFloor)` and `escalationTarget` walk the real tree; `RULE-AR-01` writes one `rolls-up-to` edge per ancestor with the disclosure form on the edge and **no note text in any edge summary**. `RULE-AR-02` opens exactly one governed DACI decision per breaching calibration cell per ISO week.
+- **[CEO]** Aggregate-only brief and CSV #77; no names, ids, note text or evidence spans. Small cells are **refused with a reason**, not shown as a proportion of one — and we do not call that "anonymous".
+- **[all altitudes]** A two-lane fingerprint over the note **and the seat path** makes a saved plan stale after a reorganisation (a Viva-style reorg scenario, made mechanical). Marker-idempotent rescan prevents duplicate edges. Pausable `routingAutoPropagate`, but an explicit `routingScan()` always runs.
+
+### The part no vendor publishes — implemented here
+
+Plans are graded **once**, later, against the altitude the work actually belonged to. `routingCalibration` prints Wilson 95% intervals (refused below 5), **strictly-prior** sequential probability forecasts with Brier skill against a pooled base rate, **mean rank error** (routing a 7-day item to the CEO costs three ranks, not one miss), under/over-routing counts and human-override lift. A prediction that uses its own outcome is not a prediction; accuracy alone hides the cost of the miss. The governed floor-breach decision is a *question*, not an autonomous rewrite of a grade, a case, a person, a setting or a seat.
+
+### Where LeadOS is narrower than the claim it might appear to make
+
+- Local seats are auditable **declarations**, not authenticated multi-user security. There is no server, no tenant isolation and no identity proof; `guardApiCall` is a fail-closed workflow boundary inside one browser.
+- Suppression is a small-cell refusal, **not** differential privacy and **not** survey anonymity; repeated-release / complementary differencing tests remain open (Next 3 in ROADMAP).
+- Confidence bands are not outcome-graded predictions; the calibration loop grades human decisions about altitude, not realised intervention outcomes.
+- No message, calendar, keystroke, sentiment, HRIS or telemetry ingestion. No person is rated, ranked or scored. Vendor scoring tables cited above are `[UNVERIFIED]` marketing, reproduced only as design pressure.
+
+### Rejected
+
+A second NLP engine, a second rule spine, autonomous adoption without a human confirmation, a five-times-duplicated role dashboard, a person-level "routing score", and any claim that a small-cell refusal constitutes anonymity.
+
+## §104 — Session 122 domain hunt: nobody sells a locally verifiable audit chain (fetched 2026-11-04, [ADR-0082](docs/adr/0082-sealed-spine.md))
+
+**Method.** Web search over 2026 performance-management / people-analytics roundups, vendor audit-log documentation and the security-engineering literature for the tamper-evident-log pattern. Claims below are vendor- or reviewer-described capabilities, not independent security audits; we did not test any vendor's log. The implementation response is ADR-0082 / the Sealed Spine (`#/seal`).
+
+### What the category actually sells as "audit"
+
+1. **The 2026 roundups sell reviews, OKRs and engagement — audit trails are a governance footnote.** The comparison roundups rank Lattice (reviews + OKRs + 1:1s + comp, $11/person/mo), Culture Amp (engagement + performance), Workday (full HCM) and Trakstar ("audit trail & documentation — who submitted what rating, when, and what changes were made — a defensible paper trail") ([1](https://work-club.com/best-performance-management-software-2026/), [2](https://hropslab.com/best-performance-management-software/)). The "trail" is a database table of edits and approvals that the vendor's own systems write and read.
+   - **LeadOS response:** the Sealed Spine does not add another table — it makes the workspace's existing append-only event log *recomputable from genesis on demand* by the person who holds the data, with the first break reported at the exact revision.
+2. **Enterprise audit logs are APIs over vendor-held rows.** Lucid documents an Audit Logs API (Enterprise Shield) that "enables users to retrieve a detailed record of activity within the organization" — account/document access, user management, admin actions ([3](https://developer.lucid.co/reference/audit-logs)); Gitnux's roundup describes Cornerstone/Workday "audit trail logging" and Lattice "API plus webhooks for event-driven cycle and feedback workflows" as governance controls ([4](https://gitnux.org/best/cloud-based-performance-management-software/)). Every one of these is a *read* of rows the vendor controls; none gives the customer the means to prove the rows were not rewritten.
+   - **LeadOS response:** in a local-first workspace the rows live in the customer's browser, so verification can and must live there too: `verifySealChain` replays every seal from genesis with Web Crypto only, and the verdict (chain, content, keyed/plain, evicted blocks) is printed on screen and in the downloadable certificate.
+3. **The construction itself is known security engineering — just not shipped in this category.** Open security-engineering practice describes exactly this design: per-tenant hash chains (`hash = sha256(prev || canonical)`), signed checkpoints outside the database, export to write-once storage, and verifiers that report altered/missing/reordered/truncated rows and re-hashed history ([5](https://github.com/jacobsims214/amp/pull/83), [6](https://github.com/alexnodeland/lattice/issues/1049)). The pattern is standard for infrastructure teams; we found no people-analytics or performance-management vendor offering a customer-locally-verifiable sealed chain over its operational record.
+   - **LeadOS response:** we adopt the construction at workspace scale — one `audit.seal` per committed transaction appended by the rule that runs last on the shared spine, HMAC-keyed with a passphrase-derived session key when the vault is unlocked, plain hash (and honestly labelled as such) when it is not — with no server, no vendor and no new schema collection.
+
+### Gap analysis against the ambition bar
+
+- **Verified strength in LeadOS:** the audit trail and its verifier are in the same hands as the data; the mode (keyed HMAC vs plain hash) is printed everywhere; tamper evidence names the exact revision and distinguishes content tampering from chain breakage; one seal covers every module's writes in one atomic transaction because it is appended by the shared spine's last rule.
+- **Still behind enterprise platforms:** no external timestamping, no write-once off-site copy, no HSM-backed key, no signed checkpoints co-signed by a second party, and no continuous background verification. A local chain proves non-alteration since seal time under the printed mode — it does not prove *when* in wall-clock terms or *who*.
+- **Ahead-of-market slice shipped this session:** a locally verifiable, hash-chained, per-transaction sealed audit log with per-span attestation roll-up and an identity-free integrity certificate, inside a leadership workspace. Not verified in any scanned vendor page; a design contribution, not a claim that no vendor could build it.
+
+### Deliberately rejected
+
+- Claiming the chain authenticates users or is a multi-user security boundary (it is neither — one browser, one store, one log).
+- Claiming plain-hash mode is tamper-*proof* (it is tamper-*evident* against corruption and honest error only; the app says so on every surface).
+- Implying the surveyed vendors' logs are insecure — we did not test them; the claim is only that none offers *customer-local verifiable* sealing.
+- External timestamping / RFC 3161 or Notary-style co-signing in this session: real, but it would require an external service, which the canonical app does not have.
+## §105 — Session 123 domain hunt: the measurement system behind performance management (2026-11-04, Schema v89, [ADR-0083](./docs/adr/0083-expectation-concordance.md))
+
+**Egress note (honest).** This sandbox could reach `github.com`, `codeload.github.com`, `api.github.com`, the npm registry and PyPI only — no vendor site was fetched this session. The category framing below therefore rests on prior sessions' recorded research (§100–§103) and on the literature named explicitly, and every product-specific claim is marked **[UNVERIFIED]** rather than dressed as a citation.
+
+### What the category sells
+
+Performance-management suites (Lattice, 15Five, Culture Amp, Leapsome, Betterworks, Workday, SAP SuccessFactors, Oracle Fusion HCM, Personio) converge on the same primitives: goal/OKR cascades with a completion percentage, review cycles with a manager rating, engagement surveys with an averaged index, 360 feedback with a distribution of peer opinions, a nine-box grid, and (2025–26) an AI "coaching" layer that summarises the above. **[UNVERIFIED]** — product surfaces, not independently benchmarked capabilities.
+
+Three properties hold across all of them:
+
+1. **Every figure is a claim about a person.** None is a measurement of the *instrument*.
+2. **Alignment is self-reported.** "94% of goals aligned to company objectives" is a count of key results attached to objectives, not a test of whether two people mean the same thing by the objective.
+3. **The manager's word is treated as the standard**, even though the standard is precisely what is contested in every appeal, every surprise review and most resignations.
+
+### The literature that actually answers it
+
+- **Measurement Systems Analysis / gauge R&R** — AIAG & VDA, *MSA Reference Manual*, 4th ed. (2010): before trusting a measurement, measure the instrument (%agreement, %repeatability & reproducibility, number of distinct categories). Applied here, the "gauges" are the two people.
+- **Cohen (1960)** κ; **Cohen (1968)** weighted κ for ordinal scales; **Landis & Koch (1977)** interpretive bands — used here as a **declared convention**, never as a threshold of truth.
+- **Gwet (2008)** AC1 and **Byrt, Bishop & Carlin (1993)** PABAK: the two standard answers to κ's prevalence paradox, which is why a well-calibrated pair can score κ≈0 while agreeing on 5 of 6 items.
+- **Bias & limits of agreement** — **Bland & Altman (1986, 1999)**: separates *how far apart* (agreement) from *who is asking for more* (bias). A leadership team needs both; a single κ hides the direction.
+- **Role clarity and expectation specificity** — **Hackman & Oldham (1976)**, **Locke & Latham (1990)**, **Mager & Pipe (1970)**: the reason the instrument is worth running. LeadOS already uses Mager & Pipe in the Performance Recovery Terminal (ADR-0060-era); this is the first surface that *measures* the clarity the other one asks about.
+- **Justice** — **Leventhal (1980)**, **Bies & Moag (1986)**, **Colquitt et al. (2001)**: implemented as mechanics, not slogans — the seal (voice without anchoring), the symmetry rule (both sides see both), the refusal to print a figure below the instrument floor, and the shared-error warning when agreement is perfect.
+
+### The gap LeadOS closes here
+
+| Category behaviour | LeadOS behaviour |
+| --- | --- |
+| Manager rates person against an unexamined word | Both people rate the **standard**, independently, sealed |
+| Agreement is assumed | κ, AC1, PABAK and Bland–Altman printed side by side; disagreement named |
+| A percentage is published at any n | Figures **refused** below six items; rates withheld below the cell floor |
+| Alignment rolls up as an average of averages | Exact partition by owning node; pairs-above-floor share with a Wilson interval |
+| Divergence becomes an HR note about a person | One governed **re-contracting decision** per pair per week, addressed to the span, rating nobody |
+| The intervention is never tested | A second round is compared with un-re-contracted pairs — printed as an association, refused below the floor |
+
+**What no vendor publishes**, and what this session builds: a per-pair agreement statistic on the *definition of the standard*, a directional dimension profile across an organisation ("we disagree most about escalation, and it is always the leader asking for more"), and a typed, auditable roll-up of that finding up the same transaction that recorded it.
+
+### Beyond the ambition bar, still open
+
+An authenticated two-device seal (the current one is a UI guarantee); an instrument v2 that scores a shared artefact rather than a self-report; temporal disclosure testing for repeated releases; and outcome-graded evidence that re-contracting an expectation changes anything downstream. Those are the next three roadmap items, not claims.
+
+## §106 — Session 124 domain hunt: OKR cascades average away bottlenecks, and Hoshin X-Matrices never price capacity (fetched 2026-11-04, [ADR-0084](docs/adr/0084-hoshin-catchball-cascade.md))
+
+**Method.** Web search over the 2026 strategy-execution and Hoshin Kanri software landscape following Microsoft's retirement of Viva Goals (wind-down completed Dec 2025 / early 2026) and WorkBoard's acquisition and standalone sunset of Quantive, paired with operations-research and organizational-economics literature on decomposition, agency distortion, and cascade combinatorics. Vendor descriptions below reflect published 2026 product documentation and independent category comparisons, not audited deployments; the implementation response is [ADR-0084](docs/adr/0084-hoshin-catchball-cascade.md) / `#/catchball`.
+
+### What the 2026 market ships — and where both halves break
+
+1. **Post-Viva-Goals / post-Quantive OKR suites (WorkBoard, Cascade, Mooncamp, Betterworks, Perdoo, Jira Align, Vindaris) still roll up arithmetic `%` averages without capacity verification** ([1](https://vindaris.com/blog/best-strategy-execution-software), [2](https://www.workboard.com/resources/blog/best-viva-goals-alternative), [3](https://mooncamp.com/blog/okr-software-enterprise)).
+   - *Altitude impact (`frontline` → `CEO`):* When three child teams report 95% on auxiliary deliverables and one critical-path platform team sits at 20%, unweighted or effort-blind percentage roll-up paints the VP/CEO scorecard ~76% ("on track") — manufacturing the classic **Watermelon metric** (green outside, red inside; Prendergast 1993). Worse, "alignment" is top-down linking without checking whether the receiving manager's person-day queue is already saturated.
+   - *LeadOS response:* `#/catchball` computes **effort-weighted mean progress** and **Goldratt/Leontief weakest-link floor** side-by-side at every parent node, flags Watermelon gaps $\ge 25\text{ pp}$ automatically (`RULE-HK-02`), and refuses silent overload acceptance when `buildLoadReport` shows the receiving span in the `saturated` or `overloaded` band unless a concrete `trade-off`, `scope-trim`, or explicit justification is recorded.
+2. **Dedicated Hoshin Kanri / X-Matrix vendors (`i-nexus`, `Amplon`, `KPI Fire`, `KaiNexus`, `Businessmap`, `Kanrix`, MCP-native `hoshin.app`) digitize four-quadrant X-Matrices and monthly bowler charts, but reduce "Catchball" to unpriced comments** ([4](https://hoshin.app/best-hoshin-kanri-software), [5](https://www.kanrix.com/features/), [6](https://businessmap.io/hoshin-kanri/software)).
+   - *Altitude impact (`frontline`, `manager`, `director`):* In genuine Hoshin Kanri (Akao 1991; Jackson 2006) and Dantzig–Wolfe / Kornai–Lipták decomposition, Catchball is a **priced bilateral resource-and-feasibility negotiation**: a manager counters an unfeasible target by naming which existing commitment comes off the table (`trades-off`) or what budget/capacity authority must be encumbered (`resource-ask`). Surveyed tools store free-text comments disconnected from live workload queues and commitment-accounting budgets.
+   - *LeadOS response:* Every Catchball turn is an append-only `catchballRounds` record (`propose`, `counter`, `accept`, `checkin`, `withdraw`) bound to real `portfolio`/`goal`/`case` de-scoping links and live same-currency `budgets` encumbrance (`evaluateBudget` in `finance.js`).
+3. **Neither OKR nor Hoshin tools separate execution failure from strategic thesis failure, nor guard against $3^4 = 81$ cascade explosion** ([7](https://theoperationaledge.substack.com/p/the-tool-that-makes-execution-capacity), [8](https://iaec.online/hoshin-kanri-strategic-deployment-quality-2/), [9](https://www.tability.io/odt/articles/hoshin-kanri), [10](https://rmgtech.in/2026/03/strategy-deployment/)).
+   - *Altitude impact (`director`, `VP / executive`, `CEO`):* Four cascade levels at 3 sub-objectives per node create $3^4 = 81$ leaf targets that fragment shared specialists. And when a frontline/manager span executes 90% of its agreed leading activities while the lagging KPI stays at 20%, single-loop scorecards mark the team red — punishing honest reporting instead of invalidating the upstream causal bet (Argyris & Schön 1978).
+   - *LeadOS response:* `#/catchball` tracks cascade fan-out + span HHI concentration, explicitly **exonerates execution** (`thesis-suspect`) when leading adherence $\ge 80\%$ meets lagging realization $\le 35\%$ past midpoint, opens an upstream Double-Loop Strategy Review DACI decision linked to the `strategyBet` and `premise`, grades settled pacts by strictly-prior Brier skill (comparing negotiated `rounds >= 2` vs. top-down `rounds <= 1` hold rates), applies primary + complementary small-cell suppression at VP/CEO altitudes, and seals every round on the hash-chained spine (`sealRule`).
+
+### Honest limits & rejections
+
+- Local Operating Seats remain auditable workspace declarations, not authenticated multi-user security; small-cell + complementary suppression prevents simple parent-minus-sibling subtraction on aggregate views, not differential privacy.
+- Fréchet joint delivery intervals bound unknown inter-span correlation honestly rather than inventing a copula where sample sizes are small; rates below `catchballFloorN = 5` are withheld as counts-only.
+- **Deliberately rejected:** unweighted `%` averaging across incommensurable KPIs; auto-accepting top-down goals without receiver consent; blaming frontline/manager execution when leading commitments held and the strategic hypothesis failed; person-level "alignment scores".
+
+## §107 — Session 125 domain hunt: the board pack nobody can falsify (2026-11-04, Schema v91, [ADR-0085](./docs/adr/0085-board-room.md))
+
+**Egress note (honest).** This sandbox could reach `github.com`, `codeload.github.com`, `api.github.com`, the npm registry and PyPI only. No vendor documentation page was fetched this session, so every product-specific statement below is carried from §100–§105 and marked **[UNVERIFIED]**; the statistical and organisational literature cited is standard and named explicitly.
+
+**The category's board-pack primitive.** Every surveyed platform ships the same three objects: a dashboard library, a scheduled "board pack" export, and a health index. Workday, SAP SuccessFactors, Oracle Fusion HCM, ChartHop, Culture Amp, Lattice, Leapsome, Betterworks, 15Five and Visier all sell some form of *executive summary of people analytics* **[UNVERIFIED]**. The common structure is: pick metrics → average them into a small number of indices → colour them against a target that is edited in the same admin screen the number is displayed in.
+
+Three defects follow, and each maps to an altitude:
+
+1. **[CEO / chief] The claim cannot fail.** Targets are admin-editable and rarely timestamped against the reporting period, so the threshold is de facto chosen after the number is seen. This is HARKing (Kerr 1998) at enterprise scale. The literature on pre-registration in organisational research (Simmons, Nelson & Simonsohn 2011; Nosek et al. 2018) is well known *inside* academia and absent from the product category.
+2. **[VP / director] The composite hides the disagreement.** A single "organisational health" number averages figures from instruments with different units, different denominators and different reliability. Simpson's paradox (1951) and the composite-index critique in public-sector measurement (Jacobs, Goddard & Smith 2007) are the standard references; the product category sells the composite precisely because it is readable.
+3. **[manager / frontline] The pack cannot be drilled.** A board number that no span can be held to is a number nobody owns. The roll-up literature (Jaques 1979 on time-span and stratum; the accountability literature on span of control) requires the parts to sum **exactly** to the whole, which is a checkable property and almost never checked.
+
+**What LeadOS now does differently, by altitude.**
+
+- **[CEO / chief]** Thresholds are declared before the first recorded look, each look carries a content fingerprint, movement afterwards is permanent and printed. Verdicts use the conservative end of a Wilson (1927) interval, so an enterprise claim is only called *holding* when the record can defend it.
+- **[VP]** Cross-module disagreement is the deliverable: three checks print both numbers and the route to the module that owns the other half, instead of averaging them into one index that cannot be argued with.
+- **[director]** Every attributable claim is partitioned over the reporting tree and reconciled against the claim's own denominator; a broken partition is reported, not drawn.
+- **[manager, frontline]** A failing claim produces a governed decision and, where the worst row is a span, a delegation to the person who holds it — with a due date and a review date, in the same transaction.
+- **[all altitudes]** A refusal is never zero. An unexamined record is not a clean one, and the seal's verdict is reported beside the sentence that it proves non-alteration and not truth.
+
+**What is still missing in the category and here.** Authenticated identity and tenant isolation remain prerequisites for multi-user use; repeated-release differencing of a quarterly pack remains unbuilt; and the seven claims are a chosen instrument whose thresholds are defaults rather than calibrated norms. Those are the next three roadmap items, in that order.
